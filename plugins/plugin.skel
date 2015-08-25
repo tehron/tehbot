@@ -1,0 +1,7 @@
+import plugins
+
+def cmd1(connection, channel, nick, cmd, args):
+    """This is the help for cmd1"""
+    #plugins.say(connection, channel, "output for cmd1")
+
+plugins.register_pub_cmd("cmd1", cmd1)
