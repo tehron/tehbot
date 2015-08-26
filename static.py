@@ -3,7 +3,7 @@ import plugins
 import settings
 import dynamic
 import functools
-from Queue import Queue
+from Queue import Queue, Empty
 from threading import Thread
 
 class Tehbot:
@@ -28,10 +28,15 @@ class Tehbot:
 
     def _process(self):
         while True:
-            fnc, args = self.queue.get()
-            if not self.is_reloading:
-                fnc(*args)
-            self.queue.task_done()
+            try:
+                fnc, args = self.queue.get(timeout=1)
+                if not self.is_reloading:
+                    fnc(*args)
+                self.queue.task_done()
+            except Empty:
+                pass
+            if self.quit_called:
+                return
             
     def connect(self):
         for c in settings.connections:

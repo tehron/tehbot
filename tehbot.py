@@ -32,7 +32,12 @@ import threading
 kbdthread = threading.Thread(target=kbdinput, args=(bot,))
 kbdthread.daemon = True
 kbdthread.start()
-bot.connect()
+
+import sys
+try:
+    bot.connect()
+except KeyboardInterrupt:
+    bot.quit()
 
 import plugins
 if not plugins.is_windows():
@@ -44,7 +49,7 @@ if not plugins.is_windows():
 
 import traceback
 import irc.client
-import sys
+
 while True:
     try:
         if stopme:
