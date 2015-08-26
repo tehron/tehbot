@@ -5,6 +5,7 @@ import locale
 locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
 import HTMLParser
 html = HTMLParser.HTMLParser()
+import shlex
 
 def google_search(searchfor, what="web"):
     query = urllib.urlencode({'q': searchfor.encode("utf-8")})
@@ -47,18 +48,27 @@ def create_bar(v1, v2, width=41):
     bar = [" "] * width
     if v1 == v2:
         bar[width/2] = "#"
-    v = int(float(width) * v2 / (v1 + v2))
-    if v < 0: v = 0
-    if v > width - 1: v = width - 1
-    bar[v] = "#"
+    else:
+        v = int(float(width) * v2 / (v1 + v2))
+        if v < 0: v = 0
+        if v > width - 1: v = width - 1
+        bar[v] = "#"
     return "|" + "".join(bar) + "|"
 
 def vs(connection, channel, nick, cmd, args):
-    """Usage: vs word1,word2 -- Compares the number of google results for word1 and word2."""
-    if not args or not args.find(",") > -1:
-        return
+    """Usage: vs "search term 1" "search term 2" -- Compares the number of google results for both terms."""
+    if not args:
+        return plugins.print_help(connection, channel, nick, cmd, args)
 
-    term1, term2 = args.split(",")
+    try:
+        v = shlex.split(args)
+    except Exception as e:
+        return plugins.say(connection, channel, str(e))
+    
+    if len(v) != 2:
+        return plugins.print_help(connection, channel, nick, cmd, args)
+    
+    term1, term2 = v
     hits1 = google_search(term1.encode("utf-8"))[0]
     hits2 = google_search(term2.encode("utf-8"))[0]
     h1 = locale.format("%d", hits1, 1)
