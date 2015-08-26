@@ -9,8 +9,8 @@ class Dispatcher:
     def __init__(self, tehbot):
         self.tehbot = tehbot
         self.operator_cmd_handlers = {
-            "reload" : self.tehbot.reload,
-            "quit" : self.tehbot.quit
+            "reload" : self.reload,
+            "quit" : self.quit
         }
         
     def dispatch(self, connection, event):
@@ -93,8 +93,10 @@ class Dispatcher:
         cmd = tmp[0]
         args = tmp[1] if len(tmp) == 2 else None
 
-        if cmd in self.operator_cmd_handlers and self.is_op(connection, event.source):
-            self.operator_cmd_handlers[cmd]()
+        if cmd in self.operator_cmd_handlers:
+            if not self.is_op(connection, event.source):
+                return plugins.say_nick(connection, event.target, event.source.nick, "You are no operator.")
+            self.operator_cmd_handlers[cmd](connection, event.target, event.source.nick, cmd, args)
         elif cmd in plugins.operator_cmd_handlers and self.is_op(connection, event.source):
             self.tehbot.queue.put((plugins.operator_cmd_handlers[cmd], (connection, event.target, event.source.nick, cmd, args)))
         elif irc.client.is_channel(event.target):
@@ -136,3 +138,13 @@ class Dispatcher:
         # reconquer our nick! 
         if oldnick == settings.bot_name:
             connection.nick(settings.bot_name)
+
+    def reload(self, connection, channel, nick, cmd, args):
+        res = self.tehbot.reload()
+        if res is None:
+            plugins.say(connection, channel, "Okay")
+        else:
+            plugins.say(connection, channel, "Error: %s" % res)
+
+    def quit(self, connection, channel, nick, cmd, args):
+        self.tehbot.quit(args or "bye-bye")

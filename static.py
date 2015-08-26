@@ -58,14 +58,19 @@ class Tehbot:
         
     def reload(self):
         self.is_reloading = True
-        reload(settings)
-        reload(dynamic)
-        plugins.plugins_reload(),
-        self._init()
+        res = None
+        try:
+            reload(settings)
+            reload(dynamic)
+            plugins.plugins_reload(),
+            self._init()
+        except Exception as e:
+            res = e
         self.is_reloading = False
+        return res
 
-    def quit(self):
+    def quit(self, msg="bye-bye"):
         print "quit called"
         self.quit_called = True
-        self.reactor.disconnect_all("bye-bye")
+        self.reactor.disconnect_all(msg)
         raise SystemExit
