@@ -58,7 +58,7 @@ def create_bar(v1, v2, width=41):
 def vs(connection, channel, nick, cmd, args):
     """Usage: vs "search term 1" "search term 2" -- Compares the number of google results for both terms."""
     if not args:
-        return plugins.print_help(connection, channel, nick, cmd, args)
+        return plugins.print_help(connection, channel, nick, None, cmd)
 
     try:
         v = shlex.split(args)
@@ -66,7 +66,7 @@ def vs(connection, channel, nick, cmd, args):
         return plugins.say(connection, channel, str(e))
     
     if len(v) != 2:
-        return plugins.print_help(connection, channel, nick, cmd, args)
+        return plugins.print_help(connection, channel, nick, None, cmd)
     
     term1, term2 = v
     hits1 = google_search(term1.encode("utf-8"))[0]
