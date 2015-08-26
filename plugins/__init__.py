@@ -51,17 +51,8 @@ def to_latin1(unistr):
 def myfilter(s):
     return "".join([c if ord(c) >= 0x20 else "?" for c in s])
 
-def glock(connection, channel):
-    try:
-        connection.locks
-    except AttributeError:
-        connection.locks = dict()
-    if not connection.locks.has_key(channel):
-        connection.locks[channel] = threading.Lock()
-        
 def say(connection, channel, msg):
     if not channel or not msg: return
-    glock(connection, channel)
     with connection.locks[channel]:
         for m in msg.split("\n"):
             myprint("%s: %s: %s" % (channel, connection.get_nickname(), m))
@@ -69,7 +60,6 @@ def say(connection, channel, msg):
 
 def say_nick(connection, channel, nick, msg):
     if not channel or not nick: return
-    glock(connection, channel)
     with connection.locks[channel]:
         for m in msg.split("\n"):
             myprint("%s: %s: %s: %s" % (channel, connection.get_nickname(), nick, m))
@@ -77,7 +67,6 @@ def say_nick(connection, channel, nick, msg):
 
 def me(connection, channel, msg):
     if not channel or not msg: return
-    glock(connection, channel)
     with connection.locks[channel]:
         myprint("%s: %s %s" % (channel, connection.get_nickname(), msg))
         connection.action(channel, msg)
