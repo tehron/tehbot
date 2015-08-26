@@ -190,6 +190,8 @@ def revsolve(connection, channel, nick, cmd, args):
         else:
             cnt = int(match.group(1))
             txt = "Challenge Nr. %s, %s, has been solved by %d user%s." % (nr, name, cnt, "" if cnt == 1 else "s")
+            if cnt > 0:
+                txt += " Last by %s." % ", ".join(solvers[:5])
 
     plugins.say(connection, channel, txt)
 
