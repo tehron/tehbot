@@ -67,7 +67,7 @@ def wcsolve(connection, channel, nick, cmd, args):
     plugins.say(connection, channel, txt)
 
 def blame(connection, channel, nick, cmd, args):
-    goats = zip(("spaceone" for a in range(23)), 42 * [ reduce(random, [], "spaceone") ])
+    goats = zip(("\xd1\x95paceone" for a in range(23)), 42 * [ reduce(random, [], "\xd1\x95paceone") ])
     shuffle(goats)
     goats.sort(key=lambda x: random())
     shuffle(goats)
