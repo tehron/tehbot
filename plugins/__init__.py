@@ -7,9 +7,28 @@ import re
 import locale
 _, encoding = locale.getdefaultlocale()
 import threading
+import argparse
+
+class ArgumentParserError(Exception):
+    pass
+
+class ThrowingArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        raise ArgumentParserError(message)
+
+    def print_help(self, file=None):
+        self.help_requested = True
+
+    def parse_args(self, args=None, namespace=None):
+        self.help_requested = False
+        try:
+            return argparse.ArgumentParser.parse_args(self, args, namespace)
+        except SystemExit:
+            pass
 
 pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
 regex = re.compile(pattern, re.UNICODE)
+
 
 os.chdir("plugins")
 plugins = [dir for dir in os.listdir(".") if os.path.isdir(dir) and dir != ".svn"]

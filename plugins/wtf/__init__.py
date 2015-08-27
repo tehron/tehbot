@@ -1,6 +1,13 @@
 import plugins
 import urllib
 import lxml.html
+import shlex
+
+parser = plugins.ThrowingArgumentParser(
+    prog="wtf",
+    description="Looks up definitions in Urban Dictionary")
+parser.add_argument("search_term")
+parser.add_argument("-n", "--nr", help="request definition number NR")
 
 def extract_text(e, xpath):
     e = e.xpath(xpath)
@@ -13,18 +20,21 @@ def extract_text(e, xpath):
     return s
 
 def wtf(connection, channel, nick, cmd, args):
-    """Usage: ?wtf [nr] term"""
     index = 0
-    if not args:
+    try:
+        pargs = parser.parse_args(shlex.split(args or ""))
+        if parser.help_requested:
+            return plugins.say(connection, channel, parser.format_help().strip())
+        if pargs.nr:
+            index = int(pargs.nr) - 1
+    except plugins.ArgumentParserError as e:
+        return plugins.say(connection, channel, "error: %s" % str(e))
+    except (SystemExit, NameError, ValueError):
         return plugins.print_help(connection, channel, nick, None, cmd)
-
-    args = args.strip().split()
-    if args[0].strip().isdigit():
-        index = int(args.pop(0)) - 1
-
+    
     page = index / 7 + 1
     index %= 7
-    term = " ".join(args)
+    term = pargs.search_term
 
     """
     if term.lower() == "maddinw":
@@ -34,7 +44,7 @@ def wtf(connection, channel, nick, cmd, args):
     """
 
     tree = lxml.html.parse("http://www.urbandictionary.com/define.php?term=%s&page=%d" % (urllib.quote_plus(term.encode("utf-8")), page))
-    entries = tree.xpath("//div[@class='def-panel']")
+    entries = tree.xpath("//div[@class='def-panel' and @data-defid]")
     if not entries:
         return plugins.say(connection, channel, "'%s' has no definition at http://www.urbandictionary.com" % term)
 
@@ -50,14 +60,12 @@ def wtf(connection, channel, nick, cmd, args):
             print e
             pass
 
-    txt = "\x02[Definition 1/%s]\x0f " % count
+    txt = "\x02[Definition %d/%s]\x0f " % (index + 1, count)
     definition = extract_text(entries[index], ".//div[@class='meaning']")
     if len(definition) > 300:
         definition = definition[:300] + "..."
     txt += definition
     
-    plugins.say(connection, channel, definition)
-
     example = extract_text(entries[index], ".//div[@class='example']")
     if example:
         if len(example) > 300:

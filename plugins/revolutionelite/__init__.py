@@ -5,28 +5,12 @@ import lxml.html
 import time
 from collections import defaultdict
 import shlex
-import argparse
-
-class ArgumentParserError(Exception):
-    pass
-
-class ThrowingArgumentParser(argparse.ArgumentParser):
-    def error(self, message):
-        raise ArgumentParserError(message)
-
-    def print_help(self, file=None):
-        self.help_requested = True
-
-    def parse_args(self, args=None, namespace=None):
-        self.help_requested = False
-        try:
-            return argparse.ArgumentParser.parse_args(self, args, namespace)
-        except SystemExit:
-            pass
     
 nr_to_url = {}
 
-parser = ThrowingArgumentParser(prog="solvers", description="Shows solvers for RevEl challenge.")
+parser = plugins.ThrowingArgumentParser(
+    prog="solvers",
+    description="Shows solvers for RevEl challenge.")
 parser.add_argument("chall_name_or_nr")
 parser.add_argument("-n", "--nr", action="store_true")
 parser.add_argument("-u", "--user")
@@ -152,7 +136,7 @@ def revsolve(connection, channel, nick, cmd, args):
             return plugins.say(connection, channel, parser.format_help().strip())
         if pargs.nr:
             int(pargs.chall_name_or_nr)
-    except ArgumentParserError as e:
+    except plugins.ArgumentParserError as e:
         return plugins.say(connection, channel, "error: %s" % str(e))
     except (SystemExit, NameError, ValueError):
         return plugins.print_help(connection, channel, nick, None, cmd)
