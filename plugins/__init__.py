@@ -145,3 +145,10 @@ def split(s, mx=450):
                 l = l[-1:]
     ret.append(" ".join(l))
     return "\n".join(ret)
+
+def shorten(msg, maxlen):
+    if len(msg) > maxlen:
+        if maxlen < 3:
+            return "..."
+        return msg[:maxlen - 3] + "..."
+    return msg

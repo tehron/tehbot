@@ -23,19 +23,22 @@ def wiki(connection, channel, nick, cmd, args):
     }
     req = urllib2.Request(url % urllib.urlencode(data))
     pageurl = json.load(urllib2.urlopen(req))[-1]
-    txt = "[Wikipedia] "
+    txt = "\x0303[Wikipedia]\x03 "
     
     if not pageurl:
         return plugins.say(connection, channel, txt + "Search didn't find anything.")
 
     tree = lxml.html.parse(urllib2.urlopen(pageurl[0]))
     title = get_text(tree, "//h1[@id='firstHeading']")
-    short = get_text(tree, "//div[@id='mw-content-text']/p")
+    content = get_text(tree, "//div[@id='mw-content-text']/p")
 
-    if not title or not short:
+    if not title or not content:
         return plugins.say(connection, channel, txt + "Something went wrong.")
     
-    txt += "\x02%s\x0f\n%s" % (title, short[:300])
+    if tree.xpath("//div[@id='mw-content-text']//table[@id='disambigbox']"):
+        content += " " + ", ".join(tree.xpath("//div[@id='mw-content-text']/ul/li//a[1]/@title"))
+    
+    txt += "%s\n%s" % (title, plugins.shorten(content, 300))
     plugins.say(connection, channel, txt)
 
 plugins.register_pub_cmd("wiki", wiki)

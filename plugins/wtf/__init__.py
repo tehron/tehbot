@@ -45,11 +45,13 @@ def wtf(connection, channel, nick, cmd, args):
 
     tree = lxml.html.parse("http://www.urbandictionary.com/define.php?term=%s&page=%d" % (urllib.quote_plus(term.encode("utf-8")), page))
     entries = tree.xpath("//div[@class='def-panel' and @data-defid]")
+    txt = "\x0303[Urban Dictionary]\x03 "
+
     if not entries:
-        return plugins.say(connection, channel, "'%s' has no definition at http://www.urbandictionary.com" % term)
+        return plugins.say(connection, channel, txt + "No definition available")
 
     if index >= len(entries) or index < 0:
-        return plugins.say(connection, channel, "No definition nr %d available" % (index + 1))
+        return plugins.say(connection, channel, txt + "No definition nr %d available" % (index + 1))
 
     count = "?"
     count_div = tree.xpath("//div[contains(@class, 'definition-count-panel')]")
@@ -60,17 +62,13 @@ def wtf(connection, channel, nick, cmd, args):
             print e
             pass
 
-    txt = "\x02[Definition %d/%s]\x0f " % (index + 1, count)
+    txt += "%s (%d/%s)\n" % (term, index + 1, count)
     definition = extract_text(entries[index], ".//div[@class='meaning']")
-    if len(definition) > 300:
-        definition = definition[:300] + "..."
-    txt += definition
+    txt += plugins.shorten(definition, 300)
     
     example = extract_text(entries[index], ".//div[@class='example']")
     if example:
-        if len(example) > 300:
-            example = example[:300] + "..."
-        txt += "\n\x02Example:\x0f " + example
+        txt += "\n\x02Example:\x0f " + plugins.shorten(example, 300)
 
     plugins.say(connection, channel, txt)
 
