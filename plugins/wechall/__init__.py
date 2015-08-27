@@ -4,6 +4,7 @@ import re
 import lxml.html
 import time
 from collections import defaultdict
+from random import *
 
 cache_ts = 0
 nr_to_url = {}
@@ -66,7 +67,12 @@ def wcsolve(connection, channel, nick, cmd, args):
     plugins.say(connection, channel, txt)
 
 def blame(connection, channel, nick, cmd, args):
-    plugins.say(connection, channel, "I blame spaceone.")
+    goats = zip(("spaceone" for a in range(23)), 42 * [ reduce(random, [], "spaceone") ])
+    shuffle(goats)
+    goats.sort(key=lambda x: random())
+    shuffle(goats)
+    scapegoat = goats[randint(0, len(goats) - 1)][int(1337 * random()) % 2]
+    plugins.say(connection, channel, "I blame %s." % scapegoat)
 
 plugins.register_pub_cmd("wcsolve", wcsolve)
 plugins.register_pub_cmd("blame", blame)
