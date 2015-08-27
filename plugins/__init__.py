@@ -72,6 +72,7 @@ def myfilter(s):
 
 def say(connection, channel, msg):
     if not channel or not msg: return
+    if not connection.locks.has_key(channel): connection.locks[channel] = threading.Lock()
     with connection.locks[channel]:
         for m in msg.split("\n"):
             myprint("%s: %s: %s" % (channel, connection.get_nickname(), m))
@@ -79,6 +80,7 @@ def say(connection, channel, msg):
 
 def say_nick(connection, channel, nick, msg):
     if not channel or not nick: return
+    if not connection.locks.has_key(channel): connection.locks[channel] = threading.Lock()
     with connection.locks[channel]:
         for m in msg.split("\n"):
             myprint("%s: %s: %s: %s" % (channel, connection.get_nickname(), nick, m))
@@ -86,6 +88,7 @@ def say_nick(connection, channel, nick, msg):
 
 def me(connection, channel, msg):
     if not channel or not msg: return
+    if not connection.locks.has_key(channel): connection.locks[channel] = threading.Lock()
     with connection.locks[channel]:
         myprint("%s: %s %s" % (channel, connection.get_nickname(), msg))
         connection.action(channel, msg)
