@@ -6,5 +6,5 @@ A Python IRC Bot
 * `pip install --upgrade irc lxml tmdbsimple wolframalpha`
 
 ## Running
-* Edit settings.py
-* python tehbot.py
+* Copy settings.py.example to settings.py and edit it
+* `python tehbot.py`
