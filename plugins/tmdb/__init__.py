@@ -1,7 +1,8 @@
 print "TMDB init"
 import plugins
 import tmdbsimple as tmdb
-tmdb.API_KEY = 'your api key here'
+import settings
+tmdb.API_KEY = settings.tmdb_api_key
 
 def movie(connection, channel, nick, cmd, args):
     """Shows information about movie from themoviedb.org"""

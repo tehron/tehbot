@@ -1,19 +1,25 @@
 import plugins
 import wolframalpha
+import settings
 
-APP_ID = "your api id here"
-
-client = wolframalpha.Client(APP_ID)
+client = wolframalpha.Client(settings.wolframalpha_app_id)
 
 def waquery(connection, channel, nick, cmd, args):
     if not args:
         return
 
-    res = client.query(args)
+    txt = "\x0303[Wolfram|Alpha]\x03 "
+
     try:
-        txt = next(res.results).text
-    except StopIteration:
-        txt = "No results"
+        for p in client.query(args).pods:
+            if p.id == "Input":
+                inp = p.text
+            elif p.id == "Result":
+                res = p.text
+        txt += inp + "\n" + res
+    except Exception:
+        txt += "No results"
+        
     plugins.say(connection, channel, txt)
 
 plugins.register_pub_cmd("wa", waquery)
