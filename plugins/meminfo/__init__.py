@@ -12,7 +12,8 @@ def meminfo(connection, channel, nick, cmd, args):
     if plugins.is_windows():
         minfo = meminfo_win()
     else:
-        minfo = None
+    	import resource
+        minfo = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss + " kB"
     plugins.say(connection, channel, "Current memory usage: %s" % minfo)
 
 plugins.register_pub_cmd("meminfo", meminfo)
