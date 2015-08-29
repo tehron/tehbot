@@ -97,7 +97,9 @@ class Dispatcher:
             if not self.is_op(connection, event.source):
                 return plugins.say_nick(connection, event.target, event.source.nick, "You are no operator.")
             self.operator_cmd_handlers[cmd](connection, event.target, event.source.nick, cmd, args)
-        elif cmd in plugins.operator_cmd_handlers and self.is_op(connection, event.source):
+        elif cmd in plugins.operator_cmd_handlers:
+            if not self.is_op(connection, event.source):
+                return plugins.say_nick(connection, event.target, event.source.nick, "You are no operator.")
             self.tehbot.queue.put((plugins.operator_cmd_handlers[cmd], (connection, event.target, event.source.nick, cmd, args)))
         elif irc.client.is_channel(event.target):
             if cmd in plugins.pub_cmd_handlers:
