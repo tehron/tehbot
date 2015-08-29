@@ -13,13 +13,13 @@ def waquery(connection, channel, nick, cmd, args):
     try:
         for p in client.query(args).pods:
             if p.id == "Input":
-                inp = p.text
+                inp = p.text.replace("\r\n", " | ").replace("\n", " | ")
             elif p.id == "Result":
                 res = p.text
         txt += inp + "\n" + res
     except Exception:
         txt += "No results"
-        
+
     plugins.say(connection, channel, txt)
 
 plugins.register_pub_cmd("wa", waquery)
