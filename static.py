@@ -6,6 +6,8 @@ import functools
 from Queue import Queue, Empty
 from threading import Thread
 
+nr_worker_threads = 10
+
 class Tehbot:
     def __init__(self):
         self.reactor = irc.client.Reactor()
@@ -14,7 +16,7 @@ class Tehbot:
         self.dispatcher = None
         self._init()
         self.queue = Queue(maxsize=0)
-        for i in xrange(10):
+        for i in xrange(nr_worker_threads):
             worker = Thread(target=self._process)
             worker.start()
 
@@ -37,7 +39,7 @@ class Tehbot:
                 pass
             if self.quit_called:
                 return
-            
+
     def connect(self):
         for c in settings.connections:
             conn = self.reactor.server()
@@ -55,7 +57,7 @@ class Tehbot:
         connection.connect(host, port, settings.bot_name, bot_password, settings.bot_name, settings.bot_name, factory)
         connection.set_rate_limit(4)
         connection.set_keepalive(60)
-        
+
     def reload(self):
         self.is_reloading = True
         res = None

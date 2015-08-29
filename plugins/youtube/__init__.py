@@ -4,7 +4,10 @@ import urllib2
 import json
 import re, traceback
 import locale
-locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
+try:
+	locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
+except:
+	pass
 import settings
 
 searchurl = "https://www.googleapis.com/youtube/v3/videos?key=%s&id=%s&part=snippet,contentDetails"
