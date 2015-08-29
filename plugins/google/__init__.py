@@ -2,7 +2,10 @@ import plugins
 import json
 import urllib
 import locale
-locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
+try:
+	locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
+except:
+	pass
 import HTMLParser
 html = HTMLParser.HTMLParser()
 import shlex
@@ -64,10 +67,10 @@ def vs(connection, channel, nick, cmd, args):
         v = shlex.split(args)
     except Exception as e:
         return plugins.say(connection, channel, str(e))
-    
+
     if len(v) != 2:
         return plugins.print_help(connection, channel, nick, None, cmd)
-    
+
     term1, term2 = v
     hits1 = google_search(term1.encode("utf-8"))[0]
     hits2 = google_search(term2.encode("utf-8"))[0]
