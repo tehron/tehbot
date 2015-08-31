@@ -5,6 +5,24 @@ import dynamic
 import functools
 from Queue import Queue, Empty
 from threading import Thread
+from types import ModuleType
+import os.path
+
+def gather(module, modules):
+    if module in modules:
+        return
+
+    try:
+        path = os.path.dirname(module.__file__)
+    except:
+        return
+
+    if not path or path.startswith("plugins"):
+        modules.add(module)
+        for attribute_name in dir(module):
+            attribute = getattr(module, attribute_name)
+            if type(attribute) is ModuleType:
+                gather(attribute, modules)
 
 nr_worker_threads = 10
 
@@ -25,8 +43,8 @@ class Tehbot:
             self.reactor.remove_global_handler("all_events", self.dispatcher.dispatch)
         self.dispatcher = dynamic.Dispatcher(self)
         self.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
-        print "pub cmd handlers:", plugins.pub_cmd_handlers
-        print "channel handlers:", plugins.channel_handlers
+        print "pub cmd handlers:", sorted(plugins.pub_cmd_handlers.keys())
+        print "channel handlers:", sorted([h.__name__ for h in plugins.channel_handlers])
 
     def _process(self):
         while True:
@@ -62,9 +80,12 @@ class Tehbot:
         self.is_reloading = True
         res = None
         try:
-            reload(settings)
-            reload(dynamic)
-            plugins.plugins_reload(),
+            modules = set()
+            gather(settings, modules)
+            gather(dynamic, modules)
+            gather(plugins, modules)
+            modules = sorted(modules, key=lambda x: 0 if x == plugins else 1)
+            map(reload, modules)
             self._init()
         except Exception as e:
             res = e

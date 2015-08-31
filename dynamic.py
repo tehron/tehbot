@@ -12,7 +12,7 @@ class Dispatcher:
             "reload" : self.reload,
             "quit" : self.quit
         }
-        
+
     def dispatch(self, connection, event):
         method = getattr(self, "on_" + event.type, None)
         types = [ "all_raw_messages", "pong", "action", "motd", "motdstart", "endofmotd" ]
@@ -36,37 +36,37 @@ class Dispatcher:
             print "%s is an operator" % (fullnick)
         else:
             print "%s is no operator" % (fullnick)
-            
+
         return val
 
     def on_nicknameinuse(self, connection, event):
         print "%s: Nick name in use" % connection.params[0]
         print event
         connection.nick(connection.get_nickname() + "_")
-        
+
     def on_welcome(self, connection, event):
         plugins.myprint("%s: connected to %s" % (connection.params[0], connection.server))
         for ch in connection.params[6]:
             plugins.myprint("%s: joining %s" % (connection.params[0], ch))
             connection.locks[ch] = threading.Lock()
             connection.join(ch)
-            
+
     def on_disconnect(self, connection, event):
         if self.tehbot.quit_called:
             return
-        
+
         delay = 120
         plugins.myprint("%s: lost connection" % (connection.params[0]))
         plugins.myprint("%s: reconnecting in %d seconds" % (connection.params[0], delay))
-        
+
         with self.tehbot.reactor.mutex:
             for cmd in self.tehbot.reactor.delayed_commands[:]:
                 if cmd.function.func.args == ('keep-alive',) and cmd.function.func.func.__self__ == connection:
                     print "removing cmd", cmd
                     self.tehbot.reactor.delayed_commands.remove(cmd)
-                    
+
         self.tehbot.reactor.execute_delayed(delay, functools.partial(self.tehbot.reconnect, connection))
-        
+
     def on_join(self, connection, event):
         plugins.myprint("%s: %s joined" % (event.target, event.source.nick))
 

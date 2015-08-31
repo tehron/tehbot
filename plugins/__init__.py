@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-print "Initializing plugins"
 import os, os.path
 import traceback as sys_traceback
 import time as sys_time
@@ -28,12 +27,6 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 
 pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
 regex = re.compile(pattern, re.UNICODE)
-
-
-os.chdir("plugins")
-plugins = [dir for dir in os.listdir(".") if os.path.isdir(dir) and dir != ".svn"]
-os.chdir("..")
-print "plugins:", plugins
 
 def print_help(connection, channel, nick, cmd, args):
     if args:
@@ -118,21 +111,6 @@ def register_priv_cmd(cmd, fnc):
 def register_channel_handler(fnc):
     channel_handlers.append(fnc)
 
-modules = [__import__("plugins." + p, fromlist=["*"], level=0) for p in plugins]
-#print "modules:", modules
-
-import plugins
-
-def plugins_reload():
-    myprint("Reloading plugins")
-    reload(plugins)
-    for m in modules:
-        try:
-            reload(m)
-        except:
-            sys_traceback.print_exc()
-
-
 def split(s, mx=450):
     if len(s) <= mx:
         return s
@@ -156,3 +134,10 @@ def shorten(msg, maxlen):
             return "..."
         return msg[:maxlen - 3] + "..."
     return msg
+
+
+_plugins = sorted([plugin for plugin in os.listdir("plugins") if os.path.isdir("plugins/%s" % plugin)])
+print "plugins:", _plugins
+
+_modules = [__import__("plugins." + p, fromlist=["*"], level=0) for p in _plugins]
+#print "modules:", _modules
