@@ -75,16 +75,20 @@ def say(connection, channel, msg):
     if not connection.locks.has_key(channel): connection.locks[channel] = threading.Lock()
     with connection.locks[channel]:
         for m in msg.split("\n"):
-            myprint("%s: %s: %s" % (channel, connection.get_nickname(), m))
-            connection.privmsg(channel, m or ' ')
+            m = m.strip()
+            if m:
+                myprint("%s: %s: %s" % (channel, connection.get_nickname(), m))
+                connection.privmsg(channel, m)
 
 def say_nick(connection, channel, nick, msg):
     if not channel or not nick: return
     if not connection.locks.has_key(channel): connection.locks[channel] = threading.Lock()
     with connection.locks[channel]:
         for m in msg.split("\n"):
-            myprint("%s: %s: %s: %s" % (channel, connection.get_nickname(), nick, m))
-            connection.privmsg(channel, "%s: %s" % (nick, m))
+            m = m.strip()
+            if m:
+                myprint("%s: %s: %s: %s" % (channel, connection.get_nickname(), nick, m))
+                connection.privmsg(channel, "%s: %s" % (nick, m))
 
 def me(connection, channel, msg):
     if not channel or not msg: return
