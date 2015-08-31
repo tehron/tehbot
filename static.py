@@ -17,7 +17,7 @@ def gather(module, modules):
     except:
         return
 
-    if not path or path.startswith("plugins"):
+    if path.startswith(os.path.dirname(__file__)):
         modules.add(module)
         for attribute_name in dir(module):
             attribute = getattr(module, attribute_name)

@@ -43,7 +43,7 @@ import plugins
 if not plugins.is_windows():
     def sighandler(signum, frame):
         bot.reload()
-        
+
     import signal
     signal.signal(signal.SIGHUP, sighandler)
 
