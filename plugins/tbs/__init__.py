@@ -44,6 +44,10 @@ def tbssolve(connection, channel, nick, cmd, args):
             url = u
             solved = s
             break
+        if args.lower() in n.lower():
+            name = n
+            url = u
+            solved = s
 
     txt = "No such challenge."
     if name:
