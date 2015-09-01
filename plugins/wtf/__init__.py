@@ -59,13 +59,12 @@ def wtf(connection, channel, nick, cmd, args):
         try:
             count = str(1 + int(count_div[0].text_content().split()[0]))
         except Exception as e:
-            print e
             pass
 
     txt += "%s (%d/%s)\n" % (term, index + 1, count)
     definition = extract_text(entries[index], ".//div[@class='meaning']")
     txt += plugins.shorten(definition, 300)
-    
+
     example = extract_text(entries[index], ".//div[@class='example']")
     if example:
         txt += "\n\x02Example:\x0f " + plugins.shorten(example, 300)
