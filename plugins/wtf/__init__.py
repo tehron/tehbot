@@ -9,24 +9,21 @@ parser = plugins.ThrowingArgumentParser(
     prog="wtf",
     description="Looks up definitions in Urban Dictionary")
 parser.add_argument("search_term", nargs="+")
-parser.add_argument("-n", "--nr", help="request definition number NR")
+parser.add_argument("-n", "--nr", type=int, help="request definition number NR")
 
 url = "http://api.urbandictionary.com/v0/define?%s"
 
 def wtf(connection, channel, nick, cmd, args):
-    index = 0
-
     try:
         pargs = parser.parse_args(shlex.split(args or ""))
         if parser.help_requested:
             return plugins.say(connection, channel, parser.format_help().strip())
-        if pargs.nr:
-            index = int(pargs.nr) - 1
     except plugins.ArgumentParserError as e:
         return plugins.say(connection, channel, "error: %s" % str(e))
     except (SystemExit, NameError, ValueError):
         return plugins.print_help(connection, channel, nick, None, cmd)
 
+    index = pargs.nr or 0
     page = index / 10 + 1
     index %= 10
     term = plugins.to_utf8(" ".join(pargs.search_term))
