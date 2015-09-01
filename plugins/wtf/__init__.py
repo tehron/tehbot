@@ -6,7 +6,7 @@ import shlex
 parser = plugins.ThrowingArgumentParser(
     prog="wtf",
     description="Looks up definitions in Urban Dictionary")
-parser.add_argument("search_term")
+parser.add_argument("search_term", nargs="+")
 parser.add_argument("-n", "--nr", help="request definition number NR")
 
 def extract_text(e, xpath):
@@ -34,7 +34,7 @@ def wtf(connection, channel, nick, cmd, args):
     
     page = index / 7 + 1
     index %= 7
-    term = pargs.search_term
+    term = " ".join(pargs.search_term)
 
     """
     if term.lower() == "maddinw":
