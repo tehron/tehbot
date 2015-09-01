@@ -1,7 +1,9 @@
 import plugins
+import urllib2
 import urllib
 import lxml.html
 import shlex
+import json
 
 parser = plugins.ThrowingArgumentParser(
     prog="wtf",
@@ -9,18 +11,11 @@ parser = plugins.ThrowingArgumentParser(
 parser.add_argument("search_term", nargs="+")
 parser.add_argument("-n", "--nr", help="request definition number NR")
 
-def extract_text(e, xpath):
-    e = e.xpath(xpath)
-    if not e:
-        return ""
-    s = e[0].text_content()
-    s = s.replace("\r\n", "\n").replace("\r", "\n")
-    s = s.strip();
-    #s = s.encode("utf-8")
-    return s
+url = "http://api.urbandictionary.com/v0/define?%s"
 
 def wtf(connection, channel, nick, cmd, args):
     index = 0
+
     try:
         pargs = parser.parse_args(shlex.split(args or ""))
         if parser.help_requested:
@@ -31,43 +26,33 @@ def wtf(connection, channel, nick, cmd, args):
         return plugins.say(connection, channel, "error: %s" % str(e))
     except (SystemExit, NameError, ValueError):
         return plugins.print_help(connection, channel, nick, None, cmd)
-    
-    page = index / 7 + 1
-    index %= 7
-    term = " ".join(pargs.search_term)
 
-    """
-    if term.lower() == "maddinw":
-        return plugins.say(channel, "A guy commonly referred to as Strong Mad.")
-    elif term.lower() == "dloser":
-        return plugins.say(channel, "<Jhype> dloser: a thoughtful friend ")
-    """
+    page = index / 10 + 1
+    index %= 10
+    term = plugins.to_utf8(" ".join(pargs.search_term))
 
-    tree = lxml.html.parse("http://www.urbandictionary.com/define.php?term=%s&page=%d" % (urllib.quote_plus(term.encode("utf-8")), page))
-    entries = tree.xpath("//div[@class='def-panel' and @data-defid]")
+    data = {
+        "page" : page,
+        "term" : term
+    }
+
     txt = "\x0303[Urban Dictionary]\x03 "
+    req = urllib2.Request(url % urllib.urlencode(data))
 
-    if not entries:
-        return plugins.say(connection, channel, txt + "No definition available")
+    try:
+        all_entries = json.load(urllib2.urlopen(req))["list"]
+        count = 10 * (page - 1) + len(all_entries)
+        entry = all_entries[index]
 
-    if index >= len(entries) or index < 0:
-        return plugins.say(connection, channel, txt + "No definition nr %d available" % (index + 1))
+        txt += "%s (%d/%d)\n" % (term, index + 1, count)
+        definition = "\n".join(entry["definition"].splitlines())
+        txt += plugins.shorten(definition, 300)
 
-    count = "?"
-    count_div = tree.xpath("//div[contains(@class, 'definition-count-panel')]")
-    if count_div:
-        try:
-            count = str(1 + int(count_div[0].text_content().split()[0]))
-        except Exception as e:
-            pass
-
-    txt += "%s (%d/%s)\n" % (term, index + 1, count)
-    definition = extract_text(entries[index], ".//div[@class='meaning']")
-    txt += plugins.shorten(definition, 300)
-
-    example = extract_text(entries[index], ".//div[@class='example']")
-    if example:
-        txt += "\n\x02Example:\x0f " + plugins.shorten(example, 300)
+        if entry.has_key("example"):
+            example = "\n".join(entry["example"].splitlines())
+            txt += "\n\x02Example:\x0f " + plugins.shorten(example, 300)
+    except:
+        return plugins.say(connection, channel, txt + "Definition not available.")
 
     plugins.say(connection, channel, txt)
 
