@@ -23,4 +23,4 @@ def uptime(connection, channel, nick, cmd, args):
     up = get_uptime()
     plugins.say(connection, channel, "%s: %s" % (nick, up))
 
-plugins.register_pub_cmd("uptime", uptime)
+plugins.register_cmd("uptime", uptime)

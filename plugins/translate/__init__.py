@@ -17,4 +17,4 @@ def translate(connection, channel, nick, cmd, args):
         txt = trans[0].text_content().strip()
         plugins.say(connection, channel, "Translation: %s" % txt)
 
-plugins.register_pub_cmd("translate", translate)
+plugins.register_cmd("translate", translate)

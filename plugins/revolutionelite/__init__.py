@@ -189,9 +189,9 @@ def clubsoda(connection, channel, nick, cmd, args):
 def badumm(connection, channel, nick, cmd, args):
     plugins.say(connection, channel, ".badjoke")
 
-plugins.register_pub_cmd("rev", rev)
-plugins.register_pub_cmd("solvers", revsolve)
-plugins.register_pub_cmd("clubsoda", clubsoda)
-plugins.register_pub_cmd("badumm", badumm)
+plugins.register_cmd("rev", rev)
+plugins.register_cmd("solvers", revsolve)
+plugins.register_cmd("clubsoda", clubsoda)
+plugins.register_cmd("badumm", badumm)
 
 revsolve.__doc__ = parser.description + " " + parser.format_usage().strip()

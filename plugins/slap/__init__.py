@@ -24,7 +24,7 @@ def actionAndText(target, action, text):
 def slap(connection, channel, nick, cmd, args):
     if not args:
         return
-    
+
     victim = args.split()[0][:25]
     if random.randint(0, len(slapitems)) == len(slapitems):
         slap = slaps[0]

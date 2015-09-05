@@ -3,9 +3,9 @@ import json
 import urllib
 import locale
 try:
-	locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
+    locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
 except:
-	pass
+    pass
 import HTMLParser
 html = HTMLParser.HTMLParser()
 import shlex
@@ -78,6 +78,6 @@ def vs(connection, channel, nick, cmd, args):
     h2 = locale.format("%d", hits2, 1)
     plugins.say(connection, channel, "%s %s %s %s %s" % (term1, h1, create_bar(hits1, hits2, 21), h2, term2))
 
-plugins.register_pub_cmd("vs", vs)
-plugins.register_pub_cmd("google", google)
-plugins.register_pub_cmd("images", images)
+plugins.register_cmd("vs", vs)
+plugins.register_cmd("google", google)
+plugins.register_cmd("images", images)

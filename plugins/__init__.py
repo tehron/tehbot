@@ -30,12 +30,11 @@ regex = re.compile(pattern, re.UNICODE)
 
 def print_help(connection, channel, nick, cmd, args):
     if args:
-        if args in pub_cmd_handlers:
-            h = pub_cmd_handlers[args]
-            if h.__doc__:
+        h = pub_cmd_handlers[args] if args in pub_cmd_handlers else priv_cmd_handlers[args] if args in priv_cmd_handlers[args] else None
+        if h and h.__doc__:
                 say(connection, channel, "%s: %s" % (args, h.__doc__))
-            else:
-                print "no help for %s" % args
+        else:
+            print "no help for %s" % args
     else:
         say(connection, channel, "Available commands:")
         say(connection, channel, ", ".join([cmd for cmd in pub_cmd_handlers if cmd != "help"]))
@@ -44,7 +43,9 @@ operator_cmd_handlers = { }
 pub_cmd_handlers = {
     "help" : print_help
 }
-priv_cmd_handlers = { }
+priv_cmd_handlers = {
+    "help" : print_help
+}
 channel_handlers = [ ]
 
 def myprint(s):
@@ -87,7 +88,7 @@ def me(connection, channel, msg):
     if not channel or not msg: return
     if not connection.locks.has_key(channel): connection.locks[channel] = threading.Lock()
     with connection.locks[channel]:
-        myprint("%s: %s %s" % (channel, connection.get_nickname(), msg))
+        myprint("%s: *%s %s" % (channel, connection.get_nickname(), msg))
         connection.action(channel, msg)
 
 def register_op_cmd(cmd, fnc):
@@ -107,6 +108,10 @@ def register_priv_cmd(cmd, fnc):
         myprint("Warning: Duplicate private command \"%s\" defined!" % cmd)
     else:
         priv_cmd_handlers[cmd] = fnc
+
+def register_cmd(cmd, fnc):
+    register_pub_cmd(cmd, fnc)
+    register_priv_cmd(cmd, fnc)
 
 def register_channel_handler(fnc):
     channel_handlers.append(fnc)

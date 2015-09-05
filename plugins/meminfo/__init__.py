@@ -16,4 +16,4 @@ def meminfo(connection, channel, nick, cmd, args):
         minfo = "%d kB" % resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     plugins.say(connection, channel, "Current memory usage: %s" % minfo)
 
-plugins.register_pub_cmd("meminfo", meminfo)
+plugins.register_cmd("meminfo", meminfo)

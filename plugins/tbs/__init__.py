@@ -55,4 +55,4 @@ def tbssolve(connection, channel, nick, cmd, args):
 
     plugins.say(connection, channel, txt)
 
-plugins.register_pub_cmd("tbssolve", tbssolve)
+plugins.register_cmd("tbssolve", tbssolve)

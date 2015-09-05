@@ -4,6 +4,7 @@ import urllib
 import lxml.html
 import lxml.etree
 
+# patch XPath 2.0 function into XPath 1.0 API oO
 etree_funcs = lxml.etree.FunctionNamespace(None)
 etree_funcs["lower-case"] = lambda ctx, x: x[0].text_content().lower() if x else ""
 
@@ -30,4 +31,4 @@ def xkcd(connection, channel, nick, cmd, args):
 
     plugins.say(connection, channel, txt)
 
-plugins.register_pub_cmd("xkcd", xkcd)
+plugins.register_cmd("xkcd", xkcd)

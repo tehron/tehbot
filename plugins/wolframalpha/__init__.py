@@ -72,4 +72,4 @@ def waquery(connection, channel, nick, cmd, args):
 
     plugins.say(connection, channel, plugins.shorten(txt, 450))
 
-plugins.register_pub_cmd("wa", waquery)
+plugins.register_cmd("wa", waquery)

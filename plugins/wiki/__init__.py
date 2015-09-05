@@ -51,4 +51,4 @@ def wiki(connection, channel, nick, cmd, args):
     txt += "%s (%s)\n%s" % (title, pageurl, plugins.shorten(content, 300))
     plugins.say(connection, channel, txt)
 
-plugins.register_pub_cmd("wiki", wiki)
+plugins.register_cmd("wiki", wiki)

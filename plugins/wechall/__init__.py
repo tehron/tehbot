@@ -75,5 +75,5 @@ def blame(connection, channel, nick, cmd, args):
     scapegoat = goats[randint(0, len(goats) - 1)][int(1337 * random()) % 2]
     plugins.say(connection, channel, "I blame %s." % scapegoat)
 
-plugins.register_pub_cmd("wcsolve", wcsolve)
-plugins.register_pub_cmd("blame", blame)
+plugins.register_cmd("wcsolve", wcsolve)
+plugins.register_cmd("blame", blame)

@@ -36,8 +36,8 @@ def beer(connection, channel, nick, cmd, args):
         plugins.me(connection, channel, "and %s pass 1 of %d bottles of cold beer around to %s" % (nick, beers, recv))
     beers -= 1
 
-plugins.register_pub_cmd("reverse", reverse)
-plugins.register_pub_cmd("say", say)
-plugins.register_pub_cmd("doublereverse", say)
-plugins.register_pub_cmd("solve", solve)
-plugins.register_pub_cmd("beer", beer)
+plugins.register_cmd("reverse", reverse)
+plugins.register_cmd("say", say)
+plugins.register_cmd("doublereverse", say)
+plugins.register_cmd("solve", solve)
+plugins.register_cmd("beer", beer)

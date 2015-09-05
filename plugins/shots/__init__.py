@@ -17,5 +17,5 @@ def shoot(connection, channel, nick, cmd, args):
     plugins.say_nick(connection, channel, nick, "| |  AH!")
     plugins.say_nick(connection, channel, nick, "+-+  Want another one, %s?" % nick)
 
-plugins.register_pub_cmd("shots", shots)
-plugins.register_pub_cmd("shoot", shoot)
+plugins.register_cmd("shots", shots)
+plugins.register_cmd("shoot", shoot)

@@ -64,5 +64,5 @@ def tv(connection, channel, nick, cmd, args):
     plugins.say(connection, channel, txt)
     plugins.say(connection, channel, plugins.split(movie_info["overview"]))
 
-plugins.register_pub_cmd("movie", movie)
-plugins.register_pub_cmd("tv", tv)
+plugins.register_cmd("movie", movie)
+plugins.register_cmd("tv", tv)

@@ -53,5 +53,5 @@ def wtf(connection, channel, nick, cmd, args):
 
     plugins.say(connection, channel, txt)
 
-plugins.register_pub_cmd("wtf", wtf)
-plugins.register_pub_cmd("define", wtf)
+plugins.register_cmd("wtf", wtf)
+plugins.register_cmd("define", wtf)

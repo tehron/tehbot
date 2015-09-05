@@ -235,4 +235,4 @@ def exec_(connection, channel, nick, cmd, args):
 
     plugins.say_nick(connection, channel, nick, res)
 
-plugins.register_pub_cmd("exec", exec_)
+plugins.register_cmd("exec", exec_)

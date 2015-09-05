@@ -27,11 +27,11 @@ def pun(connection, channel, nick, cmd, args):
                 currpun.append(line.replace("<br />", ""))
     if currpun:
         puns.append("\n".join(currpun))
-        
+
     print puns
 
     random.shuffle(puns)
     if puns:
         plugins.say_nick(connection, channel, nick, puns[0])
 
-plugins.register_pub_cmd("pun", pun)
+plugins.register_cmd("pun", pun)

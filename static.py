@@ -44,6 +44,7 @@ class Tehbot:
         self.dispatcher = dynamic.Dispatcher(self)
         self.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
         print "pub cmd handlers:", sorted(plugins.pub_cmd_handlers.keys())
+        print "priv cmd handlers:", sorted(plugins.priv_cmd_handlers.keys())
         print "channel handlers:", sorted([h.__name__ for h in plugins.channel_handlers])
 
     def _process(self):

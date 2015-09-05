@@ -5,9 +5,9 @@ import json
 import re, traceback
 import locale
 try:
-	locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
+    locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
 except:
-	pass
+    pass
 import settings
 
 searchurl = "https://www.googleapis.com/youtube/v3/videos?key=%s&id=%s&part=snippet,contentDetails"
@@ -21,10 +21,10 @@ def print_info(connection, channel, nick, msg):
         match = regex.search(msg)
     except:
         traceback.print_exc()
-        
+
     if match is None:
         return
-    
+
     vid = match.group(2)
     #vid = "nw-z_FAyIVc"
     if vid in info_cache:
@@ -41,7 +41,7 @@ def print_info(connection, channel, nick, msg):
 
         txt = "\x0303[YouTube]\x03 %s (%s)" % (name, duration)
         info_cache[vid] = txt
-        
+
     plugins.say(connection, channel, txt)
 
 plugins.register_channel_handler(print_info)
