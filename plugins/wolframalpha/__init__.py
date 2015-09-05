@@ -56,7 +56,6 @@ def waquery(connection, channel, nick, cmd, args):
                 res = format_table(p.text)
             elif p.title and p.text:
                 misc.append("%s\n%s" % (p.title, format_table(p.text)))
-        print "done"
 
         txt += inp + "\n"
 
@@ -65,9 +64,10 @@ def waquery(connection, channel, nick, cmd, args):
         elif misc:
             txt += "\n".join(misc)
         else:
-            txt += "No results"
+            raise NameError
+    except NameError:
+        txt += "No results."
     except Exception as e:
-        raise e
         txt = "Error: %s" % e
 
     plugins.say(connection, channel, plugins.shorten(txt, 450))
