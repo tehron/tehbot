@@ -101,15 +101,12 @@ class Dispatcher:
         tmp = msg.split(" ", 1)
         cmd = tmp[0]
         args = tmp[1] if len(tmp) == 2 else None
+        nick = event.source.nick
 
         if irc.client.is_channel(event.target):
             target = event.target
         else:
-            target = event.source.nick
-
-        nick = event.source.nick
-
-        print target, nick
+            target = nick
 
         if cmd in self.operator_cmd_handlers:
             if not self.is_op(connection, event.source):
@@ -123,9 +120,7 @@ class Dispatcher:
             if cmd in plugins.pub_cmd_handlers:
                 self.tehbot.queue.put((plugins.pub_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
         else:
-            print "priv"
             if cmd in plugins.priv_cmd_handlers:
-                print "priv cmd found"
                 self.tehbot.queue.put((plugins.priv_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
 
     def on_pubmsg(self, connection, event):

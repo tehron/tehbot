@@ -7,6 +7,7 @@ import locale
 _, encoding = locale.getdefaultlocale()
 import threading
 import argparse
+import irc.client
 
 class ArgumentParserError(Exception):
     pass
@@ -28,16 +29,19 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
 regex = re.compile(pattern, re.UNICODE)
 
-def print_help(connection, channel, nick, cmd, args):
+def print_help(connection, target, nick, cmd, args):
     if args:
         h = pub_cmd_handlers[args] if args in pub_cmd_handlers else priv_cmd_handlers[args] if args in priv_cmd_handlers[args] else None
         if h and h.__doc__:
-                say(connection, channel, "%s: %s" % (args, h.__doc__))
+                say(connection, target, "%s: %s" % (args, h.__doc__))
         else:
             print "no help for %s" % args
     else:
-        say(connection, channel, "Available commands:")
-        say(connection, channel, ", ".join([cmd for cmd in pub_cmd_handlers if cmd != "help"]))
+        say(connection, target, "Available commands:")
+        if irc.client.is_channel(target):
+            say(connection, target, ", ".join(sorted(pub_cmd_handlers)))
+        else:
+            say(connection, target, ", ".join(sorted(priv_cmd_handlers)))
 
 operator_cmd_handlers = { }
 pub_cmd_handlers = {
@@ -64,32 +68,30 @@ def to_latin1(unistr):
 def myfilter(s):
     return "".join([c if ord(c) >= 0x20 else "?" for c in s])
 
-def say(connection, channel, msg):
-    if not channel or not msg: return
-    if not connection.locks.has_key(channel): connection.locks[channel] = threading.Lock()
-    with connection.locks[channel]:
+def say(connection, target, msg):
+    if not target or not msg: return
+    if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
+    with connection.locks[target]:
         for m in msg.split("\n"):
-            m = m.strip()
-            if m:
-                myprint("%s: %s: %s" % (channel, connection.get_nickname(), m))
-                connection.privmsg(channel, m)
+            if m.strip():
+                myprint("%s: %s: %s" % (target, connection.get_nickname(), m))
+                connection.privmsg(target, m)
 
-def say_nick(connection, channel, nick, msg):
-    if not channel or not nick: return
-    if not connection.locks.has_key(channel): connection.locks[channel] = threading.Lock()
-    with connection.locks[channel]:
+def say_nick(connection, target, nick, msg):
+    if not target or not nick: return
+    if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
+    with connection.locks[target]:
         for m in msg.split("\n"):
-            m = m.strip()
-            if m:
-                myprint("%s: %s: %s: %s" % (channel, connection.get_nickname(), nick, m))
-                connection.privmsg(channel, "%s: %s" % (nick, m))
+            if m.strip():
+                myprint("%s: %s: %s: %s" % (target, connection.get_nickname(), nick, m))
+                connection.privmsg(target, "%s: %s" % (nick, m))
 
-def me(connection, channel, msg):
-    if not channel or not msg: return
-    if not connection.locks.has_key(channel): connection.locks[channel] = threading.Lock()
-    with connection.locks[channel]:
-        myprint("%s: *%s %s" % (channel, connection.get_nickname(), msg))
-        connection.action(channel, msg)
+def me(connection, target, msg):
+    if not target or not msg: return
+    if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
+    with connection.locks[target]:
+        myprint("%s: *%s %s" % (target, connection.get_nickname(), msg))
+        connection.action(target, msg)
 
 def register_op_cmd(cmd, fnc):
     if cmd in operator_cmd_handlers:

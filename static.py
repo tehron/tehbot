@@ -17,6 +17,7 @@ def gather(module, modules):
     except:
         return
 
+    # TODO filter out static.py
     if path.startswith(os.path.dirname(__file__)):
         modules.add(module)
         for attribute_name in dir(module):
@@ -34,9 +35,7 @@ class Tehbot:
         self.dispatcher = None
         self._init()
         self.queue = Queue(maxsize=0)
-        for i in xrange(nr_worker_threads):
-            worker = Thread(target=self._process)
-            worker.start()
+        self._start_workers()
 
     def _init(self):
         if self.dispatcher:
@@ -44,7 +43,6 @@ class Tehbot:
         self.dispatcher = dynamic.Dispatcher(self)
         self.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
         print "pub cmd handlers:", sorted(plugins.pub_cmd_handlers.keys())
-        print "priv cmd handlers:", sorted(plugins.priv_cmd_handlers.keys())
         print "channel handlers:", sorted([h.__name__ for h in plugins.channel_handlers])
 
     def _process(self):
@@ -58,6 +56,13 @@ class Tehbot:
                 pass
             if self.quit_called:
                 return
+
+    def _start_workers(self):
+        self.workers = []
+        for i in xrange(nr_worker_threads):
+            worker = Thread(target=self._process)
+            self.workers.append(worker)
+            worker.start()
 
     def connect(self):
         for c in settings.connections:
