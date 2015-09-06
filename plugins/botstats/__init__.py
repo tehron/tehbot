@@ -34,14 +34,14 @@ def botstats(connection, target, nick, cmd, args):
     txt = "\x0303[tehbot]\x03 "
 
     stats = []
-    stats.append("Version: git %s" % get_git_version())
+    stats.append("Version: git %s" % get_git_version()[:10])
 
     proc = psutil.Process(os.getpid())
     stats.append("Running Time: %s" % format_time(time.time() - proc.create_time()))
 
     stats.append("Memory Usage: %d kB" % (proc.memory_info().rss / 1024))
 
-    stats.append("Nr of Threads: %d" % (proc.num_threads()))
+    stats.append("Nr. of Threads: %d" % (proc.num_threads()))
 
     plugins.say(connection, target, txt + ", ".join(stats))
 
