@@ -7,6 +7,7 @@ from Queue import Queue, Empty
 from threading import Thread
 from types import ModuleType
 import os.path
+import traceback
 
 def gather(module, modules):
     if module in modules:
@@ -17,7 +18,6 @@ def gather(module, modules):
     except:
         return
 
-    # TODO filter out static.py
     if path.startswith(os.path.dirname(__file__)):
         modules.add(module)
         for attribute_name in dir(module):
@@ -54,6 +54,10 @@ class Tehbot:
                 self.queue.task_done()
             except Empty:
                 pass
+            except:
+                e = sys.exc_info()
+                traceback.print_tb(e[2])
+
             if self.quit_called:
                 return
 
