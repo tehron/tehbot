@@ -20,12 +20,9 @@ def remove_empty_columns(table, nr_cols):
 
 def format_table(s):
     table = [[y.strip() for y in x.strip().split("|")] for x in s.splitlines()]
-    print table
     nr_cols = max(map(len, table))
     table = [[x[i] if i < len(x) else "" for i in range(nr_cols)] for x in table]
-    print table
     table = remove_empty_columns(table, nr_cols)
-    print table
 
     if len(table) < 2:
         s2 = " | ".join(table[0])
@@ -49,7 +46,6 @@ def waquery(connection, channel, nick, cmd, args):
         res = None
         misc = []
         for p in client.query(args).pods:
-            print p.id, p.text
             if p.id == "Input":
                 inp = " | ".join(p.text.splitlines())
             elif p.id == "Result" and p.text:
