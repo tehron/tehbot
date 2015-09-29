@@ -7,4 +7,4 @@ A Python IRC Bot
 
 ## Running
 * Copy settings.py.example to settings.py and edit it
-* `python -m tehbot
+* `python -m tehbot`
