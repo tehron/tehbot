@@ -1,7 +1,0 @@
-import plugins
-
-def cmd1(connection, target, nick, cmd, args):
-    """This is the help for cmd1"""
-    #plugins.say(connection, target, "output for cmd1")
-
-plugins.register_cmd("cmd1", cmd1)

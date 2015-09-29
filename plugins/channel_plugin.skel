@@ -1,6 +1,0 @@
-import plugins
-
-def print_info(connection, channel, nick, msg):
-    plugins.say(connection, channel, txt)
-
-plugins.register_channel_handler(print_info)
