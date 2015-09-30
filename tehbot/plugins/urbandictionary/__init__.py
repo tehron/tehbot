@@ -30,7 +30,7 @@ class UrbanDictionaryPlugin(Plugin):
 
         url = "http://api.urbandictionary.com/v0/define?%s"
 
-        index = pargs.nr - 1 or 0
+        index = (pargs.nr or 1) - 1
         page = index / 10 + 1
         index %= 10
         term = " ".join(pargs.search_term)
