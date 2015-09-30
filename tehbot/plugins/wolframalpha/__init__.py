@@ -66,7 +66,6 @@ class WolframAlphaPlugin(Plugin):
             else:
                 raise NameError
         except NameError:
-            raise
             txt += "No results."
         except Exception as e:
             txt = "Error: %s" % e
