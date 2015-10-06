@@ -202,8 +202,8 @@ class Dispatcher:
             if cmd in self.tehbot.pub_cmd_handlers:
                 self.tehbot.core.queue.put((self.tehbot.pub_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
         else:
-            if cmd in plugins.priv_cmd_handlers:
-                self.tehbot.core.queue.put((plugins.priv_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
+            if cmd in self.tehbot.priv_cmd_handlers:
+                self.tehbot.core.queue.put((self.tehbot.priv_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
 
     def on_pubmsg(self, connection, event):
         nick = event.source.nick
