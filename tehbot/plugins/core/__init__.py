@@ -5,7 +5,7 @@ class ReloadPlugin(Plugin):
     def execute(self):
         res = self.tehbot.reload()
         if res is None:
-            return "Okay"
+            return "Okay, ready to crush ricer!"
         else:
             return "Error: %s" % res
 
@@ -45,3 +45,9 @@ class HelpPlugin(Plugin):
         return txt
 
 register_cmd("help", HelpPlugin())
+
+class PingPlugin(Plugin):
+    def execute(self):
+        return "pong!"
+
+register_cmd("ping", PingPlugin())

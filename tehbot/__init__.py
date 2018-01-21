@@ -3,6 +3,7 @@ from Queue import Queue
 import plugins
 import impl
 import traceback
+import time
 
 class Tehbot:
     def __init__(self):
@@ -34,3 +35,7 @@ class Tehbot:
             self.impl = oldimpl
             traceback.print_exc()
             return e
+
+    @staticmethod
+    def ts():
+        return time.strftime('%Y-%m-%d %H:%M:%S')

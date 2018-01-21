@@ -42,7 +42,7 @@ class WikipediaPlugin(Plugin):
 
         tree = lxml.html.parse(urllib2.urlopen(pageurl))
         title = get_text(tree, "//h1[@id='firstHeading']")
-        content = get_text(tree, "//div[@id='mw-content-text']/p")
+        content = get_text(tree, "//div[@id='mw-content-text']/div/p")
 
         if not title or not content:
             return prefix + "Something went wrong."

@@ -10,7 +10,7 @@ class SlapPlugin(Plugin):
     ]
     slaps_extra = [
         (plugins.me, "hops on a jet and flies away."),
-        (plugins.say, "I pitty the fool that doesnt slap back!")
+        (plugins.say, "I pity the fool that doesnt slap back!")
     ]
     slapitems = open("%s/slaps.txt" % os.path.dirname(__file__)).read().splitlines()
 
@@ -33,7 +33,7 @@ class SlapPlugin(Plugin):
 class LivinSlapPlugin(Plugin):
     def slap2(self, victim):
         plugins.me(self.connection, self.target,  "slaps %s around a bit with a Piece of bacon" % victim)
-        plugins.say(self.connection, self.target, "Hey %s Eat some pork!" % victim)
+        plugins.say(self.connection, self.target, "Hey, %s, eat some pork!" % victim)
 
     def execute(self):
         if self.args:

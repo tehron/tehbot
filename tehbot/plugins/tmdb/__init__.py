@@ -17,7 +17,7 @@ class MoviePlugin(Plugin):
             id = res["results"][0]["id"]
 
         txt = "No such movie."
-        if id:
+        if id != -1:
             movie = tmdb.Movies(id)
             movie_info = movie.info()
             txt = "\x02%s\x02" % movie_info["title"]
@@ -47,7 +47,7 @@ class TvPlugin(Plugin):
             id = res["results"][0]["id"]
 
         txt = "No such movie."
-        if id:
+        if id != -1:
             movie = tmdb.TV(id)
             movie_info = movie.info()
             txt = "\x02%s\x02" % movie_info["name"]

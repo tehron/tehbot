@@ -16,7 +16,9 @@ class BotStatsPlugin(Plugin):
         ts -= 60 * mins
         secs = int(ts)
 
-        if days:
+        if years:
+            out = "%dy %dd %02d:%02d" % (years, days, hours, mins)
+        elif days:
             out = "%dd %02d:%02d" % (days, hours, mins)
         elif mins >= 15:
             out = "%02d:%02d" % (hours, mins)
@@ -37,8 +39,8 @@ class BotStatsPlugin(Plugin):
         txt = "\x0303[tehbot]\x03 "
 
         stats = []
-        stats.append("Version: git %s" % self.get_git_version()[:10])
-        #stats.append("Version: 0.1.0")
+        #stats.append("Version: git %s" % self.get_git_version()[:10])
+        stats.append("Version: 0.2.1")
 
         proc = psutil.Process(os.getpid())
         stats.append("Running Time: %s" % self.format_time(time.time() - proc.create_time()))

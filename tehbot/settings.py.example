@@ -1,14 +1,43 @@
-bot_name = "tehbot"
-cmd_prefix = "?"
+from collections import *
 
-connections = [
-    ("Freenode", "irc.freenode.net", 7000, True, None, None, [ "#happy-security" ], [ ("host", "unaffiliated/tehron") ]),
-    ("Idlemonkeys", "irc.idlemonkeys.net", 7000, False, None, None, [ "#revolutionelite", "#wechall", "#jhype" ], [ ("nick", "tehron") ]),
-]
+bot_name = "<your bot name>"
+cmd_prefix = "!"
+nr_worker_threads = 10
 
-tmdb_api_key = "your api key here"
+connections = defaultdict(lambda: namedtuple("Params", []))
+connections["Freenode"].host = "irc.freenode.net"
+connections["Freenode"].port = 7000
+connections["Freenode"].use_ssl = True
+connections["Freenode"].password = None
+connections["Freenode"].bot_password = "<your nickserv password for your bot here>"
+connections["Freenode"].channels = [ "#happy-security" ]
+connections["Freenode"].ops = [ ("host", "unaffiliated/tehron") ]
 
-wolframalpha_app_id = "your app id here"
+connections["WeChall IRC"].host = "irc.wechall.net"
+connections["WeChall IRC"].port = 6697
+connections["WeChall IRC"].use_ssl = True
+connections["WeChall IRC"].password = None
+connections["WeChall IRC"].bot_password = None
+connections["WeChall IRC"].channels = [ "#wechall", "#revolutionelite", "#shadowlamb" ]
+connections["WeChall IRC"].ops = [ ("nickserv", "tehron"), ("nickserv", "gizmore") ]
 
-youtube_api_key = "your api key here"
-youtube_referer = "your referer here"
+connections["Macak"].host = "irc.macak.co.uk"
+connections["Macak"].port = 6697
+connections["Macak"].use_ssl = True
+connections["Macak"].password = None
+connections["Macak"].bot_password = None
+connections["Macak"].channels = [ "#hackthis" ]
+connections["Macak"].ops = [ ("nickserv", "tehron") ]
+
+tmdb_api_key = "<your api key here>"
+
+wolframalpha_app_id = "<your api key here>"
+
+youtube_api_key = "<your api key here>"
+youtube_referer = "<your referer here>"
+cse_api_key = youtube_api_key
+cse_referer = youtube_referer
+cse_string = "<your cse_string here>"
+
+hackthis_api_key = "<your api key here>"
+wixxerd_api_key = "<your api key here>"

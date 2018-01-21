@@ -20,7 +20,7 @@ class UrbanDictionaryPlugin(Plugin):
 
     def execute(self):
         try:
-            pargs = self.parser.parse_args(shlex.split(plugins.to_utf8(self.args) or ""))
+            pargs = self.parser.parse_args(shlex.split(plugins.to_utf8(self.args or "")))
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except plugins.ArgumentParserError as e:
@@ -56,6 +56,8 @@ class UrbanDictionaryPlugin(Plugin):
                 example = "\n".join(entry["example"].splitlines())
                 txt += "\n\x02Example:\x0f " + plugins.shorten(example, 300)
         except:
+            if term == "dloser":
+                return prefix + "The unstabliest D-System ever!"
             return prefix + "Definition not available."
 
         return prefix + txt

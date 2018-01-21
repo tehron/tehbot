@@ -1,4 +1,5 @@
 import tehbot.plugins as plugins
+import urllib
 import urllib2
 import urlparse
 import lxml.html
@@ -7,9 +8,41 @@ import re
 url = "https://www.wechall.net/profile/%s"
 url2 = "https://www.wechall.net/wechallchalls.php?username=%s"
 challurl = "https://www.wechall.net/challs"
+rankurl = "https://www.wechall.net/site/ranking/for/1/WeChall/page-%d"
+solversurl = "https://www.wechall.net/challenge_solvers_for/%d/%s/page-%d"
 prefix = "\x0303[WeChall]\x03 "
 
-def stats(user):
+def stats(user, rank):
+    if rank:
+        return rankstats(rank)
+
+    return userstats(user)
+
+def rankstats(rank):
+    txt = "\x0303[WeChall]\x03 "
+    page = 1 + (rank - 1) / 50
+
+    if page < 1:
+        return txt + "No such rank."
+
+    try:
+        tree = lxml.html.parse(urllib2.urlopen(rankurl % page))
+    except Exception as e:
+        return txt + "Network error."
+
+    for row in tree.xpath("//div[@id='page']/div[@class='gwf_table']/table//tr"):
+        r = row.xpath("td[1]")
+        n = row.xpath("td[3]")
+
+        if not r or not n:
+            continue
+
+        if int(r[0].text_content()) == rank:
+            return userstats(n[0].text_content())
+
+    return txt + "No such rank."
+
+def userstats(user):
     txt = "\x0303[WeChall]\x03 "
 
     try:
@@ -54,6 +87,22 @@ def parse_challs(url):
 
     return challs
 
+def user_solved(user, nr, name):
+    try:
+        tree = lxml.html.parse(urllib2.urlopen(url % plugins.to_utf8(user)))
+    except:
+        return False, True
+
+    for row in tree.xpath("//div[@id='page']/table[@id='wc_profile_challenges']//tr"):
+        e = row.xpath("td[2]/a[1]")
+        if e:
+            n = e[0].text_content()
+            if n.lower().startswith(name.lower()):
+                e2 = e[0].xpath("@class")
+                return e2 and e2[0] == "wc_chall_solved_1", False
+
+    return False, False
+
 def solvers(challenge_name_or_nr, user=None):
     challs = parse_challs(challurl)
     nr, name, url, solvers = None, None, None, None
@@ -74,9 +123,15 @@ def solvers(challenge_name_or_nr, user=None):
 
     txt = "No such challenge."
     if solvers is not None:
-        txt = "Challenge Nr. %d, %s, hasn't been solved by anyone yet." % (nr, name)
+        if user:
+            solved, err = user_solved(user, nr, name)
+            if err:
+                return prefix + "Network error."
+            txt = "Challenge Nr. %d, %s, has %sbeen solved by %s." % (nr, name, "" if solved else "not ", user)
+        else:
+            txt = "Challenge Nr. %d, %s, hasn't been solved by anyone yet." % (nr, name)
 
-        if solvers > 0:
-            txt = "Challenge Nr. %d, %s, has been solved by %d user%s." % (nr, name, solvers, "" if solvers == 1 else "s")
+            if solvers > 0:
+                txt = "Challenge Nr. %d, %s, has been solved by %d user%s." % (nr, name, solvers, "" if solvers == 1 else "s")
 
     return prefix + txt

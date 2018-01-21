@@ -1,40 +1,43 @@
+import threading
+import traceback
 from tehbot import *
+import irc.client
+from Queue import Queue, Empty
 
-def kbdinput(tehbot):
-    global stopme, reloadme
-    channel = "#revolutionelite"
+def kbdinput():
     while True:
         try:
             inp = raw_input().strip()
             if inp == "":
                 continue
             if inp[0] == "/": # command mode
-                tmp = inp[1:].split(" ")
-                cmd = tmp[0].upper()
-                args = tmp[1:]
-                if cmd == "QUIT":
-                    stopme = True
-                elif cmd == "CHANNEL":
-                    print "channel you're writing to: %s" % channel
-                elif cmd == "RELOAD":
-                    reloadme = True
+                tmp = inp[1:].split(None, 1)
+
+                if len(tmp) > 0:
+                    cmd = tmp[0].lower()
+                    args = tmp[1] if len(tmp) > 1 else None
+                    queue.put(("kbd_" + cmd, args))
+
         except EOFError:
             break
+        except:
+            print Tehbot.ts()
+            traceback.print_exc()
 
 
-stopme = False
-reloadme = False
-
-bot = Tehbot()
-
-import threading
-kbdthread = threading.Thread(target=kbdinput, args=(bot,))
+kbdthread = threading.Thread(target=kbdinput)
 kbdthread.daemon = True
 kbdthread.start()
 
+
+bot = Tehbot()
+queue = Queue()
+
 try:
     bot.connect()
-except KeyboardInterrupt:
+except:
+    print Tehbot.ts()
+    traceback.print_exc()
     bot.quit()
 
 #import plugins
@@ -45,22 +48,31 @@ except KeyboardInterrupt:
     #import signal
     #signal.signal(signal.SIGHUP, sighandler)
 
-import traceback
-import irc.client
-
 while True:
     try:
-        if stopme:
-            bot.quit()
-        if reloadme:
-            bot.reload()
-            reloadme = False
         bot.process_once(0.2)
+
+        try:
+            cmd, args = queue.get(False)
+        except Empty:
+            continue
+
+        queue.task_done()
+
+        try:
+            func = getattr(bot, cmd)
+        except AttributeError as e:
+            print "Unknown command:", cmd
+            continue
+
+        func(args)
     except KeyboardInterrupt:
         bot.quit()
     except SystemExit:
         break
     except irc.client.ServerConnectionError as e:
-        print e
+        print "%s: %s" % (Tehbot.ts(), e)
+        traceback.print_exc()
     except:
+        print Tehbot.ts()
         traceback.print_exc()

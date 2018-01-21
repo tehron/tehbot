@@ -5,7 +5,66 @@ import urlparse
 import lxml.html
 import re
 
-def stats(user):
+def stats(user, rank):
+    if rank is not None:
+        return rankstats(rank)
+
+    return userstats(user)
+
+def rankstats(rank):
+    prefix = "\x0303[Revolution Elite]\x03 "
+    page = 1
+    scores = []
+    ranks = dict()
+
+    while rank > 0 and not rank in ranks:
+        scores += parsescores(page)
+        ranks = updateranks(scores)
+        page += 1
+        if page == 11:
+            break
+
+    scores += parsescores(page)
+    ranks = updateranks(scores)
+
+    if not rank in ranks:
+        return prefix + "No user is at rank %d." % rank
+
+    score, who = ranks[rank]
+    return prefix + ", ".join(who) + (" is" if len(who) == 1 else " are") + " at rank %d, scoring %d point%s." % (rank, score, "s" if score else "")
+
+def parsescores(page):
+    url = "https://www.sabrefilms.co.uk/revolutionelite/rank.php?page=%d"
+    scores = []
+
+    tree = lxml.html.parse(urllib2.urlopen(url % page))
+    for e in tree.xpath("//div[@class='content']/center/table/tr"):
+        e2 = e.xpath("td[2]")
+        if not e2:
+            continue
+        name = e2[0].text_content().strip()
+        e2 = e.xpath("td[3]")
+        if not e2:
+            continue
+        try:
+            score = int(e2[0].text_content().strip())
+        except ValueError:
+            continue
+        scores.append((score, name))
+    return scores
+
+def updateranks(scores):
+    sc = dict()
+    for s, name in scores:
+        if not sc.has_key(s):
+            sc[s] = []
+        sc[s].append(name)
+
+    keys = sorted(sc.keys(), reverse=True)
+    ranks = dict([(i + 1, (k, sc[k])) for i, k in enumerate(keys)])
+    return ranks
+
+def userstats(user):
     url = "http://sabrefilms.co.uk/revolutionelite/w3ch4ll/userscore.php?username=%s"
     txt = "\x0303[Revolution Elite]\x03 "
 
@@ -23,6 +82,13 @@ def stats(user):
         return txt + "Unexpected format in reply. Try ?blame."
     else:
         _, rank, pts, ptsmax, solved, solvedmax, usercount = match
+
+        # fix rank reported incorrectly by sabretooth's script
+        try:
+            rank = str(int(rank))
+        except:
+            pass
+
         txt += "%s solved %s (of %s) challenges and is on rank %s (of %s)." % (user, solved, solvedmax, rank, usercount)
         return txt
 
