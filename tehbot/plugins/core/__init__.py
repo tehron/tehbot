@@ -46,8 +46,23 @@ class HelpPlugin(Plugin):
 
 register_cmd("help", HelpPlugin())
 
+import threading
+import time
 class PingPlugin(Plugin):
+    def __init__(self):
+        Plugin.__init__(self)
+        self.parser.add_argument("--verbose", "-v", action="store_true")
+
     def execute(self):
+        try:
+            pargs = self.parser.parse_args(self.args)
+            verbose = vars(pargs)["verbose"]
+        except Exception as e:
+            return "Error: %s" % str(e)
+
+        if verbose:
+            return "pong from Thread %s at %f" % (threading.current_thread().name, time.time())
+
         return "pong!"
 
 register_cmd("ping", PingPlugin())
