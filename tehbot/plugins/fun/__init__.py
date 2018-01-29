@@ -63,13 +63,13 @@ class LiarsPlugin(Plugin):
     def execute(self):
         return "roun, Nimda3, neoxquick, dloser, thefinder"
 
-register_cmd("liars", LiarsPlugin())
+#register_cmd("liars", LiarsPlugin())
 
 class PricksPlugin(Plugin):
     def execute(self):
         return "dloser"
 
-register_cmd("pricks", PricksPlugin())
+#register_cmd("pricks", PricksPlugin())
 
 
 class BeerPlugin(Plugin):
@@ -113,12 +113,12 @@ class BeerPlugin(Plugin):
 
         beers = self.query_beers()
         if beers == 0:
-            return plugins.me(self.connection, self.target, u"has no beer left :(")
+            return plugins.me(self.connection, self.target, u"has no beer left :(", self.dbconn)
 
         if pargs.recpt == self.nick:
-            plugins.me(self.connection, self.target, u"passes 1 of %d bottles of cold beer around to %s" % (beers, self.nick))
+            plugins.me(self.connection, self.target, u"passes 1 of %d bottles of cold beer around to %s" % (beers, self.nick), self.dbconn)
         else:
-            plugins.me(self.connection, self.target, u"and %s pass 1 of %d bottles of cold beer around to %s" % (self.nick, beers, pargs.recpt))
+            plugins.me(self.connection, self.target, u"and %s pass 1 of %d bottles of cold beer around to %s" % (self.nick, beers, pargs.recpt), self.dbconn)
 
 register_cmd("beer", BeerPlugin())
 
@@ -252,7 +252,7 @@ class HugPlugin(Plugin):
         if pargs.with_a_certain_something:
             msg += " with a certain something"
 
-        return plugins.me(self.connection, self.target, msg)
+        return plugins.me(self.connection, self.target, msg, self.dbconn)
 
 register_cmd("hug", HugPlugin())
 
@@ -286,3 +286,12 @@ class DestinyHandler(plugins.ChannelJoinHandler):
         return ">> https://www.youtube.com/watch?v=fNmDgRwNFsI <<"
 
 #plugins.register_channel_join_handler(DestinyHandler())
+
+
+
+class RouletteHandler(plugins.ChannelHandler):
+    def execute(self):
+        if self.msg.find("BANG") > -1 or self.msg.find("BOOM") > -1:
+            return "!roulette"
+
+plugins.register_channel_handler(RouletteHandler())

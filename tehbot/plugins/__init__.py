@@ -11,6 +11,7 @@ import irc.client
 import sqlite3
 import shlex
 import datetime
+import tehbot.settings as settings
 
 __all__ = ["Plugin", "ChannelHandler", "Poller", "Announcer", "register_cmd", "register_op_cmd", "register_pub_cmd", "register_priv_cmd", "register_channel_handler", "register_poller", "register_announcer"]
 
@@ -42,6 +43,7 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 class Handler:
     def __init__(self):
         self.tehbot = _tehbot
+        self.logtodb = True
 
     def help(self, cmd):
         plugin = self.tehbot.pub_cmd_handlers["help"]
@@ -54,7 +56,7 @@ class ChannelHandler(Handler):
         self.nick = nick
         self.msg = msg
         self.dbconn = dbconn
-        say(self.connection, self.target, self.execute())
+        say(self.connection, self.target, self.execute(), self.dbconn if self.logtodb else None)
 
 class ChannelJoinHandler(Handler):
     def handle(self, connection, channel, nick, dbconn):
@@ -62,7 +64,7 @@ class ChannelJoinHandler(Handler):
         self.target = channel
         self.nick = nick
         self.dbconn = dbconn
-        say(self.connection, self.target, self.execute())
+        say(self.connection, self.target, self.execute(), self.dbconn if self.logtodb else None)
 
 class Plugin(Handler):
     def __init__(self):
@@ -77,16 +79,25 @@ class Plugin(Handler):
         self.args = args
         self.dbconn = dbconn
         self.parser.prog = cmd
-        say(self.connection, self.target, self.execute())
+        say(self.connection, self.target, self.execute(), self.dbconn if self.logtodb else None)
 
 class Poller(Handler):
     def _callme(self):
         #myprint("%s called" % self.__class__.__name__)
-        conn = self.tehbot._get_connection(self.connection_name())
-        if conn is None:
-            return
+        tgts = []
+        if "__all__" in self.where():
+            for name in settings.connections:
+                params = settings.connections[name]
+                tgts.append((name, params.channels))
+        else:
+            tgts = self.where()
 
-        self.tehbot.core.queue.put((self, (conn, self.channels())))
+        for network, channels in tgts:
+            conn = self.tehbot._get_connection(network)
+            if conn is None:
+                continue
+
+            self.tehbot.core.queue.put((self, (conn, channels)))
 
     def _schedule(self, timeout):
         self.tehbot.core.reactor.scheduler.execute_after(timeout, self._callme)
@@ -100,18 +111,27 @@ class Poller(Handler):
             msg = self.execute()
 
             for t in self.targets:
-                say(self.connection, t, msg)
+                say(self.connection, t, msg, self.dbconn)
         finally:
             self._schedule(self.timeout())
 
 class Announcer(Handler):
     def _callme(self):
         #myprint("%s called" % self.__class__.__name__)
-        conn = self.tehbot._get_connection(self.connection_name())
-        if conn is None:
-            return
+        tgts = []
+        if "__all__" in self.where():
+            for name in settings.connections:
+                params = settings.connections[name]
+                tgts.append((name, params.channels))
+        else:
+            tgts = self.where()
 
-        self.tehbot.core.queue.put((self, (conn, self.channels())))
+        for network, channels in tgts:
+            conn = self.tehbot._get_connection(network)
+            if conn is None:
+                continue
+
+            self.tehbot.core.queue.put((self, (conn, channels)))
 
     def _schedule(self, at):
         self.tehbot.core.reactor.scheduler.execute_at(at, self._callme)
@@ -125,7 +145,7 @@ class Announcer(Handler):
             msg = self.execute()
 
             for t in self.targets:
-                say(self.connection, t, msg)
+                say(self.connection, t, msg, self.dbconn)
         finally:
             tomorrow = datetime.date.today() + datetime.timedelta(days=1)
             at = int(tomorrow.strftime("%s")) + self.at()
@@ -139,6 +159,20 @@ regex = re.compile(pattern, re.UNICODE)
 def myprint(s):
     s = regex.sub("", s)
     print sys_time.strftime("%H:%M:%S"), s.encode(encoding, "backslashreplace")
+
+def logmsg(time, network, target, nick, msg, is_action, dbconn=None):
+    msg_clean = regex.sub("", msg)
+    if is_action:
+        s = "%s: %s: *%s %s" % (network, target, nick, msg_clean)
+    else:
+        s = "%s: %s: %s: %s" % (network, target, nick, msg_clean)
+
+    print sys_time.strftime("%H:%M:%S", sys_time.localtime(time)), s.encode(encoding, "backslashreplace")
+
+    if dbconn is not None:
+        # create table Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, message varchar)
+        with dbconn:
+            dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?)", (time, network, target, nick, msg_clean))
 
 def is_windows():
     return os.name == 'nt'
@@ -155,32 +189,33 @@ def to_latin1(unistr):
 def myfilter(s):
     return "".join([c if ord(c) >= 0x20 else "?" for c in s])
 
-def say(connection, target, msg):
+def say(connection, target, msg, dbconn):
     if not target or not msg: return
     if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
     with connection.locks[target]:
         for m in msg.split("\n"):
             m = m.replace("\r", "?");
             if m.strip():
-                myprint("%s: %s: %s" % (target, connection.get_nickname(), m))
+                logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), m, False, dbconn if irc.client.is_channel(target) else None)
                 connection.privmsg(target, m)
 
-def say_nick(connection, target, nick, msg):
+def say_nick(connection, target, nick, msg, dbconn):
     if not target or not nick: return
     if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
     with connection.locks[target]:
         for m in msg.split("\n"):
             m = m.replace("\r", "?");
             if m.strip():
-                myprint("%s: %s: %s: %s" % (target, connection.get_nickname(), nick, m))
-                connection.privmsg(target, "%s: %s" % (nick, m))
+                m2 = "%s: %s" % (nick, m)
+                logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), m2, False, dbconn if irc.client.is_channel(target) else None)
+                connection.privmsg(target, m2)
 
-def me(connection, target, msg):
+def me(connection, target, msg, dbconn):
     msg = msg.replace("\r", "?").replace("\n", "?")
     if not target or not msg: return
     if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
     with connection.locks[target]:
-        myprint("%s: *%s %s" % (target, connection.get_nickname(), msg))
+        logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), msg, True, dbconn if irc.client.is_channel(target) else None)
         # b0rk for unicode
         #connection.action(target, msg)
         connection.privmsg(target, "\001ACTION " + msg + "\001")

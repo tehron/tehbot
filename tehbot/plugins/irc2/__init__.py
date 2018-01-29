@@ -9,6 +9,7 @@ class SeenPlugin(Plugin):
 
     def __init__(self):
         Plugin.__init__(self)
+        self.logtodb = False
         self.parser = plugins.ThrowingArgumentParser(
                 prog="stats",
                 description=SeenPlugin.__doc__

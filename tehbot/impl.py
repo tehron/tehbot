@@ -80,7 +80,13 @@ class TehbotImpl:
         print "       announcers:", sorted(h.__class__.__name__ for h in self.announcers)
 
         with self.core.reactor.mutex:
-            self.core.reactor.scheduler.queue = []
+            for cmd in self.core.reactor.scheduler.queue[:]:
+                try:
+                    if cmd.target.im_func.func_name == "_callme":
+                        print "Removing cmd", cmd.target
+                        self.core.reactor.scheduler.queue.remove(cmd)
+                except:
+                    pass
 
         for p in self.pollers:
             p._schedule(20)
@@ -152,7 +158,7 @@ class TehbotImpl:
         else:
             factory = irc.client.connection.Factory()
         connection.connect(params.host, params.port, settings.bot_name, params.bot_password, settings.bot_name, settings.bot_name, factory)
-        connection.set_rate_limit(4)
+        connection.set_rate_limit(2)
         connection.set_keepalive(60)
 
     def process_once(self, timeout):
@@ -390,14 +396,7 @@ class Dispatcher:
         nick = event.source.nick
         channel = event.target
         msg = event.arguments[0]
-        plugins.myprint("%s: %s: %s" % (channel, nick, msg))
-        # create table Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, message varchar)
-        pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
-        regex = re.compile(pattern, re.UNICODE)
-        msg2 = regex.sub("", msg)
-
-        with self.tehbot._dbconn:
-            self.tehbot._dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?)", (time.time(), connection.name, channel, nick, msg2))
+        plugins.logmsg(time.time(), connection.name, channel, nick, msg, False, self.tehbot._dbconn)
 
         # possible command
         if msg and msg[0] == settings.cmd_prefix:
@@ -415,7 +414,7 @@ class Dispatcher:
         nick = event.source.nick
         chat = nick
         msg = event.arguments[0]
-        plugins.myprint("%s: %s: %s" % (chat, nick, msg))
+        plugins.logmsg(time.time(), connection.name, chat, nick, msg, False)
 
         # possible command
         if msg and msg[0] == settings.cmd_prefix:

@@ -24,16 +24,16 @@ class SlapPlugin(Plugin):
         else:
             slap = self.slaps[1]
         txt = slap.format(victim=plugins.myfilter(victim), howmuch=random.choice(["", " a bit", " a little bit"]), withitem=random.choice(self.slapitems))
-        plugins.me(self.connection, self.target, txt)
+        plugins.me(self.connection, self.target, txt, self.dbconn)
 
         if random.random() < 0.25:
             func, txt = random.choice(self.slaps_extra)
-            func(self.connection, self.target, txt)
+            func(self.connection, self.target, txt, self.dbconn)
 
 class LivinSlapPlugin(Plugin):
     def slap2(self, victim):
-        plugins.me(self.connection, self.target,  "slaps %s around a bit with a Piece of bacon" % victim)
-        plugins.say(self.connection, self.target, "Hey, %s, eat some pork!" % victim)
+        plugins.me(self.connection, self.target,  "slaps %s around a bit with a Piece of bacon" % victim, self.dbconn)
+        plugins.say(self.connection, self.target, "Hey, %s, eat some pork!" % victim, self.dbconn)
 
     def execute(self):
         if self.args:
