@@ -1,3 +1,4 @@
+import sys
 import threading
 import traceback
 from tehbot import *
@@ -25,20 +26,23 @@ def kbdinput():
             traceback.print_exc()
 
 
+queue = Queue()
 kbdthread = threading.Thread(target=kbdinput)
 kbdthread.daemon = True
 kbdthread.start()
 
 
-bot = Tehbot()
-queue = Queue()
-
 try:
+    bot = Tehbot()
     bot.connect()
 except:
     print Tehbot.ts()
     traceback.print_exc()
-    bot.quit()
+    try:
+        bot.quit()
+    finally:
+        raise SystemExit
+
 
 #import plugins
 #if not plugins.is_windows():

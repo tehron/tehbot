@@ -39,8 +39,8 @@ class BotStatsPlugin(Plugin):
         txt = "\x0303[tehbot]\x03 "
 
         stats = []
-        #stats.append("Version: git %s" % self.get_git_version()[:10])
-        stats.append("Version: 0.2.1")
+        stats.append("Version: git %s" % self.get_git_version()[:10])
+        #stats.append("Version: 0.2.1")
 
         proc = psutil.Process(os.getpid())
         stats.append("Running Time: %s" % self.format_time(time.time() - proc.create_time()))

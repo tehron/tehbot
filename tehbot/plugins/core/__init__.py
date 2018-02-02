@@ -3,11 +3,15 @@ import irc.client
 
 class ReloadPlugin(Plugin):
     def execute(self):
-        res = self.tehbot.reload()
-        if res is None:
+        self.res = self.tehbot.core.reload()
+        if self.res is None:
             return "Okay, ready to crush ricer!"
         else:
-            return "Error: %s" % res
+            return "Error: %s" % self.res
+
+    def finalize(self):
+        if self.res is None:
+            self.tehbot.core.finalize()
 
 register_op_cmd("reload", ReloadPlugin())
 

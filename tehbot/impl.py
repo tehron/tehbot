@@ -1,14 +1,14 @@
 import plugins
 import settings
 import irc.client
-import threading
-from Queue import Empty
+from Queue import Queue, Empty
 import traceback
-import sqlite3
 import time
 import re
 import datetime
 import functools
+import threading
+import sqlite3
 
 import os.path
 from types import ModuleType
@@ -62,31 +62,41 @@ class TehbotImpl:
         self.channel_join_handlers = []
         self.pollers = []
         self.announcers = []
-        plugins._tehbot = self.core
-        self.dbfile = os.path.join(os.path.dirname(__file__), "tehbot.sqlite")
-        self._dbconn = sqlite3.connect(self.dbfile)
-        #self._kill_workers()
-        #self.core.quit_called = False
-        self._start_workers()
-
+        self.queue = Queue(maxsize=0)
+        self.workers = []
+        self.quit_called = False
+        self.dbfile = os.path.join(os.path.dirname(__file__), "../tehbot.sqlite")
+        self.dbconn = sqlite3.connect(self.dbfile)
 
     def collect_plugins(self):
         plugins.collect()
-        print "pub  cmd handlers:", sorted(self.pub_cmd_handlers.keys())
+        print "pub  cmd handlers:", sorted(self.pub_cmd_handlers)
         print "priv cmd handlers:", sorted(self.priv_cmd_handlers.keys())
         print "channel  handlers:", sorted(h.__class__.__name__ for h in self.channel_handlers)
         print "chn join handlers:", sorted(h.__class__.__name__ for h in self.channel_join_handlers)
         print "          pollers:", sorted(h.__class__.__name__ for h in self.pollers)
         print "       announcers:", sorted(h.__class__.__name__ for h in self.announcers)
 
+    def deinit(self):
+        self.core.reactor.remove_global_handler("all_events", self.dispatcher.dispatch)
+
+        for h in self.pollers + self.announcers:
+            h._quit = True
+
         with self.core.reactor.mutex:
             for cmd in self.core.reactor.scheduler.queue[:]:
                 try:
                     if cmd.target.im_func.func_name == "_callme":
-                        print "Removing cmd", cmd.target
+                        print "removing", cmd.target
                         self.core.reactor.scheduler.queue.remove(cmd)
                 except:
                     pass
+
+        self.dbconn.close()
+        self.quit_called = True
+
+    def postinit(self):
+        self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
 
         for p in self.pollers:
             p._schedule(20)
@@ -99,6 +109,8 @@ class TehbotImpl:
             print "Scheduling %s at %d" % (a.__class__.__name__, at)
             a._schedule(at)
 
+        self.start_workers()
+
     def gather_modules(self):
         modules = set()
         _gather(plugins, modules)
@@ -110,30 +122,28 @@ class TehbotImpl:
 
         while True:
             try:
-                plugin, args = self.core.queue.get(timeout=1)
+                plugin, args = self.queue.get(timeout=1)
                 plugin.handle(*args, dbconn=dbconn)
-                self.core.queue.task_done()
+                self.queue.task_done()
             except Empty:
                 pass
             except:
                 traceback.print_exc()
 
-            dbconn.rollback()
-
-            if self.core.quit_called:
+            if self.quit_called:
                 break
 
         dbconn.close()
 
-    def _kill_workers(self):
-        while self.core.workers:
-            _terminate_thread(self.core.workers.pop())
-
-    def _start_workers(self):
-        while len(self.core.workers) < settings.nr_worker_threads:
+    def start_workers(self):
+        while len(self.workers) < settings.nr_worker_threads:
             worker = threading.Thread(target=self._process)
-            self.core.workers.append(worker)
+            self.workers.append(worker)
             worker.start()
+
+    def _kill_workers(self):
+        while self.workers:
+            _terminate_thread(self.workers.pop())
 
     def _get_connection(self, name):
         for c in self.core.reactor.connections:
@@ -166,12 +176,13 @@ class TehbotImpl:
 
     def quit(self, msg=None):
         print "quit called"
-        self.core.quit_called = True
+        self.quit_called = True
         self.core.reactor.disconnect_all(msg or "bye-bye")
         raise SystemExit
 
     def kbd_reload(self, args):
         self.core.reload()
+        self.core.finalize()
 
     def kbd_quit(self, args):
         self.quit(args)
@@ -243,14 +254,14 @@ class Dispatcher:
         self.authnicks = AuthNicks()
 
     def _execute_op_cmd(self, connection, source, target, nick, cmd, args):
-        self.authnicks.put_command(connection, nick, (cmd, (connection, target, nick, cmd, args, self.tehbot._dbconn)))
+        self.authnicks.put_command(connection, nick, (cmd, (connection, target, nick, cmd, args)))
         params = settings.connections[connection.name]
         ops = params.ops
 
         if self._is_op_host(ops, source.host) or self._is_op_nickserv(ops, connection, source.nick):
             for cmd, args in self.authnicks.commands(connection, nick):
                 # operator commands are handled in main thread
-                self.tehbot.operator_cmd_handlers[cmd].handle(*args)
+                self.tehbot.operator_cmd_handlers[cmd].handle(*args, dbconn=self.tehbot.dbconn)
             self.authnicks.clear_commands(connection, nick)
         else:
             for t, s in ops:
@@ -289,7 +300,7 @@ class Dispatcher:
             if t == "nickserv" and s == account:
                 for cmd, args in self.authnicks.commands(connection, nick):
                     # operator commands are handled in main thread
-                    self.tehbot.operator_cmd_handlers[cmd].handle(*args)
+                    self.tehbot.operator_cmd_handlers[cmd].handle(*args, dbconn=self.tehbot.dbconn)
                 self.authnicks.clear_commands(connection, nick)
                 break
 
@@ -317,7 +328,7 @@ class Dispatcher:
         connection.send_raw("JOIN %s" % mchans)
 
     def on_disconnect(self, connection, event):
-        if self.tehbot.core.quit_called:
+        if self.tehbot.quit_called:
             return
 
         delay = 120
@@ -333,21 +344,18 @@ class Dispatcher:
         self.tehbot.core.reactor.scheduler.execute_after(delay, functools.partial(self.tehbot.reconnect, connection))
 
     def on_join(self, connection, event):
-        plugins.myprint("%s: %s joined" % (event.target, event.source.nick))
+        plugins.myprint("%s: %s: %s joined" % (connection.name, event.target, event.source.nick))
         nick = event.source.nick
         channel = event.target
 
         if nick == settings.bot_name:
             return
 
-        if nick == "wence":
-            return
-
         for h in self.tehbot.channel_join_handlers:
-            self.tehbot.core.queue.put((h, (connection, channel, nick)))
+            self.tehbot.queue.put((h, (connection, channel, nick)))
 
     def on_part(self, connection, event):
-        plugins.myprint("%s: %s left" % (event.target, event.source.nick))
+        plugins.myprint("%s: %s: %s left" % (connection.name, event.target, event.source.nick))
         self.authnicks.remove(connection, event.source.nick)
 
     def on_quit(self, connection, event):
@@ -367,16 +375,13 @@ class Dispatcher:
         else:
             target = nick
 
-        plugins.myprint("%s: *%s %s" % (target, nick, msg))
+        plugins.myprint("%s: %s: *%s %s" % (connection.name, target, nick, msg))
 
     def react_to_command(self, connection, event, msg):
         tmp = msg.split(" ", 1)
         cmd = tmp[0]
         args = tmp[1] if len(tmp) == 2 else None
         nick = event.source.nick
-
-        if nick == "jayssj11":
-            return
 
         if irc.client.is_channel(event.target):
             target = event.target
@@ -387,16 +392,16 @@ class Dispatcher:
             self._execute_op_cmd(connection, event.source, target, nick, cmd, args)
         elif irc.client.is_channel(event.target):
             if cmd in self.tehbot.pub_cmd_handlers:
-                self.tehbot.core.queue.put((self.tehbot.pub_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
+                self.tehbot.queue.put((self.tehbot.pub_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
         else:
             if cmd in self.tehbot.priv_cmd_handlers:
-                self.tehbot.core.queue.put((self.tehbot.priv_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
+                self.tehbot.queue.put((self.tehbot.priv_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
 
     def on_pubmsg(self, connection, event):
         nick = event.source.nick
         channel = event.target
         msg = event.arguments[0]
-        plugins.logmsg(time.time(), connection.name, channel, nick, msg, False, self.tehbot._dbconn)
+        plugins.logmsg(time.time(), connection.name, channel, nick, msg, False, self.tehbot.dbconn)
 
         # possible command
         if msg and msg[0] == settings.cmd_prefix:
@@ -408,7 +413,7 @@ class Dispatcher:
             if (tonick == settings.bot_name or tonick[:-1] == settings.bot_name) and args:
                 self.react_to_command(connection, event, args)
             for h in self.tehbot.channel_handlers:
-                self.tehbot.core.queue.put((h, (connection, channel, nick, msg)))
+                self.tehbot.queue.put((h, (connection, channel, nick, msg)))
 
     def on_privmsg(self, connection, event):
         nick = event.source.nick

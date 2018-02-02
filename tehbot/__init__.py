@@ -1,40 +1,54 @@
 import irc.client
-from Queue import Queue
 import plugins
 import impl
 import traceback
 import time
+import settings
 
 class Tehbot:
     def __init__(self):
         self.reactor = irc.client.Reactor()
-        self.queue = Queue(maxsize=0)
-        self.quit_called = False
-        self.workers = []
-        self.impl = impl.TehbotImpl(self)
-        self.impl.collect_plugins()
-        self.reactor.add_global_handler("all_events", self.impl.dispatcher.dispatch, -10)
+        self.impl = None
+        self.reload()
+        self.finalize()
 
     def __getattr__(self, attr):
         return getattr(self.impl, attr)
 
     def reload(self):
-        oldimpl = self.impl
         try:
             reload(settings)
             reload(impl)
             reload(plugins)
-            self.impl = impl.TehbotImpl(self)
-            modules = self.impl.gather_modules()
-            print modules
+            self.newimpl = impl.TehbotImpl(self)
+            plugins._tehbot = self.newimpl
+            modules = self.newimpl.gather_modules()
             map(reload, modules)
-            self.impl.collect_plugins()
-            self.reactor.remove_global_handler("all_events", oldimpl.dispatcher.dispatch)
-            self.reactor.add_global_handler("all_events", self.impl.dispatcher.dispatch, -10)
+            self.newimpl.collect_plugins()
         except Exception as e:
-            self.impl = oldimpl
+            print Tehbot.ts()
             traceback.print_exc()
+            self.newimpl = None
             return e
+
+    def finalize(self):
+        if self.newimpl is None:
+            return
+
+        try:
+            self.impl and self.impl.deinit()
+        except:
+            print Tehbot.ts()
+            traceback.print_exc()
+
+        try:
+            self.newimpl.postinit()
+        except:
+            print Tehbot.ts()
+            traceback.print_exc()
+
+        self.impl = self.newimpl
+        self.newimpl = None
 
     @staticmethod
     def ts():

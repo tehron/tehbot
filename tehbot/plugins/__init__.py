@@ -44,6 +44,16 @@ class Handler:
     def __init__(self):
         self.tehbot = _tehbot
         self.logtodb = True
+        self._quit = False
+
+    def finalize(self):
+        pass
+
+    def valid_target(self, where):
+        for network, channels in where:
+            if network == self.connection.name and self.target in channels:
+                return True
+        return False
 
     def help(self, cmd):
         plugin = self.tehbot.pub_cmd_handlers["help"]
@@ -80,6 +90,7 @@ class Plugin(Handler):
         self.dbconn = dbconn
         self.parser.prog = cmd
         say(self.connection, self.target, self.execute(), self.dbconn if self.logtodb else None)
+        self.finalize()
 
 class Poller(Handler):
     def _callme(self):
@@ -100,6 +111,9 @@ class Poller(Handler):
             self.tehbot.core.queue.put((self, (conn, channels)))
 
     def _schedule(self, timeout):
+        if self._quit:
+            return
+
         self.tehbot.core.reactor.scheduler.execute_after(timeout, self._callme)
 
     def handle(self, connection, targets, dbconn):
@@ -134,6 +148,9 @@ class Announcer(Handler):
             self.tehbot.core.queue.put((self, (conn, channels)))
 
     def _schedule(self, at):
+        if self._quit:
+            return
+
         self.tehbot.core.reactor.scheduler.execute_at(at, self._callme)
 
     def handle(self, connection, targets, dbconn):
