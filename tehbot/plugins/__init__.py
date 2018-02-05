@@ -13,7 +13,7 @@ import shlex
 import datetime
 import tehbot.settings as settings
 
-__all__ = ["Plugin", "ChannelHandler", "Poller", "Announcer", "register_cmd", "register_op_cmd", "register_pub_cmd", "register_priv_cmd", "register_channel_handler", "register_poller", "register_announcer"]
+__all__ = ["Plugin", "ChannelHandler", "Poller", "Announcer", "register_cmd", "register_op_cmd", "register_pub_cmd", "register_priv_cmd", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer"]
 
 _tehbot = None
 _modules = []
