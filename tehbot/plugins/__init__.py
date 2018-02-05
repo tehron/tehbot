@@ -45,6 +45,10 @@ class Handler:
         self.tehbot = _tehbot
         self.logtodb = True
         self._quit = False
+        self.initialize(self.tehbot.dbconn)
+
+    def initialize(self, dbconn):
+        pass
 
     def finalize(self):
         pass
