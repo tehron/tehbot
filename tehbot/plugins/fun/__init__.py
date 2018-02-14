@@ -295,3 +295,57 @@ class RouletteHandler(plugins.ChannelHandler):
             return "!roulette"
 
 plugins.register_channel_handler(RouletteHandler())
+
+
+
+class WixxerdPlugin(Plugin):
+    def execute(self):
+        return r"""       .##...##..######..##..##..##..##..######..#####...#####..
+       .##...##....##.....####....####...##......##..##..##..##.
+       .##.#.##....##......##......##....####....#####...##..##.
+       .#######....##.....####....####...##......##..##..##..##.
+       ..##.##...######..##..##..##..##..######..##..##..#####..
+       ......................................................... 
+                    .........  ... . ... . ..  . ........
+                          .....   .. . .   . .  .....
+                              ...  .  ...  .  .....
+                               ``,           ,.,
+                                `\\_  |    _//'
+                                  \(  |\    )/
+                                  //\ |_\  /\\
+                                 (/ /\(" )/\ \)
+                                  \/\ (  ) /\/
+                                     |(  )|
+                                     | \( \
+                                     |  )  \
+                                     |      \
+                                     |       \
+                                     |        `.__,
+                                     \_________.-"""
+
+register_op_cmd("wixxerd", WixxerdPlugin())
+
+
+import re
+import tehbot.settings as settings
+class BeerGrabber(plugins.ChannelHandler):
+    def execute(self):
+        match = re.search(r'and (\w+) pass (\d+) of \d+ bottles of cold beer around to (\w+)\.', self.msg)
+        if match is None:
+            return
+
+        donor = match.group(1)
+        cnt = int(match.group(2))
+        who = match.group(3)
+
+        if cnt > 0 and who == settings.bot_name:
+            with self.dbconn:
+                self.dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(cnt), ))
+
+            c = self.dbconn.execute("select value from BeerPlugin where key='beers'")
+            res = c.fetchone()
+            beers = int(res[0])
+
+            return "Thanks, %s! Beer count is %d now." % (donor, beers)
+
+plugins.register_channel_handler(BeerGrabber())
