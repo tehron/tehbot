@@ -372,6 +372,8 @@ class Dispatcher:
 
         if irc.client.is_channel(event.target):
             target = event.target
+            for h in self.tehbot.channel_handlers:
+                self.tehbot.queue.put((h, (connection, target, nick, msg)))
         else:
             target = nick
 
