@@ -74,7 +74,7 @@ class Handler:
                 break
             elif r[0] == "doauth":
                 extra["request_priv_called"] = True
-                self.tehbot.privqueue[connection, event.source.nick].append((extra["cmd"], (connection, event, extra)))
+                self.tehbot.privqueue.put((self, (connection, event, extra)))
                 connection.whois(event.source.nick)
                 return
 
@@ -114,6 +114,7 @@ class Plugin(Handler):
     def __init__(self):
         Handler.__init__(self)
         self.parser = ThrowingArgumentParser(description=self.__doc__)
+        self.mainthreadonly = False
 
 class Announcer(Handler):
     def __init__(self):

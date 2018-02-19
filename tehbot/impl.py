@@ -66,8 +66,9 @@ class TehbotImpl:
         self.quit_called = False
         self.dbfile = os.path.join(os.path.dirname(__file__), "../tehbot.sqlite")
         self.dbconn = sqlite3.connect(self.dbfile)
-        self.privqueue = defaultdict(list)
+        self.mainqueue = Queue()
         self.privusers = defaultdict(set)
+        self.privqueue = Queue()
 
     def collect_plugins(self):
         plugins.collect()
@@ -174,6 +175,15 @@ class TehbotImpl:
     def process_once(self, timeout):
         self.core.reactor.process_once(timeout)
 
+        try:
+            plugin, args = self.mainqueue.get(False)
+            plugin.handle(*args, dbconn=self.dbconn)
+            self.mainqueue.task_done()
+        except Empty:
+            pass
+        except:
+            traceback.print_exc()
+
     def quit(self, msg=None):
         print "quit called"
         self.quit_called = True
@@ -221,12 +231,14 @@ class Dispatcher:
         for t, s in params.ops:
             if t == "nickserv" and s == account:
                 self.tehbot.privusers[connection].add(nick)
-                lst = self.tehbot.privqueue[connection, nick]
-                while lst:
-                    cmd, args = lst.pop(0)
+                break
 
-                    # privileged commands are handled in main thread
-                    self.tehbot.cmd_handlers[cmd].handle(*args, dbconn=self.tehbot.dbconn)
+        while True:
+            try:
+                plugin, args = self.tehbot.privqueue.get(False)
+                q = self.tehbot.mainqueue if plugin.mainthreadonly else self.tehbot.queue
+                q.put((plugin, args))
+            except Empty:
                 break
 
     def on_nicknameinuse(self, connection, event):
@@ -283,7 +295,6 @@ class Dispatcher:
         plugins.myprint("%s: %s: %s left" % (connection.name, event.target, event.source.nick))
         try:
             self.tehbot.privusers[connection].remove(event.source.nick)
-            del self.tehbot.privqueue[connection, event.source.nick]
         except:
             pass
 
@@ -296,7 +307,6 @@ class Dispatcher:
 
         try:
             self.tehbot.privusers[connection].remove(event.source.nick)
-            del self.tehbot.privqueue[connection, event.source.nick]
         except:
             pass
 
@@ -325,7 +335,9 @@ class Dispatcher:
         args = msg[len(cmd) + 1:]
 
         if cmd in self.tehbot.cmd_handlers:
-            self.tehbot.queue.put((self.tehbot.cmd_handlers[cmd], (connection, event, {"cmd":cmd, "args":args})))
+            plugin = self.tehbot.cmd_handlers[cmd]
+            q = self.tehbot.mainqueue if plugin.mainthreadonly else self.tehbot.queue
+            q.put((plugin, (connection, event, {"cmd":cmd, "args":args})))
 
     def on_pubmsg(self, connection, event):
         msg = event.arguments[0]
@@ -357,7 +369,6 @@ class Dispatcher:
 
         try:
             self.tehbot.privusers[connection].remove(event.source.nick)
-            del self.tehbot.privqueue[connection, event.source.nick]
         except:
             pass
 

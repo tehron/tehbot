@@ -12,6 +12,10 @@ class PrivilegedPlugin(Plugin):
 register_plugin("priv", PrivilegedPlugin())
 
 class ReloadPlugin(Plugin):
+    def __init__(self):
+        Plugin.__init__(self)
+        self.mainthreadonly = True
+
     def execute(self, connection, event, extra, dbconn):
         if not self.privileged(connection, event):
             return self.request_priv(extra)
