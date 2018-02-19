@@ -9,6 +9,7 @@ import datetime
 import functools
 import threading
 import sqlite3
+from collections import *
 
 import os.path
 from types import ModuleType
@@ -65,6 +66,8 @@ class TehbotImpl:
         self.quit_called = False
         self.dbfile = os.path.join(os.path.dirname(__file__), "../tehbot.sqlite")
         self.dbconn = sqlite3.connect(self.dbfile)
+        self.privqueue = defaultdict(list)
+        self.privusers = defaultdict(set)
 
     def collect_plugins(self):
         plugins.collect()
@@ -171,15 +174,6 @@ class TehbotImpl:
     def process_once(self, timeout):
         self.core.reactor.process_once(timeout)
 
-        # handle privileged commands
-        try:
-            cmd, args = self.dispatcher.authnicks.pop(0)
-            cmd_handlers[cmd].handle(*args, dbconn=self.dbconn)
-        except IndexError:
-            pass
-        except:
-            traceback.print_exc()
-
     def quit(self, msg=None):
         print "quit called"
         self.quit_called = True
@@ -202,94 +196,14 @@ class TehbotImpl:
         for c in self.core.reactor.scheduler.queue:
             print " * %s at %s" % (c.target.func if isinstance(c.target, functools.partial) else c.target, c)
 
-        print "Authenticated nicks"
-        for c, nicks in self.dispatcher.authnicks._nicks.items():
-            print " * %s" % (c.name)
-            for n, vals in nicks.items():
-                print "  * %s: %s" % (n, vals)
-
-
-class AuthNicks:
-    _nicks = dict()
-
-    def put(self, connection, nick, account):
-        self._init(connection, nick)
-        self._nicks[connection][nick]["accounts"].add(account)
-
-    def _init(self, connection, nick):
-        if not self._nicks.has_key(connection):
-            self._nicks[connection] = dict()
-        if not self._nicks[connection].has_key(nick):
-            self._nicks[connection][nick] = { "cmds" : [], "accounts" : set() }
-
-    def pop(self, idx):
-        raise IndexError
-
-    def contains(self, connection, nick, account):
-        try:
-            return account in self._nicks[connection][nick]["accounts"]
-        except KeyError:
-            return False
-
-    def remove(self, connection, nick):
-        try:
-            del self._nicks[connection][nick]
-        except KeyError:
-            pass
-
-    def commands(self, connection, nick):
-        try:
-            return self._nicks[connection][nick]["cmds"]
-        except KeyError:
-            return []
-
-    def put_command(self, connection, nick, cmd):
-        self._init(connection, nick)
-        try:
-            self._nicks[connection][nick]["cmds"].append(cmd)
-        except KeyError:
-            pass
-
-    def clear_commands(self, connection, nick):
-        try:
-            self._nicks[connection][nick]["cmds"] = []
-        except KeyError:
-            pass
+        print "Privileged Users"
+        for c, nicks in self.privusers.items():
+            print " * %s: %r" % (c.name, sorted(nicks))
 
 
 class Dispatcher:
     def __init__(self, tehbot):
         self.tehbot = tehbot
-        self.authnicks = AuthNicks()
-
-    def _execute_op_cmd(self, connection, source, target, nick, cmd, args):
-        self.authnicks.put_command(connection, nick, (cmd, (connection, target, nick, cmd, args)))
-        params = settings.connections[connection.name]
-        ops = params.ops
-
-        if self._is_op_host(ops, source.host) or self._is_op_nickserv(ops, connection, source.nick):
-            for cmd, args in self.authnicks.commands(connection, nick):
-                # operator commands are handled in main thread
-                self.tehbot.operator_cmd_handlers[cmd].handle(*args, dbconn=self.tehbot.dbconn)
-            self.authnicks.clear_commands(connection, nick)
-        else:
-            for t, s in ops:
-                if t == "nickserv":
-                    connection.whois(nick)
-                    return
-
-    def _is_op_host(self, ops, host):
-        for t, s in ops:
-            if t == "host" and s == host:
-                return True
-        return False
-
-    def _is_op_nickserv(self, ops, connection, nick):
-        for t, s in ops:
-            if t == "nickserv": 
-                if self.authnicks.contains(connection, nick, s):
-                    return True
-        return False
 
     def dispatch(self, connection, event):
         method = getattr(self, "on_" + event.type, None)
@@ -302,15 +216,17 @@ class Dispatcher:
     def on_whoisaccount(self, connection, event):
         nick = event.arguments[0]
         account = event.arguments[1]
-        self.authnicks.put(connection, nick, account)
         params = settings.connections[connection.name]
 
         for t, s in params.ops:
             if t == "nickserv" and s == account:
-                for cmd, args in self.authnicks.commands(connection, nick):
+                self.tehbot.privusers[connection].add(nick)
+                lst = self.tehbot.privqueue[connection, nick]
+                while lst:
+                    cmd, args = lst.pop(0)
+
                     # privileged commands are handled in main thread
                     self.tehbot.cmd_handlers[cmd].handle(*args, dbconn=self.tehbot.dbconn)
-                self.authnicks.clear_commands(connection, nick)
                 break
 
     def on_nicknameinuse(self, connection, event):
@@ -365,15 +281,24 @@ class Dispatcher:
 
     def on_part(self, connection, event):
         plugins.myprint("%s: %s: %s left" % (connection.name, event.target, event.source.nick))
-        self.authnicks.remove(connection, event.source.nick)
+        try:
+            self.tehbot.privusers[connection].remove(event.source.nick)
+            del self.tehbot.privqueue[connection, event.source.nick]
+        except:
+            pass
 
     def on_quit(self, connection, event):
         plugins.myprint("%s: %s has quit (%s)" % (connection.name, event.source.nick, event.arguments[0]))
-        self.authnicks.remove(connection, event.source.nick)
 
         # reconquer our nick!
         if event.source.nick == settings.bot_name:
             connection.nick(settings.bot_name)
+
+        try:
+            self.tehbot.privusers[connection].remove(event.source.nick)
+            del self.tehbot.privqueue[connection, event.source.nick]
+        except:
+            pass
 
     def on_action(self, connection, event):
         msg = event.arguments[0]
@@ -425,11 +350,16 @@ class Dispatcher:
         oldnick = event.source.nick
         newnick = event.target
         plugins.myprint("%s: %s is now known as %s" % (connection.name, oldnick, newnick))
-        self.authnicks.remove(connection, oldnick)
 
         # reconquer our nick!
         if oldnick == settings.bot_name:
             connection.nick(settings.bot_name)
+
+        try:
+            self.tehbot.privusers[connection].remove(event.source.nick)
+            del self.tehbot.privqueue[connection, event.source.nick]
+        except:
+            pass
 
     def on_396(self, connection, event):
         # TODO join channel before 5s wait time is over

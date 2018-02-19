@@ -2,6 +2,15 @@ from tehbot.plugins import *
 import threading
 import time
 
+class PrivilegedPlugin(Plugin):
+    def execute(self, connection, event, extra, dbconn):
+        if not self.privileged(connection, event):
+            return self.request_priv(extra)
+
+        return "%s is privileged" % (event.source.nick)
+
+register_plugin("priv", PrivilegedPlugin())
+
 class ReloadPlugin(Plugin):
     def execute(self, connection, event, extra, dbconn):
         if not self.privileged(connection, event):

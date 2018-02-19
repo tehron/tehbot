@@ -69,20 +69,22 @@ class Handler:
         for r in res:
             if r[0] == "say" or r[0] == "me":
                 globals()[r[0]](connection, target, r[1], dbconn if self.logtodb else None)
-            elif r[0] == "noauth":
-                say(connection, target, u"%s: unauthorized" % event.source.nick, dbconn if self.logtodb else None)
+            elif r[0] == "nopriv":
+                say(connection, target, u"%s is NOT privileged" % event.source.nick, dbconn if self.logtodb else None)
                 break
             elif r[0] == "doauth":
                 extra["request_priv_called"] = True
-                return self.handle(connection, event, extra, dbconn)
+                self.tehbot.privqueue[connection, event.source.nick].append((extra["cmd"], (connection, event, extra)))
+                connection.whois(event.source.nick)
+                return
 
         self.finalize()
 
     def privileged(self, connection, event):
-        return False
+        return event.source.nick in self.tehbot.privusers[connection]
 
     def request_priv(self, extra):
-        return [("noauth",)] if extra.has_key("request_priv_called") else [("doauth",)]
+        return [("nopriv",)] if extra.has_key("request_priv_called") else [("doauth",)]
 
     def initialize(self, dbconn):
         pass
