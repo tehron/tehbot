@@ -85,7 +85,7 @@ def userstats(user):
 
         # fix rank reported incorrectly by sabretooth's script
         try:
-            rank = str(int(rank))
+            rank = str(int(rank) + 1)
         except:
             pass
 
