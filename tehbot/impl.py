@@ -55,9 +55,7 @@ class TehbotImpl:
     def __init__(self, tehbot):
         self.core = tehbot
         self.dispatcher = Dispatcher(self)
-        self.operator_cmd_handlers = {}
-        self.pub_cmd_handlers = {}
-        self.priv_cmd_handlers = {}
+        self.cmd_handlers = {}
         self.channel_handlers = []
         self.channel_join_handlers = []
         self.pollers = []
@@ -70,9 +68,8 @@ class TehbotImpl:
 
     def collect_plugins(self):
         plugins.collect()
-        print "pub  cmd handlers:", sorted(self.pub_cmd_handlers)
-        print "priv cmd handlers:", sorted(self.priv_cmd_handlers.keys())
-        print "channel  handlers:", sorted(h.__class__.__name__ for h in self.channel_handlers)
+        print " command handlers:", sorted(self.cmd_handlers)
+        print " channel handlers:", sorted(h.__class__.__name__ for h in self.channel_handlers)
         print "chn join handlers:", sorted(h.__class__.__name__ for h in self.channel_join_handlers)
         print "          pollers:", sorted(h.__class__.__name__ for h in self.pollers)
         print "       announcers:", sorted(h.__class__.__name__ for h in self.announcers)
@@ -81,12 +78,12 @@ class TehbotImpl:
         self.core.reactor.remove_global_handler("all_events", self.dispatcher.dispatch)
 
         for h in self.pollers + self.announcers:
-            h._quit = True
+            h.quit = True
 
         with self.core.reactor.mutex:
             for cmd in self.core.reactor.scheduler.queue[:]:
                 try:
-                    if cmd.target.im_func.func_name == "_callme":
+                    if cmd.target.im_func.func_name == "callme":
                         print "removing", cmd.target
                         self.core.reactor.scheduler.queue.remove(cmd)
                 except:
@@ -99,7 +96,7 @@ class TehbotImpl:
         self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
 
         for p in self.pollers:
-            p._schedule(20)
+            p.schedule(20)
 
         for a in self.announcers:
             today = datetime.date.today()
@@ -107,7 +104,7 @@ class TehbotImpl:
             if at < time.time():
                 at += int(datetime.timedelta(days=1).total_seconds())
             print "Scheduling %s at %d" % (a.__class__.__name__, at)
-            a._schedule(at)
+            a.schedule(at)
 
         self.start_workers()
 
@@ -174,6 +171,15 @@ class TehbotImpl:
     def process_once(self, timeout):
         self.core.reactor.process_once(timeout)
 
+        # handle privileged commands
+        try:
+            cmd, args = self.dispatcher.authnicks.pop(0)
+            cmd_handlers[cmd].handle(*args, dbconn=self.dbconn)
+        except IndexError:
+            pass
+        except:
+            traceback.print_exc()
+
     def quit(self, msg=None):
         print "quit called"
         self.quit_called = True
@@ -215,6 +221,9 @@ class AuthNicks:
             self._nicks[connection] = dict()
         if not self._nicks[connection].has_key(nick):
             self._nicks[connection][nick] = { "cmds" : [], "accounts" : set() }
+
+    def pop(self, idx):
+        raise IndexError
 
     def contains(self, connection, nick, account):
         try:
@@ -299,8 +308,8 @@ class Dispatcher:
         for t, s in params.ops:
             if t == "nickserv" and s == account:
                 for cmd, args in self.authnicks.commands(connection, nick):
-                    # operator commands are handled in main thread
-                    self.tehbot.operator_cmd_handlers[cmd].handle(*args, dbconn=self.tehbot.dbconn)
+                    # privileged commands are handled in main thread
+                    self.tehbot.cmd_handlers[cmd].handle(*args, dbconn=self.tehbot.dbconn)
                 self.authnicks.clear_commands(connection, nick)
                 break
 
@@ -352,7 +361,7 @@ class Dispatcher:
             return
 
         for h in self.tehbot.channel_join_handlers:
-            self.tehbot.queue.put((h, (connection, channel, nick)))
+            self.tehbot.queue.put((h, (connection, event, {})))
 
     def on_part(self, connection, event):
         plugins.myprint("%s: %s: %s left" % (connection.name, event.target, event.source.nick))
@@ -368,70 +377,49 @@ class Dispatcher:
 
     def on_action(self, connection, event):
         msg = event.arguments[0]
+
+        if not msg:
+            return
+
         nick = event.source.nick
 
         if irc.client.is_channel(event.target):
             target = event.target
             for h in self.tehbot.channel_handlers:
-                self.tehbot.queue.put((h, (connection, target, nick, msg)))
+                self.tehbot.queue.put((h, (connection, event, {"msg":msg})))
         else:
             target = nick
 
         plugins.myprint("%s: %s: *%s %s" % (connection.name, target, nick, msg))
 
     def react_to_command(self, connection, event, msg):
-        tmp = msg.split(" ", 1)
-        cmd = tmp[0]
-        args = tmp[1] if len(tmp) == 2 else None
-        nick = event.source.nick
+        if not msg:
+            return
 
-        if irc.client.is_channel(event.target):
-            target = event.target
-        else:
-            target = nick
+        cmd = msg.split(" ", 1)[0]
+        args = msg[len(cmd) + 1:]
 
-        if cmd in self.tehbot.operator_cmd_handlers:
-            self._execute_op_cmd(connection, event.source, target, nick, cmd, args)
-        elif irc.client.is_channel(event.target):
-            if cmd in self.tehbot.pub_cmd_handlers:
-                self.tehbot.queue.put((self.tehbot.pub_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
-        else:
-            if cmd in self.tehbot.priv_cmd_handlers:
-                self.tehbot.queue.put((self.tehbot.priv_cmd_handlers[cmd], (connection, target, nick, cmd, args)))
+        if cmd in self.tehbot.cmd_handlers:
+            self.tehbot.queue.put((self.tehbot.cmd_handlers[cmd], (connection, event, {"cmd":cmd, "args":args})))
 
     def on_pubmsg(self, connection, event):
-        nick = event.source.nick
-        channel = event.target
         msg = event.arguments[0]
-        plugins.logmsg(time.time(), connection.name, channel, nick, msg, False, self.tehbot.dbconn)
+        plugins.logmsg(time.time(), connection.name, event.target, event.source.nick, msg, False, self.tehbot.dbconn)
 
-        # possible command
-        if msg and msg[0] == settings.cmd_prefix:
-            self.react_to_command(connection, event, msg[1:])
-        elif msg:
-            tmp = msg.split(" ", 1)
-            tonick = tmp[0]
-            args = tmp[1] if len(tmp) == 2 else None
-            if (tonick == settings.bot_name or tonick[:-1] == settings.bot_name) and args:
-                self.react_to_command(connection, event, args)
+        if msg:
+            if msg[0] == settings.cmd_prefix:
+                self.react_to_command(connection, event, msg[1:])
+
             for h in self.tehbot.channel_handlers:
-                self.tehbot.queue.put((h, (connection, channel, nick, msg)))
+                self.tehbot.queue.put((h, (connection, event, {"msg":msg})))
 
     def on_privmsg(self, connection, event):
-        nick = event.source.nick
-        chat = nick
         msg = event.arguments[0]
-        plugins.logmsg(time.time(), connection.name, chat, nick, msg, False)
+        plugins.logmsg(time.time(), connection.name, event.target, event.source.nick, msg, False, self.tehbot.dbconn)
 
-        # possible command
-        if msg and msg[0] == settings.cmd_prefix:
-            self.react_to_command(connection, event, msg[1:])
-        elif msg:
-            tmp = msg.split(" ", 1)
-            tonick = tmp[0]
-            args = tmp[1] if len(tmp) == 2 else None
-            if (tonick == settings.bot_name or tonick[:-1] == settings.bot_name) and args:
-                self.react_to_command(connection, event, args)
+        if msg:
+            if msg[0] == settings.cmd_prefix:
+                self.react_to_command(connection, event, msg[1:])
 
     def on_nick(self, connection, event):
         oldnick = event.source.nick

@@ -13,7 +13,7 @@ import shlex
 import datetime
 import tehbot.settings as settings
 
-__all__ = ["Plugin", "ChannelHandler", "Poller", "Announcer", "register_cmd", "register_op_cmd", "register_pub_cmd", "register_priv_cmd", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer"]
+__all__ = ["Plugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "from_utf8", "to_utf8"]
 
 _tehbot = None
 _modules = []
@@ -41,11 +41,48 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
             pass
 
 class Handler:
+    """This is where the help text goes."""
+
     def __init__(self):
         self.tehbot = _tehbot
         self.logtodb = True
-        self._quit = False
+        self.pub_allowed = True
+        self.priv_allowed = True
         self.initialize(self.tehbot.dbconn)
+
+    def handle(self, connection, event, extra, dbconn):
+        if irc.client.is_channel(event.target):
+            target = event.target
+            if not self.pub_allowed:
+                return
+        else:
+            target = event.source.nick
+            if not self.priv_allowed:
+                return
+
+        res = self.execute(connection, event, extra, dbconn)
+        if isinstance(res, basestring):
+            res = [("say", res)]
+        elif res is None:
+            res = [("none",)]
+
+        for r in res:
+            if r[0] == "say" or r[0] == "me":
+                globals()[r[0]](connection, target, r[1], dbconn if self.logtodb else None)
+            elif r[0] == "noauth":
+                say(connection, target, u"%s: unauthorized" % event.source.nick, dbconn if self.logtodb else None)
+                break
+            elif r[0] == "doauth":
+                extra["request_priv_called"] = True
+                return self.handle(connection, event, extra, dbconn)
+
+        self.finalize()
+
+    def privileged(self, connection, event):
+        return False
+
+    def request_priv(self, extra):
+        return [("noauth",)] if extra.has_key("request_priv_called") else [("doauth",)]
 
     def initialize(self, dbconn):
         pass
@@ -53,6 +90,7 @@ class Handler:
     def finalize(self):
         pass
 
+    """
     def valid_target(self, where):
         for network, channels in where:
             if network == self.connection.name and self.target in channels:
@@ -60,81 +98,27 @@ class Handler:
         return False
 
     def help(self, cmd):
-        plugin = self.tehbot.pub_cmd_handlers["help"]
+        plugin = self.tehbot.cmd_handlers["help"]
         plugin.handle(self.connection, self.target, self.nick, "help", cmd, self.dbconn)
+    """
 
 class ChannelHandler(Handler):
-    def handle(self, connection, channel, nick, msg, dbconn):
-        self.connection = connection
-        self.target = channel
-        self.nick = nick
-        self.msg = msg
-        self.dbconn = dbconn
-        say(self.connection, self.target, self.execute(), self.dbconn if self.logtodb else None)
+    pass
 
 class ChannelJoinHandler(Handler):
-    def handle(self, connection, channel, nick, dbconn):
-        self.connection = connection
-        self.target = channel
-        self.nick = nick
-        self.dbconn = dbconn
-        say(self.connection, self.target, self.execute(), self.dbconn if self.logtodb else None)
+    pass
 
 class Plugin(Handler):
     def __init__(self):
         Handler.__init__(self)
         self.parser = ThrowingArgumentParser(description=self.__doc__)
 
-    def handle(self, connection, target, nick, cmd, args, dbconn):
-        self.connection = connection
-        self.target = target
-        self.nick = nick
-        self.cmd = cmd
-        self.args = args
-        self.dbconn = dbconn
-        self.parser.prog = cmd
-        say(self.connection, self.target, self.execute(), self.dbconn if self.logtodb else None)
-        self.finalize()
-
-class Poller(Handler):
-    def _callme(self):
-        #myprint("%s called" % self.__class__.__name__)
-        tgts = []
-        if "__all__" in self.where():
-            for name in settings.connections:
-                params = settings.connections[name]
-                tgts.append((name, params.channels))
-        else:
-            tgts = self.where()
-
-        for network, channels in tgts:
-            conn = self.tehbot._get_connection(network)
-            if conn is None:
-                continue
-
-            self.tehbot.core.queue.put((self, (conn, channels)))
-
-    def _schedule(self, timeout):
-        if self._quit:
-            return
-
-        self.tehbot.core.reactor.scheduler.execute_after(timeout, self._callme)
-
-    def handle(self, connection, targets, dbconn):
-        self.connection = connection
-        self.targets = targets
-        self.dbconn = dbconn
-
-        try:
-            msg = self.execute()
-
-            for t in self.targets:
-                say(self.connection, t, msg, self.dbconn)
-        finally:
-            self._schedule(self.timeout())
-
 class Announcer(Handler):
-    def _callme(self):
+    def __init__(self):
+        Handler.__init__(self)
+        self.quit = False
+
+    def callme(self):
         #myprint("%s called" % self.__class__.__name__)
         tgts = []
         if "__all__" in self.where():
@@ -149,29 +133,41 @@ class Announcer(Handler):
             if conn is None:
                 continue
 
-            self.tehbot.core.queue.put((self, (conn, channels)))
+            self.tehbot.core.queue.put((self, (conn, None, {"channels":channels})))
 
-    def _schedule(self, at):
-        if self._quit:
+    def schedule(self, at):
+        if self.quit:
             return
 
-        self.tehbot.core.reactor.scheduler.execute_at(at, self._callme)
+        self.tehbot.core.reactor.scheduler.execute_at(at, self.callme)
 
-    def handle(self, connection, targets, dbconn):
-        self.connection = connection
-        self.targets = targets
-        self.dbconn = dbconn
-
+    def handle(self, connection, event, extra, dbconn):
         try:
-            msg = self.execute()
+            msg = self.execute(connection, event, extra, dbconn)
 
-            for t in self.targets:
-                say(self.connection, t, msg, self.dbconn)
+            for t in extra["channels"]:
+                say(connection, t, msg, dbconn)
         finally:
             tomorrow = datetime.date.today() + datetime.timedelta(days=1)
             at = int(tomorrow.strftime("%s")) + self.at()
             myprint("%s scheduled at %d" % (self.__class__.__name__, at))
-            self._schedule(at)
+            self.schedule(at)
+
+class Poller(Announcer):
+    def schedule(self, timeout):
+        if self.quit:
+            return
+
+        self.tehbot.core.reactor.scheduler.execute_after(timeout, self.callme)
+
+    def handle(self, connection, event, extra, dbconn):
+        try:
+            msg = self.execute(connection, event, extra, dbconn)
+
+            for t in extra["channels"]:
+                say(connection, t, msg, dbconn)
+        finally:
+            self.schedule(self.timeout())
 
 
 pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
@@ -236,32 +232,19 @@ def me(connection, target, msg, dbconn):
     if not target or not msg: return
     if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
     with connection.locks[target]:
-        logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), msg, True, dbconn if irc.client.is_channel(target) else None)
+        logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), msg, True, None)
         # b0rk for unicode
         #connection.action(target, msg)
         connection.privmsg(target, "\001ACTION " + msg + "\001")
 
-def register_op_cmd(cmd, plugin):
-    if cmd in _tehbot.operator_cmd_handlers:
-        myprint("Warning: Duplicate operator command \"%s\" defined!" % cmd)
-    else:
-        _tehbot.operator_cmd_handlers[cmd] = plugin
-
-def register_pub_cmd(cmd, plugin):
-    if cmd in _tehbot.pub_cmd_handlers:
-        myprint("Warning: Duplicate public command \"%s\" defined!" % cmd)
-    else:
-        _tehbot.pub_cmd_handlers[cmd] = plugin
-
-def register_priv_cmd(cmd, plugin):
-    if cmd in _tehbot.priv_cmd_handlers:
-        myprint("Warning: Duplicate private command \"%s\" defined!" % cmd)
-    else:
-        _tehbot.priv_cmd_handlers[cmd] = plugin
-
-def register_cmd(cmd, plugin):
-    register_pub_cmd(cmd, plugin)
-    register_priv_cmd(cmd, plugin)
+def register_plugin(cmd, plugin):
+    cmds = cmd if isinstance(cmd, list) else [cmd]
+    plugin.parser.prog = cmds[0]
+    for cmd in cmds:
+        if cmd in _tehbot.cmd_handlers:
+            myprint("Warning: Duplicate command \"%s\" defined!" % cmd)
+        else:
+            _tehbot.cmd_handlers[cmd] = plugin
 
 def register_channel_handler(plugin):
     _tehbot.channel_handlers.append(plugin)

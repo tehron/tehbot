@@ -5,7 +5,10 @@ import tehbot.settings as settings
 import prettytable
 
 class WolframAlphaPlugin(Plugin):
-    client = wolframalpha.Client(settings.wolframalpha_app_id)
+    def __init__(self):
+        Plugin.__init__(self)
+        self.parser.add_argument("query")
+        self.client = wolframalpha.Client(settings.wolframalpha_app_id)
 
     @staticmethod
     def remove_empty_columns(table, nr_cols):
@@ -40,16 +43,20 @@ class WolframAlphaPlugin(Plugin):
         s = pt.get_string()
         return s
 
-    def execute(self):
-        if not self.args:
-            return
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
 
         txt = "\x0303[Wolfram|Alpha]\x03 "
 
         try:
             res = None
             misc = []
-            for p in self.client.query(self.args).pods:
+            for p in self.client.query(pargs.query).pods:
                 if p.id == "Input":
                     inp = " | ".join(p.text.splitlines())
                 elif p.id == "Result" and p.text:
@@ -72,4 +79,4 @@ class WolframAlphaPlugin(Plugin):
 
         return plugins.shorten(txt, 450)
 
-register_cmd("wa", WolframAlphaPlugin())
+register_plugin(["wolframalpha", "wa"], WolframAlphaPlugin())

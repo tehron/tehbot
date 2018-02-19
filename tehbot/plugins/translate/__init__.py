@@ -8,21 +8,17 @@ import shlex
 class TranslatePlugin(Plugin):
     def __init__(self):
         Plugin.__init__(self)
-        self.parser = plugins.ThrowingArgumentParser(
-                prog="translate",
-                description=TranslatePlugin.__doc__
-        )
         self.parser.add_argument("words", metavar='W', nargs="+")
         self.parser.add_argument("-f", "--from-lang", default="auto")
         self.parser.add_argument("-t", "--to-lang", default="en")
 
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
         try:
-            pargs = self.parser.parse_args(self.args, decode=False)
+            pargs = self.parser.parse_args(extra["args"], decode=False)
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return "Error: %s" % str(e)
+            return u"Error: %s" % str(e)
 
         if not pargs.words:
             return
@@ -49,6 +45,4 @@ class TranslatePlugin(Plugin):
         except Exception as e:
             return "\x0304[Error]\x03 %s" % str(e)
 
-p = TranslatePlugin()
-register_cmd("translate", p)
-register_cmd("tr", p)
+register_plugin(["translate", "tr"], TranslatePlugin())

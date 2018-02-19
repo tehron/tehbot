@@ -1,8 +1,7 @@
 from tehbot.plugins import *
-import tehbot.plugins as plugins
 import tehbot.settings as settings
 
-class GreetingHandler(plugins.ChannelJoinHandler):
+class GreetingHandler(ChannelJoinHandler):
     def initialize(self, dbconn):
         with dbconn:
             dbconn.execute("create table if not exists Greetings(id integer primary key, text varchar)")
@@ -19,21 +18,21 @@ class GreetingHandler(plugins.ChannelJoinHandler):
                 (10, "Hola %s"),
             ])
 
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
         for network, channels in settings.plugins[self.__class__.__name__].where:
-            if self.connection.name != network or (self.target not in channels and channels != "__all__"):
+            if connection.name != network or (event.target not in channels and channels != "__all__"):
                 return
 
-        if self.nick in settings.plugins[self.__class__.__name__].no_greet:
+        if event.source.nick in settings.plugins[self.__class__.__name__].no_greet:
             return
 
-        if self.nick == "RichardBrook":
+        if event.source.nick == "RichardBrook":
             return "Oh look, it's RichardBrook!"
 
-        c = self.dbconn.execute("select text from Greetings order by random() limit 1")
+        c = dbconn.execute("select text from Greetings order by random() limit 1")
         res = c.fetchone()
 
         if res is not None:
-            return res[0] % (self.nick)
+            return res[0] % (event.source.nick)
 
 register_channel_join_handler(GreetingHandler())

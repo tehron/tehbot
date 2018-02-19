@@ -38,12 +38,12 @@ class StatsPlugin(Plugin):
         group.add_argument("-s", "--site", choices=sorted(set(sitemap.keys())))
         group.add_argument("-g", "--global", action="store_true")
 
-    def execute(self):
-        self.parser.set_defaults(user_or_rank=self.nick)
-        self.parser.set_defaults(site=self.target[1:] if irc.client.is_channel(self.target) else self.target)
+    def execute(self, connection, event, extra, dbconn):
+        self.parser.set_defaults(user_or_rank=event.source.nick)
+        self.parser.set_defaults(site=event.target[1:] if irc.client.is_channel(event.target) else event.target)
 
         try:
-            pargs = self.parser.parse_args(self.args)
+            pargs = self.parser.parse_args(extra["args"])
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
             user, rank = None, None
@@ -54,7 +54,7 @@ class StatsPlugin(Plugin):
             site = pargs.site.lower()
             glob = vars(pargs)["global"]
         except Exception as e:
-            return "Error: %s" % str(e)
+            return u"Error: %s" % str(e)
 
         if glob:
             wcurl = "https://www.wechall.net/wechall.php?%s"
@@ -70,7 +70,7 @@ class StatsPlugin(Plugin):
         globals()[module.__name__] = module
         return module.stats(user, rank)
 
-register_cmd("stats", StatsPlugin())
+register_plugin("stats", StatsPlugin())
 
 class SolversPlugin(Plugin):
     """Shows how many solved a challenge."""
@@ -82,11 +82,11 @@ class SolversPlugin(Plugin):
         self.parser.add_argument("-s", "--site", choices=sorted(set(sitemap.keys())))
         self.parser.add_argument("-u", "--user")
 
-    def execute(self):
-        self.parser.set_defaults(site=self.target[1:] if irc.client.is_channel(self.target) else self.target)
+    def execute(self, connection, event, extra, dbconn):
+        self.parser.set_defaults(site=event.target[1:] if irc.client.is_channel(event.target) else event.target)
 
         try:
-            pargs = self.parser.parse_args(self.args)
+            pargs = self.parser.parse_args(extra["args"])
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
             challenge_name_or_nr = pargs.challenge_name_or_nr
@@ -95,10 +95,10 @@ class SolversPlugin(Plugin):
             site = pargs.site.lower()
             user = pargs.user
         except Exception as e:
-            return "Error: %s" % str(e)
+            return u"Error: %s" % str(e)
 
         if not sitemap.has_key(site):
-            return "Unknown site: %s" % site
+            return u"Unknown site: %s" % site
 
         module = importlib.import_module("." + sitemap[site], path)
         globals()[module.__name__] = module
@@ -111,17 +111,16 @@ class SolvedHandler(ChannelHandler):
         self.regex.append(re.compile(r'''\s*ok\s+tehbot,\s*has\s+(\w+)\s+solved\s+["']?(.+?)["']?\s*\??$''', re.I))
         self.regex.append(re.compile(r'''\s*ok\s+tehbot,\s*did\s+(\w+)\s+solve\s+["']?(.+?)["']?\s*\??$''', re.I))
 
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
         for r in self.regex:
-            match = r.search(self.msg)
+            match = r.search(extra["msg"])
             if match is not None:
                 user = match.group(1)
                 chall = match.group(2)
 
-                print user, chall
-                plugin = self.tehbot.pub_cmd_handlers["solvers"]
-                plugin.handle(self.connection, self.target, self.nick, "solvers", '-u %s "%s"' % (user, chall), self.dbconn)
+                plugin = self.tehbot.cmd_handlers["solvers"]
+                plugin.handle(connection, event, {"args":'-u %s "%s"' % (user, chall)}, dbconn)
                 break
 
-register_cmd("solvers", SolversPlugin())
+register_plugin("solvers", SolversPlugin())
 register_channel_handler(SolvedHandler())

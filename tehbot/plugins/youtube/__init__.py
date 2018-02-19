@@ -1,4 +1,3 @@
-print "youtube init"
 import tehbot.plugins as plugins
 import urllib2
 import json
@@ -16,10 +15,10 @@ regex = re.compile("youtube.com/watch(\?|\?.*&|\?.*&amp;)v=([0-9a-zA-Z+-_]{11})"
 info_cache = {}
 
 class YoutubeHandler(plugins.ChannelHandler):
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
         match = None
         try:
-            match = regex.search(self.msg)
+            match = regex.search(extra["msg"])
         except:
             traceback.print_exc()
 
@@ -34,7 +33,6 @@ class YoutubeHandler(plugins.ChannelHandler):
             req = urllib2.Request(searchurl % (settings.youtube_api_key, vid))
             req.add_header("Referer", settings.youtube_referer)
             resp = urllib2.urlopen(req).read()
-            print resp
             resp = json.loads(resp)
             entry = resp["items"][0]
             name = entry["snippet"]["title"]

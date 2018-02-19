@@ -1,15 +1,14 @@
 from tehbot.plugins import *
 import tehbot.plugins as plugins
-import tehbot.settings as settings
 import re
 
-class RegexReplaceHandler(plugins.ChannelHandler):
+class RegexReplaceHandler(ChannelHandler):
     regex = re.compile(r'^s/(.*?)/(.*?)(/(.+))?$', re.I)
 
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
         match = None
         try:
-            match = self.regex.match(self.msg)
+            match = self.regex.match(extra["msg"])
         except:
             pass
 
@@ -25,17 +24,17 @@ class RegexReplaceHandler(plugins.ChannelHandler):
             user = ""
 
         if user == "":
-            user = self.nick
+            user = event.source.nick
 
         try:
             regex = re.compile(search, re.I)
         except:
             return
 
-        c = self.dbconn.execute("select message from Messages where server=? and channel=? and nick=? order by ts desc limit 2", (self.connection.name, self.target, user))
+        c = dbconn.execute("select message from Messages where server=? and channel=? and nick=? order by ts desc limit 2", (connection.name, event.target, user))
         res = c.fetchone()
 
-        if user == self.nick:
+        if user == event.source.nick:
             res = c.fetchone()
 
         if res is None:
@@ -45,6 +44,6 @@ class RegexReplaceHandler(plugins.ChannelHandler):
         msg = regex.sub(replace, msg)
         msg = plugins.myfilter(msg)
         msg = plugins.shorten(msg, 450)
-        return "%s: %s" % (user, msg)
+        return u"%s: %s" % (user, msg)
 
-plugins.register_channel_handler(RegexReplaceHandler())
+register_channel_handler(RegexReplaceHandler())

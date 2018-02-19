@@ -4,6 +4,8 @@ import os
 import time
 
 class BotStatsPlugin(Plugin):
+    """Shows various information about tehbot"""
+
     @staticmethod
     def format_time(ts):
         years = int(ts / 31536000)
@@ -34,8 +36,14 @@ class BotStatsPlugin(Plugin):
         out, err = Popen(["git", "log", "-n", "1"], stdout=PIPE).communicate()
         return re.search(r'([0-9A-Fa-f]{40})', out).group(0)
 
-    def execute(self):
-        """Shows various information about tehbot"""
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
+
         txt = "\x0303[tehbot]\x03 "
 
         stats = []
@@ -51,4 +59,4 @@ class BotStatsPlugin(Plugin):
 
         return txt + ", ".join(stats)
 
-register_cmd("botstats", BotStatsPlugin())
+register_plugin("botstats", BotStatsPlugin())

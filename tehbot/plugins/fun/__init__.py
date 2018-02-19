@@ -1,139 +1,143 @@
 from tehbot.plugins import *
-import tehbot.plugins as plugins
 import urllib
 from random import *
 import shlex
 
 class BlamePlugin(Plugin):
-    def execute(self):
-        space = u"\u0455paceone"
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
+
+        space = u"spaceone"
         goats = zip((space for one in range(23)), 42 * [ reduce(random, [], space) ])
         shuffle(goats)
         goats.sort(key=lambda x: random())
         shuffle(goats)
         scapegoat = goats[randint(0, len(goats) - 1)][int(1337 * random()) % 2]
-        return "I blame %s." % scapegoat
+        return u"I blame %s." % scapegoat
 
-register_cmd("blame", BlamePlugin())
+register_plugin("blame", BlamePlugin())
 
 class FamPlugin(Plugin):
     """This help at fam"""
 
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
+
         return ".quoet fom"
 
-register_pub_cmd("fam", FamPlugin())
-import tehbot.plugins as plugins
+register_plugin("fam", FamPlugin())
 
-class PunsPlugin(Plugin):
-    """Prints a random pun from jhype.co.uk"""
-
-    def execute(self):
-        page = urllib.urlopen("http://jhype.co.uk/puns.php").read()
-        init = False
-        puns = []
-        currpun = []
-        for line in page.splitlines():
-            if line.startswith('<p class="emph2">'):
-                init = True
-                if currpun:
-                    puns.append("\n".join(currpun))
-                    currpun = []
-                continue
-            if init and line.find("</div>") > -1:
-                init = False
-                break
-            if init:
-                if line.startswith("<br />"):
-                    if currpun:
-                        puns.append("\n".join(currpun))
-                        currpun = []
-                else:
-                    currpun.append(line.replace("<br />", ""))
-        if currpun:
-            puns.append("\n".join(currpun))
-
-        shuffle(puns)
-        if puns:
-            return puns[0]
-
-register_cmd("pun", PunsPlugin())
 
 class LiarsPlugin(Plugin):
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
+
         return "roun, Nimda3, neoxquick, dloser, thefinder"
 
-#register_cmd("liars", LiarsPlugin())
+#register_plugin("liars", LiarsPlugin())
 
 class PricksPlugin(Plugin):
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
+
         return "dloser"
 
-#register_cmd("pricks", PricksPlugin())
+#register_plugin("pricks", PricksPlugin())
 
 
 class BeerPlugin(Plugin):
     """Serves the best beer on IRC (way better than Lamb3's!)"""
 
-    def query_beers(self):
-        c = self.dbconn.execute("select value from BeerPlugin where key='beers'")
+    def query_beers(self, dbconn):
+        c = dbconn.execute("select value from BeerPlugin where key='beers'")
         res = c.fetchone()
         if res is None:
             return 0
         beers = int(res[0])
 
         if beers > 0:
-            with self.dbconn:
-                self.dbconn.execute("update BeerPlugin set value=? where key='beers'", (str(beers - 1), ))
+            with dbconn:
+                dbconn.execute("update BeerPlugin set value=? where key='beers'", (str(beers - 1), ))
 
         return beers
 
-    def refill(self, beers=10):
-        with self.dbconn:
-            self.dbconn.execute("update BeerPlugin set value=? where key='beers'", (str(beers), ))
+    def refill(self, dbconn, beers=10):
+        with dbconn:
+            dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(beers), ))
 
     def __init__(self):
         Plugin.__init__(self)
-        self.parser.add_argument("recpt", nargs="?")
-        self.parser.add_argument("--refill", action="store_true")
+        group = self.parser.add_mutually_exclusive_group()
+        group.add_argument("recpt", nargs="?")
+        group.add_argument("--refill", action="store_true")
 
-    def execute(self):
-        self.parser.set_defaults(recpt=self.nick)
+    def execute(self, connection, event, extra, dbconn):
+        self.parser.set_defaults(recpt=event.source.nick)
 
         try:
-            pargs = self.parser.parse_args(self.args)
+            pargs = self.parser.parse_args(extra["args"])
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % e.message
+            return u"Error: %s" % str(e)
 
         if pargs.refill:
-            self.refill()
+            self.refill(dbconn)
             return u"Ok, beer refilled. That was easy, hu?"
 
-        beers = self.query_beers()
+        beers = self.query_beers(dbconn)
         if beers == 0:
-            return plugins.me(self.connection, self.target, u"has no beer left :(", self.dbconn)
+            return [("me", u"has no beer left :(")]
 
-        if pargs.recpt == self.nick:
-            plugins.me(self.connection, self.target, u"passes 1 of %d bottles of cold beer around to %s" % (beers, self.nick), self.dbconn)
-        else:
-            plugins.me(self.connection, self.target, u"and %s pass 1 of %d bottles of cold beer around to %s" % (self.nick, beers, pargs.recpt), self.dbconn)
+        if pargs.recpt == event.source.nick:
+            return [("me", u"passes 1 of %d bottles of cold beer around to %s" % (beers, event.source.nick))]
 
-register_cmd("beer", BeerPlugin())
+        return [("me", u"and %s pass 1 of %d bottles of cold beer around to %s" % (event.source.nick, beers, pargs.recpt))]
+
+register_plugin("beer", BeerPlugin())
 
 
 from socket import *
 import string
 import time
+import tehbot.plugins as plugins
 class BOSPlugin(Plugin):
     """Can you solve The BrownOS? [WeChall]"""
-    def execute(self):
-        if not self.args:
-            return
+    def __init__(self):
+        Plugin.__init__(self)
+        self.parser.add_argument("data", nargs=1)
+
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
+
         sock = socket()
         sock.connect(("wc3.wechall.net", 61221))
-        data = "".join(self.args).lower()
+        data = "".join(pargs.data[0]).lower()
         data = data.replace("qd", "05 00 FD 00 05 00 FD 03 FD FE FD 02 FD FE FD FE")
         #data = filter(lambda x: x in string.hexdigits, data)
         data = data.replace(" ", "")
@@ -163,7 +167,7 @@ class BOSPlugin(Plugin):
 
         return plugins.shorten(ret, 450)
 
-register_cmd("bos", BOSPlugin())
+register_plugin("bos", BOSPlugin())
 
 
 #shotmap = {}
@@ -183,25 +187,28 @@ register_cmd("bos", BOSPlugin())
     #plugins.say_nick(connection, channel, nick, "| |  AH!")
     #plugins.say_nick(connection, channel, nick, "+-+  Want another one, %s?" % nick)
 #
-#plugins.register_cmd("shots", shots)
-#plugins.register_cmd("shoot", shoot)
+#plugins.register_plugin("shots", shots)
+#plugins.register_plugin("shoot", shoot)
 
 class DecidePlugin(Plugin):
-    def execute(self):
-        if not self.args:
-            return
+    def __init__(self):
+        Plugin.__init__(self)
+        self.parser.add_argument("choices", nargs="+")
 
-        vals = self.args.split(" or ")
-        if len(vals) > 1:
-            return choice(vals).strip()
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
 
-        vals = self.args.split("||")
-        if len(vals) > 1:
-            return choice(vals).strip()
+        if len(pargs.choices) == 1:
+            return choice(["Yes", "No"])
 
-        return choice(["Yes", "No"])
+        return choice(pargs.choices)
 
-register_cmd("decide", DecidePlugin())
+register_plugin("decide", DecidePlugin())
 
 
 class HugPlugin(Plugin):
@@ -217,13 +224,13 @@ class HugPlugin(Plugin):
         self.parser.add_argument("--from-behind", action="store_true")
         self.parser.add_argument("--surprise-me", action="store_true")
 
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
         try:
-            pargs = self.parser.parse_args(self.args)
+            pargs = self.parser.parse_args(extra["args"])
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % e.message
+            return u"Error: %s" % str(e)
 
         options = []
 
@@ -252,18 +259,22 @@ class HugPlugin(Plugin):
         if pargs.with_a_certain_something:
             msg += " with a certain something"
 
-        return plugins.me(self.connection, self.target, msg, self.dbconn)
+        return [("me", msg)]
 
-register_cmd("hug", HugPlugin())
-
-class MirrorPlugin(Plugin):
-    def execute(self):
-        return "tehron" if self.nick == "dloser" else "dloser"
-
-register_cmd("mirror", MirrorPlugin())
+register_plugin("hug", HugPlugin())
 
 class RoflcopterPlugin(Plugin):
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
+        if not self.privileged(connection, event):
+            return self.request_priv(extra)
+
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
+
         return """    ROFL:ROFL:ROFL:ROFL
          ___^___ _
  L    __/      [] \\
@@ -272,15 +283,15 @@ LOL===__           \\
               I   I
           ----------/"""
 
-register_op_cmd("roflcopter", RoflcopterPlugin())
+register_plugin("roflcopter", RoflcopterPlugin())
 
 
 
 
 
-class DestinyHandler(plugins.ChannelJoinHandler):
-    def execute(self):
-        if self.nick != "destiny":
+class DestinyHandler(ChannelJoinHandler):
+    def execute(self, connection, event, extra, dbconn):
+        if event.source.nick != "destiny":
             return
 
         return ">> https://www.youtube.com/watch?v=fNmDgRwNFsI <<"
@@ -289,17 +300,28 @@ class DestinyHandler(plugins.ChannelJoinHandler):
 
 
 
-class RouletteHandler(plugins.ChannelHandler):
-    def execute(self):
-        if self.msg.find("BANG") > -1 or self.msg.find("BOOM") > -1:
+class RouletteHandler(ChannelHandler):
+    def execute(self, connection, event, extra, dbconn):
+        msg = extra["msg"]
+        if msg.find("BANG") > -1 or msg.find("BOOM") > -1:
             return "!roulette"
 
-plugins.register_channel_handler(RouletteHandler())
+#plugins.register_channel_handler(RouletteHandler())
 
 
 
 class WixxerdPlugin(Plugin):
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
+        if not self.privileged(connection, event):
+            return self.request_priv(extra)
+
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
+
         return r"""       .##...##..######..##..##..##..##..######..#####...#####..
        .##...##....##.....####....####...##......##..##..##..##.
        .##.#.##....##......##......##....####....#####...##..##.
@@ -323,14 +345,14 @@ class WixxerdPlugin(Plugin):
                                      |        `.__,
                                      \_________.-"""
 
-register_op_cmd("wixxerd", WixxerdPlugin())
+register_plugin("wixxerd", WixxerdPlugin())
 
 
 import re
 import tehbot.settings as settings
-class BeerGrabber(plugins.ChannelHandler):
-    def execute(self):
-        match = re.search(r'and (\w+) pass (\d+) of \d+ bottles of cold beer around to (\w+)\.', self.msg)
+class BeerGrabber(ChannelHandler):
+    def execute(self, connection, event, extra, dbconn):
+        match = re.search(r'and (\w+) pass (\d+) of \d+ bottles of cold beer around to (\w+)\.', extra["msg"])
         if match is None:
             return
 
@@ -339,13 +361,13 @@ class BeerGrabber(plugins.ChannelHandler):
         who = match.group(3)
 
         if cnt > 0 and who == settings.bot_name:
-            with self.dbconn:
-                self.dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(cnt), ))
+            with dbconn:
+                dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(cnt), ))
 
-            c = self.dbconn.execute("select value from BeerPlugin where key='beers'")
+            c = dbconn.execute("select value from BeerPlugin where key='beers'")
             res = c.fetchone()
             beers = int(res[0])
 
-            return "Thanks, %s! Beer count is %d now." % (donor, beers)
+            return u"Thanks, %s, I put it into my store! Beer count is %d now." % (donor, beers)
 
 plugins.register_channel_handler(BeerGrabber())

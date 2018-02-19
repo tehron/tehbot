@@ -1,5 +1,4 @@
 from tehbot.plugins import *
-import tehbot.plugins as plugins
 import urllib2
 import urllib
 import lxml.html
@@ -11,22 +10,16 @@ class UrbanDictionaryPlugin(Plugin):
 
     def __init__(self):
         Plugin.__init__(self)
-        self.parser = plugins.ThrowingArgumentParser(
-            prog="wtf",
-            description=UrbanDictionaryPlugin.__doc__
-        )
         self.parser.add_argument("search_term", nargs="+")
         self.parser.add_argument("-n", "--nr", type=int, help="request definition number NR")
 
-    def execute(self):
+    def execute(self, connection, event, extra, dbconn):
         try:
-            pargs = self.parser.parse_args(shlex.split(plugins.to_utf8(self.args or "")))
+            pargs = self.parser.parse_args(extra["args"])
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
-        except plugins.ArgumentParserError as e:
-            return "error: %s" % str(e)
-        except (SystemExit, NameError, ValueError):
-            return self.help(self.cmd)
+        except Exception as e:
+            return u"Error: %s" % str(e)
 
         url = "http://api.urbandictionary.com/v0/define?%s"
 
@@ -62,6 +55,4 @@ class UrbanDictionaryPlugin(Plugin):
 
         return prefix + txt
 
-p = UrbanDictionaryPlugin()
-register_cmd("wtf", p)
-register_cmd("define", p)
+register_plugin(["wtf", "define"], UrbanDictionaryPlugin())

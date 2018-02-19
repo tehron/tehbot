@@ -11,19 +11,27 @@ def get_text(tree, xpath):
     return "\n".join(e.text_content() for e in tree.xpath(xpath))
 
 def wikify(title):
-    return urllib.quote(title.replace(" ", "_"))
+    return urllib.quote(to_utf8(title.replace(" ", "_")))
 
 class WikipediaPlugin(Plugin):
     """Looks up a search term on Wikipedia"""
 
-    def execute(self):
-        if not self.args:
-            return
+    def __init__(self):
+        Plugin.__init__(self)
+        self.parser.add_argument("term")
+
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
 
         data = {
             "action" : "query",
             "list" : "search",
-            "srsearch" : plugins.to_utf8(self.args),
+            "srsearch" : plugins.to_utf8(pargs.term),
             "srlimit" : 1,
             "srprop" : "",
             "format" : "json",
@@ -53,4 +61,4 @@ class WikipediaPlugin(Plugin):
         txt = "%s (%s)\n%s" % (title, pageurl, plugins.shorten(content, 300))
         return prefix + txt
 
-register_cmd("wiki", WikipediaPlugin())
+register_plugin("wiki", WikipediaPlugin())

@@ -7,12 +7,20 @@ tmdb.API_KEY = settings.tmdb_api_key
 class MoviePlugin(Plugin):
     """Shows information about movies from themoviedb.org"""
 
-    def execute(self):
-        if not self.args:
-            return self.help(self.cmd)
+    def __init__(self):
+        Plugin.__init__(self)
+        self.parser.add_argument("movie")
+
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
 
         id = -1
-        res = tmdb.Search().movie(query=self.args)
+        res = tmdb.Search().movie(query=pargs.movie)
         if res["total_results"] > 0:
             id = res["results"][0]["id"]
 
@@ -34,15 +42,25 @@ class MoviePlugin(Plugin):
 
         return txt
 
+register_plugin("movie", MoviePlugin())
+
 class TvPlugin(Plugin):
     """Shows information about TV series from themoviedb.org"""
 
-    def execute(self):
-        if not self.args:
-            return self.help(self.cmd)
+    def __init__(self):
+        Plugin.__init__(self)
+        self.parser.add_argument("show")
+
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
 
         id = -1
-        res = tmdb.Search().tv(query=self.args)
+        res = tmdb.Search().tv(query=pargs.show)
         if res["total_results"] > 0:
             id = res["results"][0]["id"]
 
@@ -66,5 +84,4 @@ class TvPlugin(Plugin):
 
         return txt
 
-register_cmd("movie", MoviePlugin())
-register_cmd("tv", TvPlugin())
+register_plugin("tv", TvPlugin())
