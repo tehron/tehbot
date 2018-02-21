@@ -68,12 +68,15 @@ class PricksPlugin(Plugin):
 class BeerPlugin(Plugin):
     """Serves the best beer on IRC (way better than Lamb3's!)"""
 
-    def query_beers(self, dbconn):
+    def beers(self, dbconn):
         c = dbconn.execute("select value from BeerPlugin where key='beers'")
         res = c.fetchone()
         if res is None:
             return 0
-        beers = int(res[0])
+        return int(res[0])
+
+    def get_beer(self, dbconn):
+        beers = self.beers(dbconn)
 
         if beers > 0:
             with dbconn:
@@ -88,11 +91,12 @@ class BeerPlugin(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         group = self.parser.add_mutually_exclusive_group()
-        group.add_argument("recpt", nargs="?")
+        group.add_argument("recipient", nargs="?")
         group.add_argument("--refill", action="store_true")
+        group.add_argument("--status", action="store_true")
 
     def execute(self, connection, event, extra, dbconn):
-        self.parser.set_defaults(recpt=event.source.nick)
+        self.parser.set_defaults(recipient=event.source.nick)
 
         try:
             pargs = self.parser.parse_args(extra["args"])
@@ -101,18 +105,38 @@ class BeerPlugin(Plugin):
         except Exception as e:
             return u"Error: %s" % str(e)
 
+        if pargs.status:
+            beers = self.beers(dbconn)
+            if beers < 1:
+                msg = u"has no beer left. :("
+            elif beers == 1:
+                msg = u"has one beer left."
+            else:
+                msg = u"has %d beers left." % beers
+            return [("me", msg)]
+
         if pargs.refill:
+            if not self.privileged(connection, event):
+                return self.request_priv(extra)
+
             self.refill(dbconn)
             return u"Ok, beer refilled. That was easy, hu?"
 
-        beers = self.query_beers(dbconn)
+        beers = self.get_beer(dbconn)
         if beers == 0:
-            return [("me", u"has no beer left :(")]
+            return [("me", u"has no beer left. :(")]
 
-        if pargs.recpt == event.source.nick:
-            return [("me", u"passes 1 of %d bottles of cold beer around to %s" % (beers, event.source.nick))]
-
-        return [("me", u"and %s pass 1 of %d bottles of cold beer around to %s" % (event.source.nick, beers, pargs.recpt))]
+        if pargs.recipient == event.source.nick:
+            if beers == 1:
+                msg = u"passes the last bottle of cold beer around to %s." % event.source.nick
+            else:
+                msg = u"passes 1 of %d bottles of cold beer around to %s." % (beers, event.source.nick)
+        else:
+            if beers == 1:
+                msg = u"and %s pass the last bottle of cold beer around to %s." % (event.source.nick, pargs.recipient)
+            else:
+                msg = u"and %s pass 1 of %d bottles of cold beer around to %s." % (event.source.nick, beers, pargs.recipient)
+        return [("me", msg)]
 
 register_plugin("beer", BeerPlugin())
 
