@@ -68,7 +68,7 @@ class TehbotImpl:
         self.dbconn = sqlite3.connect(self.dbfile)
         self.mainqueue = Queue()
         self.privusers = defaultdict(set)
-        self.privqueue = Queue()
+        self.privqueue = defaultdict(Queue)
 
     def collect_plugins(self):
         plugins.collect()
@@ -233,11 +233,16 @@ class Dispatcher:
                 self.tehbot.privusers[connection].add(nick)
                 break
 
+    def on_endofwhois(self, connection, event):
+        nick = event.arguments[0]
+
+        pq = self.tehbot.privqueue[connection, nick]
         while True:
             try:
-                plugin, args = self.tehbot.privqueue.get(False)
+                plugin, args = pq.get(False)
                 q = self.tehbot.mainqueue if plugin.mainthreadonly else self.tehbot.queue
                 q.put((plugin, args))
+                pq.task_done()
             except Empty:
                 break
 

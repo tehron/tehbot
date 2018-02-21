@@ -74,7 +74,7 @@ class Handler:
                 break
             elif r[0] == "doauth":
                 extra["request_priv_called"] = True
-                self.tehbot.privqueue.put((self, (connection, event, extra)))
+                self.tehbot.privqueue[connection, event.source.nick].put((self, (connection, event, extra)))
                 connection.whois(event.source.nick)
                 return
 
