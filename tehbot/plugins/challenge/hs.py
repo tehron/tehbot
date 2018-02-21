@@ -6,6 +6,7 @@ import re
 
 url1 = "http://www.happy-security.de/utilities/hotlink/userscoring.php?username=%s"
 url2 = "http://www.happy-security.de/?modul=hacking-zone&action=highscore&start=%s&level_id="
+url3 = "http://www.happy-security.de/index.php?modul=hacking-zone&action=highscore_details&user=%s"
 
 def stats(user, rank):
     if rank:
@@ -67,12 +68,21 @@ def parse_challs(url):
     return challs
 
 def get_last_solvers(url):
-    print "foobar", url
     tree = lxml.html.parse(urllib2.urlopen(url))
     solvers = []
     for p in tree.xpath("//td[@class='middle']//table[@class='mtable']/tr/td[2]/a"):
         solvers.append(p.text_content().strip())
     return solvers
+
+def solved(user, challenge_name):
+    tree = lxml.html.parse(url3 % plugins.to_latin1(user))
+    for cat in tree.xpath("//td[@class='middle']//table[@class='mtable']"):
+        for row in cat.xpath("tr"):
+            chall_link = row.xpath("td[2]//a[1]")
+            title = row.xpath("td[8]//img/@title")
+            if chall_link and title and chall_link[0].text_content() == challenge_name:
+                return title[0].lower().find("solved=yes") > -1
+    return False
 
 def solvers(challenge_name_or_nr, user=None):
     prefix = "\x0303[Happy-Security]\x03 "
@@ -97,13 +107,16 @@ def solvers(challenge_name_or_nr, user=None):
     txt = "No such challenge."
 
     if name:
-        txt = "Challenge Nr. %d, %s, hasn't been solved by anyone yet." % (nr, name)
+        if user is not None:
+            txt = "Challenge Nr. %d, %s, has%s been solved by %s." % (nr, name, "" if solved(user, name) else " not", user)
+        else:
+            txt = "Challenge Nr. %d, %s, hasn't been solved by anyone yet." % (nr, name)
 
-        if solvers:
-            cnt = solvers
-            txt = "Challenge Nr. %d, %s, has been solved by %d user%s." % (nr, name, cnt, "" if cnt == 1 else "s")
-            last_solvers = get_last_solvers(url)
-            if cnt > 0 and last_solvers:
-                txt += " Last by %s." % ", ".join(last_solvers[:5])
+            if solvers:
+                cnt = solvers
+                txt = "Challenge Nr. %d, %s, has been solved by %d user%s." % (nr, name, cnt, "" if cnt == 1 else "s")
+                last_solvers = get_last_solvers(url)
+                if cnt > 0 and last_solvers:
+                    txt += " Last by %s." % ", ".join(last_solvers[:5])
 
     return prefix + txt
