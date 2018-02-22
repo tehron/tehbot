@@ -108,8 +108,8 @@ class SolvedHandler(ChannelHandler):
     def __init__(self):
         ChannelHandler.__init__(self)
         self.regex = []
-        self.regex.append(re.compile(r'''\s*ok\s+tehbot,\s*has\s+(\w+)\s+solved\s+["']?(.+?)["']?\s*\??$''', re.I))
-        self.regex.append(re.compile(r'''\s*ok\s+tehbot,\s*did\s+(\w+)\s+solve\s+["']?(.+?)["']?\s*\??$''', re.I))
+        self.regex.append(re.compile(r'''^ok\s+tehbot,\s*has\s+(?P<who>\w+)\s+solved\s+(?P<chall>\w+|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\w+|"[^"]+"|'[^']+'))?\s*\??$''', re.I))
+        self.regex.append(re.compile(r'''^ok\s+tehbot,\s*did\s+(?P<who>\w+)\s+solve\s+(?P<chall>\w+|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\w+|"[^"]+"|'[^']+'))?\s*\??$''', re.I))
 
     def execute(self, connection, event, extra, dbconn):
         for r in self.regex:
@@ -117,9 +117,13 @@ class SolvedHandler(ChannelHandler):
             if match is not None:
                 user = match.group(1)
                 chall = match.group(2)
+                site = match.group(3)
 
                 plugin = self.tehbot.cmd_handlers["solvers"]
-                plugin.handle(connection, event, {"args":'-u %s "%s"' % (user, chall)}, dbconn)
+                args = '-u %s %s' % (user, chall)
+                if site is not None:
+                    args = args + " -s %s" % site
+                plugin.handle(connection, event, {"args":args}, dbconn)
                 break
 
 register_plugin("solvers", SolversPlugin())
