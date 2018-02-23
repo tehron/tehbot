@@ -42,12 +42,13 @@ class WwddPlugin(Plugin):
             return self.request_priv(extra)
 
         if what.find("%s") < 0:
-            return "you forgot to add %s. that wouldn't have happened to dloser..."
+            return "Error: You forgot to add %s. that wouldn't have happened to dloser..."
 
         if dbconn.execute("select 1 from WwddPlugin where text like ?", ("%%%s%%" % what,)).fetchone() is not None:
-            return "what has already been added!"
+            return "Error: That what has already been added!"
 
         with dbconn:
-            dbconn.execute("insert into WwddPlugin values(null, ?)", (what,))
+            if dbconn.execute("insert into WwddPlugin values(null, ?)", (what,)).rowcount != 1:
+                return "Error: Query failed. :("
 
 register_plugin("wwdd", WwddPlugin())
