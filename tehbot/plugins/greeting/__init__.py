@@ -36,3 +36,41 @@ class GreetingHandler(ChannelJoinHandler):
             return res[0] % (event.source.nick)
 
 register_channel_join_handler(GreetingHandler())
+
+class GreetPlugin(Plugin):
+    def __init__(self):
+        Plugin.__init__(self)
+        group = self.parser.add_mutually_exclusive_group(required=True)
+        group.add_argument("who", nargs="?")
+        group.add_argument("-a", "--add", metavar="greeting")
+
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % str(e)
+
+        if pargs.add:
+            if not self.privileged(connection, event):
+                return self.request_priv(extra)
+
+            greeting = pargs.add
+            if greeting.find("%s") < 0:
+                return "Error: You forgot to add %s."
+
+            if dbconn.execute("select 1 from Greetings where text like ?", ("%%%s%%" % greeting,)).fetchone() is not None:
+                return "Error: That greeting has already been added!"
+
+            with dbconn:
+                if dbconn.execute("insert into WwddPlugin values(null, ?)", (greeting,)).rowcount != 1:
+                    return "Error: Query failed. :("
+        else:
+            c = dbconn.execute("select text from Greetings order by random() limit 1")
+            res = c.fetchone()
+
+            if res is not None:
+                return res[0] % (pargs.who)
+
+register_plugin("greet", GreetPlugin())
