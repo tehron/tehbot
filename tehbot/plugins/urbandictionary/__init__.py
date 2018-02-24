@@ -1,4 +1,5 @@
 from tehbot.plugins import *
+import tehbot.plugins as plugins
 import urllib2
 import urllib
 import lxml.html
@@ -48,7 +49,8 @@ class UrbanDictionaryPlugin(Plugin):
             if entry.has_key("example"):
                 example = "\n".join(entry["example"].splitlines())
                 txt += "\n\x02Example:\x0f " + plugins.shorten(example, 300)
-        except:
+        except Exception as e:
+            print e
             if term == "dloser":
                 return prefix + "The unstabliest D-System ever!"
             return prefix + "Definition not available."
