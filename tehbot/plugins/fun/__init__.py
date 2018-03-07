@@ -39,6 +39,21 @@ register_plugin("fam", FamPlugin())
 
 
 class LiarsPlugin(Plugin):
+    def __init__(self):
+        Plugin.__init__(self)
+        self.parser.add_argument("-a", "--add", metavar="who")
+
+    def initialize(self, dbconn):
+        with dbconn:
+            dbconn.execute("create table if not exists LiarsPlugin(id integer primary key, liar varchar)")
+            dbconn.executemany("insert or ignore into LiarsPlugin values(?, ?)", [
+                (1, "roun"),
+                (2, "Nimda3"),
+                (3, "neoxquick"),
+                (4, "dloser"),
+                (5, "thefinder"),
+            ])
+
     def execute(self, connection, event, extra, dbconn):
         try:
             pargs = self.parser.parse_args(extra["args"])
@@ -47,9 +62,23 @@ class LiarsPlugin(Plugin):
         except Exception as e:
             return u"Error: %s" % str(e)
 
-        return "roun, Nimda3, neoxquick, dloser, thefinder"
+        if pargs.add is None:
+            c = dbconn.execute("select liar from LiarsPlugin order by id")
+            return ", ".join(a for (a,) in c.fetchall())
 
-#register_plugin("liars", LiarsPlugin())
+        who = pargs.add
+        if not self.privileged(connection, event):
+            return self.request_priv(extra)
+
+        if dbconn.execute("select 1 from LiarsPlugin where liar = ?", (who,)).fetchone() is not None:
+            return "Error: That liar has already been added!"
+
+        with dbconn:
+            if dbconn.execute("insert into LiarsPlugin values(null, ?)", (who,)).rowcount != 1:
+                return "Error: Query failed. :("
+
+
+register_plugin("liars", LiarsPlugin())
 
 class PricksPlugin(Plugin):
     def execute(self, connection, event, extra, dbconn):
