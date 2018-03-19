@@ -80,7 +80,19 @@ class LiarsPlugin(Plugin):
 
 register_plugin("liars", LiarsPlugin())
 
+
 class PricksPlugin(Plugin):
+    def __init__(self):
+        Plugin.__init__(self)
+        self.parser.add_argument("-a", "--add", metavar="who")
+
+    def initialize(self, dbconn):
+        with dbconn:
+            dbconn.execute("create table if not exists PricksPlugin(id integer primary key, prick varchar)")
+            dbconn.executemany("insert or ignore into PricksPlugin values(?, ?)", [
+                (1, "dloser"),
+            ])
+
     def execute(self, connection, event, extra, dbconn):
         try:
             pargs = self.parser.parse_args(extra["args"])
@@ -89,9 +101,22 @@ class PricksPlugin(Plugin):
         except Exception as e:
             return u"Error: %s" % str(e)
 
-        return "dloser"
+        if pargs.add is None:
+            c = dbconn.execute("select prick from PricksPlugin order by id")
+            return ", ".join(a for (a,) in c.fetchall())
 
-#register_plugin("pricks", PricksPlugin())
+        who = pargs.add
+        if not self.privileged(connection, event):
+            return self.request_priv(extra)
+
+        if dbconn.execute("select 1 from PricksPlugin where prick = ?", (who,)).fetchone() is not None:
+            return "Error: That prick has already been added!"
+
+        with dbconn:
+            if dbconn.execute("insert into PricksPlugin values(null, ?)", (who,)).rowcount != 1:
+                return "Error: Query failed. :("
+
+register_plugin("pricks", PricksPlugin())
 
 
 class BeerPlugin(Plugin):
