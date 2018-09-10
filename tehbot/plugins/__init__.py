@@ -4,7 +4,7 @@ import traceback as sys_traceback
 import time as sys_time
 import re
 import locale
-_, encoding = locale.getdefaultlocale()
+encoding = locale.getdefaultlocale()[1] or "ascii"
 import threading
 import argparse
 import irc.client
