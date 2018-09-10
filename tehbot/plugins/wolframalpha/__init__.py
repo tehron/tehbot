@@ -72,7 +72,7 @@ class WolframAlphaPlugin(Plugin):
                 txt += "\n".join(misc)
             else:
                 raise NameError
-        except NameError:
+        except (NameError, AttributeError):
             txt += "No results."
         except Exception as e:
             txt = "Error: %s" % e

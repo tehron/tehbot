@@ -6,6 +6,7 @@ import urllib
 import urllib2
 import re
 import irc.client
+import pipes
 
 path = __name__
 
@@ -108,8 +109,8 @@ class SolvedHandler(ChannelHandler):
     def __init__(self):
         ChannelHandler.__init__(self)
         self.regex = []
-        self.regex.append(re.compile(r'''^ok\s+tehbot,\s*has\s+(?P<who>\w+)\s+solved\s+(?P<chall>\w+|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\w+|"[^"]+"|'[^']+'))?\s*\??$''', re.I))
-        self.regex.append(re.compile(r'''^ok\s+tehbot,\s*did\s+(?P<who>\w+)\s+solve\s+(?P<chall>\w+|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\w+|"[^"]+"|'[^']+'))?\s*\??$''', re.I))
+        self.regex.append(re.compile(r'''^ok\s+tehbot,\s*has\s+(?P<who>\w+)\s+solved\s+(?P<chall>\w[\s\w]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\w[\s\w]*?|"[^"]+"|'[^']+'))?\s*\??$''', re.I))
+        self.regex.append(re.compile(r'''^ok\s+tehbot,\s*did\s+(?P<who>\w+)\s+solve\s+(?P<chall>\w[\s\w]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\w[\s\w]*?|"[^"]+"|'[^']+'))?\s*\??$''', re.I))
 
     def execute(self, connection, event, extra, dbconn):
         for r in self.regex:
@@ -120,9 +121,11 @@ class SolvedHandler(ChannelHandler):
                 site = match.group(3)
 
                 plugin = self.tehbot.cmd_handlers["solvers"]
-                args = '-u %s %s' % (user, chall)
+                chall = " ".join(plugins.mysplit(chall))
+                args = '-u %s %s' % (user, pipes.quote(chall))
                 if site is not None:
-                    args = args + " -s %s" % site
+                    site = " ".join(plugins.mysplit(site))
+                    args = args + " -s %s" % pipes.quote(site)
                 plugin.handle(connection, event, {"args":args}, dbconn)
                 break
 

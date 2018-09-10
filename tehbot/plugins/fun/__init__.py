@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from tehbot.plugins import *
 import urllib
 from random import *
@@ -142,8 +143,9 @@ class BeerPlugin(Plugin):
         with dbconn:
             dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(beers), ))
 
-    def __init__(self):
+    def __init__(self, lang):
         Plugin.__init__(self)
+        self.lang = lang
         group = self.parser.add_mutually_exclusive_group()
         group.add_argument("recipient", nargs="?")
         group.add_argument("--refill", action="store_true")
@@ -157,16 +159,29 @@ class BeerPlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            if self.lang == "de":
+                msg = u"Fehler: %s"
+            else:
+                msg = u"Error: %s"
+            return msg % str(e)
 
         if pargs.status:
             beers = self.beers(dbconn)
             if beers < 1:
-                msg = u"has no beer left. :("
+                if self.lang == "de":
+                    msg = u"hat kein Bier mehr. :("
+                else:
+                    msg = u"has no beer left. :("
             elif beers == 1:
-                msg = u"has one beer left."
+                if self.lang == "de":
+                    msg = u"hat noch ein Bier."
+                else:
+                    msg = u"has one beer left."
             else:
-                msg = u"has %d beers left." % beers
+                if self.lang == "de":
+                    msg = u"hat noch %d Biere." % beers
+                else:
+                    msg = u"has %d beers left." % beers
             return [("me", msg)]
 
         if pargs.refill:
@@ -174,25 +189,46 @@ class BeerPlugin(Plugin):
                 return self.request_priv(extra)
 
             self.refill(dbconn)
-            return u"Ok, beer refilled. That was easy, hu?"
+            if self.lang == "de":
+                msg = u"Ok, Bier wieder aufgefüllt. Das war einfach, hu?"
+            else:
+                msg = u"Ok, beer refilled. That was easy, hu?"
+            return msg
 
         beers = self.get_beer(dbconn)
         if beers == 0:
-            return [("me", u"has no beer left. :(")]
+            if self.lang == "de":
+                msg = u"hat kein Bier mehr. :("
+            else:
+                msg = u"has no beer left. :("
+            return [("me", msg)]
 
         if pargs.recipient == event.source.nick:
             if beers == 1:
-                msg = u"passes the last bottle of cold beer around to %s." % event.source.nick
+                if self.lang == "de":
+                    msg = u"reicht die letzte Flasche kaltes Bier rüber zu %s." % event.source.nick
+                else:
+                    msg = u"passes the last bottle of cold beer around to %s." % event.source.nick
             else:
-                msg = u"passes 1 of %d bottles of cold beer around to %s." % (beers, event.source.nick)
+                if self.lang == "de":
+                    msg = u"reicht 1 von %d Flaschen kaltes Bier rüber zu %s." % (beers, event.source.nick)
+                else:
+                    msg = u"passes 1 of %d bottles of cold beer around to %s." % (beers, event.source.nick)
         else:
             if beers == 1:
-                msg = u"and %s pass the last bottle of cold beer around to %s." % (event.source.nick, pargs.recipient)
+                if self.lang == "de":
+                    msg = u"und %s reichen die letzte Flasche kaltes Bier rüber zu %s." % (event.source.nick, pargs.recipient)
+                else:
+                    msg = u"and %s pass the last bottle of cold beer around to %s." % (event.source.nick, pargs.recipient)
             else:
-                msg = u"and %s pass 1 of %d bottles of cold beer around to %s." % (event.source.nick, beers, pargs.recipient)
+                if self.lang == "de":
+                    msg = u"und %s reichen 1 von %d Flaschen kaltes Bier rüber zu %s." % (event.source.nick, beers, pargs.recipient)
+                else:
+                    msg = u"and %s pass 1 of %d bottles of cold beer around to %s." % (event.source.nick, beers, pargs.recipient)
         return [("me", msg)]
 
-register_plugin("beer", BeerPlugin())
+register_plugin("beer", BeerPlugin("en"))
+register_plugin("bier", BeerPlugin("de"))
 
 
 from socket import *
@@ -268,10 +304,12 @@ register_plugin("bos", BOSPlugin())
 #plugins.register_plugin("shots", shots)
 #plugins.register_plugin("shoot", shoot)
 
+import pipes
 class DecidePlugin(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.parser.add_argument("choices", nargs="+")
+        self.parser.add_argument("-o", "--or", action="store_true")
 
     def execute(self, connection, event, extra, dbconn):
         try:
@@ -281,10 +319,14 @@ class DecidePlugin(Plugin):
         except Exception as e:
             return u"Error: %s" % str(e)
 
-        if len(pargs.choices) == 1:
-            return choice(["Yes", "No"])
+        if vars(pargs)["or"]:
+            return choice(pargs.choices)
 
-        return choice(pargs.choices)
+        word1 = pargs.choices[0].lower()
+        if word1 == "ban" or word1 == "kick":
+            return "Tempting..."
+
+        return choice(["Yes", "No"])
 
 register_plugin("decide", DecidePlugin())
 

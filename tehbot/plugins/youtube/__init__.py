@@ -9,8 +9,9 @@ except:
     pass
 import tehbot.settings as settings
 
-searchurl = "https://www.googleapis.com/youtube/v3/videos?key=%s&id=%s&part=snippet,contentDetails"
-regex = re.compile("youtube.com/watch(\?|\?.*&|\?.*&amp;)v=([0-9a-zA-Z+-_]{11})")
+searchurl = "https://www.googleapis.com/youtube/v3/videos?key=%s&id=%s&part=snippet,contentDetails,statistics"
+# regex = re.compile("youtube.com/watch(\?|\?.*&|\?.*&amp;)v=([0-9a-zA-Z+-_]{11})")
+regex = re.compile("(?:https?:\/\/)?(?:www\.)?youtu\.?be(?:\.com)?\/?.*(?:watch|embed)?(?:.*v=|v\/|\/)([\w\-_]+)\&?")
 
 info_cache = {}
 
@@ -25,7 +26,7 @@ class YoutubeHandler(plugins.ChannelHandler):
         if match is None:
             return
 
-        vid = match.group(2)
+        vid = match.group(1)
         #vid = "nw-z_FAyIVc"
         if vid in info_cache:
             txt = info_cache[vid] + " (cached)"
@@ -37,8 +38,11 @@ class YoutubeHandler(plugins.ChannelHandler):
             entry = resp["items"][0]
             name = entry["snippet"]["title"]
             duration = entry['contentDetails']['duration'][2:].lower()
+            views = int(entry['statistics']['viewCount'])
+            likes = int(entry['statistics']['likeCount'])
+            dislikes = int(entry['statistics']['dislikeCount'])
 
-            txt = "\x0303[YouTube]\x03 %s (%s)" % (name, duration)
+            txt = "\x0303[YouTube]\x03 %s (%s) | Views: %s | Likes: +%s/-%s" % (name, duration, plugins.grouped(views), plugins.grouped(likes), plugins.grouped(dislikes))
             info_cache[vid] = txt
 
         return txt

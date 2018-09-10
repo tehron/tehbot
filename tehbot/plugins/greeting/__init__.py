@@ -64,7 +64,7 @@ class GreetPlugin(Plugin):
                 return "Error: That greeting has already been added!"
 
             with dbconn:
-                if dbconn.execute("insert into WwddPlugin values(null, ?)", (greeting,)).rowcount != 1:
+                if dbconn.execute("insert into Greetings values(null, ?)", (greeting,)).rowcount != 1:
                     return "Error: Query failed. :("
         else:
             c = dbconn.execute("select text from Greetings order by random() limit 1")

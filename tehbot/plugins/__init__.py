@@ -30,10 +30,8 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 
     def parse_args(self, args=None, namespace=None, decode=True):
         self.help_requested = False
-        if args == "" or isinstance(args, basestring):
-            args = shlex.split(to_utf8(args))
-            if decode:
-                args = map(from_utf8, args)
+        if isinstance(args, basestring):
+            args = mysplit(args, decode)
 
         try:
             return argparse.ArgumentParser.parse_args(self, args, namespace)
@@ -202,6 +200,9 @@ def logmsg(time, network, target, nick, msg, is_action, dbconn=None):
         with dbconn:
             dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?)", (time, network, target, nick, msg_clean))
 
+def grouped(val):
+    return "{:,}".format(val)
+
 def is_windows():
     return os.name == 'nt'
 
@@ -216,6 +217,12 @@ def to_latin1(unistr):
 
 def myfilter(s):
     return "".join([c if ord(c) >= 0x20 else "?" for c in s])
+
+def mysplit(s, decode=True):
+    res = shlex.split(to_utf8(s))
+    if decode:
+        res = map(from_utf8, res)
+    return res
 
 def say(connection, target, msg, dbconn):
     if not target or not msg: return
