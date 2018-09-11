@@ -11,7 +11,7 @@ class BlamePlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return u"Error: %s" % unicode(e)
 
         space = u"spaceone"
         goats = zip((space for one in range(23)), 42 * [ reduce(random, [], space) ])
@@ -32,7 +32,7 @@ class FamPlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return u"Error: %s" % unicode(e)
 
         return ".quoet fom"
 
@@ -61,7 +61,7 @@ class LiarsPlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return u"Error: %s" % unicode(e)
 
         if pargs.add is None:
             c = dbconn.execute("select liar from LiarsPlugin order by id")
@@ -100,7 +100,7 @@ class PricksPlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return u"Error: %s" % unicode(e)
 
         if pargs.add is None:
             c = dbconn.execute("select prick from PricksPlugin order by id")
@@ -163,7 +163,7 @@ class BeerPlugin(Plugin):
                 msg = u"Fehler: %s"
             else:
                 msg = u"Error: %s"
-            return msg % str(e)
+            return msg % unicode(e)
 
         if pargs.status:
             beers = self.beers(dbconn)
@@ -247,7 +247,7 @@ class BOSPlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return u"Error: %s" % unicode(e)
 
         sock = socket()
         sock.connect(("wc3.wechall.net", 61221))
@@ -275,7 +275,7 @@ class BOSPlugin(Plugin):
             if ret == "hmpf":
                 ret = data
         except Exception as e:
-            return str(e)
+            return unicode(e)
         finally:
             sock.close()
 
@@ -317,7 +317,7 @@ class DecidePlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return u"Error: %s" % unicode(e)
 
         if vars(pargs)["or"]:
             return choice(pargs.choices)
@@ -350,7 +350,7 @@ class HugPlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return u"Error: %s" % unicode(e)
 
         options = []
 
@@ -393,7 +393,7 @@ class RoflcopterPlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return u"Error: %s" % unicode(e)
 
         return """    ROFL:ROFL:ROFL:ROFL
          ___^___ _
@@ -440,7 +440,7 @@ class WixxerdPlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return u"Error: %s" % unicode(e)
 
         return r"""       .##...##..######..##..##..##..##..######..#####...#####..
        .##...##....##.....####....####...##......##..##..##..##.
