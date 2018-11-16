@@ -53,13 +53,11 @@ except:
     #signal.signal(signal.SIGHUP, sighandler)
 
 while True:
-    print "loop"
     if bot.quit_called:
-        print "loop should be quit"
         break
 
     try:
-        bot.process_once(0)
+        bot.process_once(0.2)
 
         try:
             cmd, args = queue.get(False)
@@ -83,5 +81,3 @@ while True:
     except:
         print Tehbot.ts()
         traceback.print_exc()
-
-print "end reached"

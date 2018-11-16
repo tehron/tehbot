@@ -148,10 +148,10 @@ class Plugin:
         plugin.handle(self.connection, self.target, self.nick, "help", cmd, self.dbconn)
     """
 
-class ChannelHandler(Handler):
+class ChannelHandler(Plugin):
     pass
 
-class ChannelJoinHandler(Handler):
+class ChannelJoinHandler(Plugin):
     pass
 
 class StandardPlugin(Plugin):
