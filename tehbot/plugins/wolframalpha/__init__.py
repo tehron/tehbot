@@ -1,14 +1,19 @@
 from tehbot.plugins import *
 import tehbot.plugins as plugins
 import wolframalpha
-import tehbot.settings as settings
 import prettytable
 
-class WolframAlphaPlugin(Plugin):
+class WolframAlphaPlugin(StandardPlugin):
     def __init__(self):
-        Plugin.__init__(self)
-        self.parser.add_argument("query")
-        self.client = wolframalpha.Client(settings.wolframalpha_app_id)
+        StandardPlugin.__init__(self)
+        self.parser.add_argument("query", nargs="+")
+
+    def initialize(self, dbconn):
+        StandardPlugin.initialize(self, dbconn)
+        try:
+            self.client = wolframalpha.Client(self.settings["wolframalpha_app_id"])
+        except:
+            self.settings["enabled"] = False
 
     @staticmethod
     def remove_empty_columns(table, nr_cols):
@@ -56,7 +61,7 @@ class WolframAlphaPlugin(Plugin):
         try:
             res = None
             misc = []
-            for p in self.client.query(pargs.query).pods:
+            for p in self.client.query(" ".join(pargs.query)).pods:
                 if p.id == "Input":
                     inp = " | ".join(p.text.splitlines())
                 elif p.id == "Result" and p.text:

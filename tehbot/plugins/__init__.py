@@ -11,9 +11,9 @@ import irc.client
 import sqlite3
 import shlex
 import datetime
-import tehbot.settings as settings
+import json
 
-__all__ = ["Plugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "from_utf8", "to_utf8"]
+__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "from_utf8", "to_utf8"]
 
 _tehbot = None
 _modules = []
@@ -38,7 +38,7 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
         except SystemExit:
             pass
 
-class Handler:
+class Plugin:
     """This is where the help text goes."""
 
     def __init__(self):
@@ -49,6 +49,9 @@ class Handler:
         self.initialize(self.tehbot.dbconn)
 
     def handle(self, connection, event, extra, dbconn):
+        if not self.settings["enabled"]:
+            return
+
         if irc.client.is_channel(event.target):
             target = event.target
             if not self.pub_allowed:
@@ -73,8 +76,8 @@ class Handler:
             elif r[0] == "doauth":
                 extra["request_priv_called"] = True
 
-                params = settings.connections[connection.name]
-                for t, s in params.ops:
+                params = self.tehbot.settings.connection_params(connection)
+                for t, s in params["operators"]:
                     if t == "host" and s == event.source.host:
                         self.tehbot.privusers[connection].add(event.source.nick)
                         self.tehbot.mainqueue.put((self, (connection, event, extra)))
@@ -92,11 +95,46 @@ class Handler:
     def request_priv(self, extra):
         return [("nopriv",)] if extra.has_key("request_priv_called") else [("doauth",)]
 
+    def priv_override(self, connection, event):
+        self.tehbot.privusers[connection].add(event.source.nick)
+
+    def default_settings(self):
+        return { }
+
     def initialize(self, dbconn):
-        pass
+        self.settings = {
+                "enabled" : isinstance(self, CorePlugin)
+                }
+        self.settings.update(self.default_settings())
+
+        c = dbconn.execute("select value from Settings where key=?", (self.__class__.__name__, ))
+        res = c.fetchone()
+        if res is not None:
+            self.settings.update(json.loads(res[0]))
+        self.save(dbconn)
 
     def finalize(self):
         pass
+
+    def config(self, args, dbconn):
+        if args[0] == "modify":
+            if args[1] == "set":
+                if args[2] == "enabled":
+                    state = bool(args[3])
+                    self.settings["enabled"] = state
+                    self.save(dbconn)
+                    return "Ok"
+                else:
+                    key = args[2]
+                    value = args[3]
+                    self.settings[key] = value
+                    self.save(dbconn)
+                    return "Ok"
+
+    def save(self, dbconn):
+        value = json.dumps(self.settings)
+        with dbconn:
+            dbconn.execute("insert or replace into Settings values(?, ?)", (self.__class__.__name__, value))
 
     """
     def valid_target(self, where):
@@ -116,28 +154,30 @@ class ChannelHandler(Handler):
 class ChannelJoinHandler(Handler):
     pass
 
-class Plugin(Handler):
+class StandardPlugin(Plugin):
     def __init__(self):
-        Handler.__init__(self)
+        Plugin.__init__(self)
         self.parser = ThrowingArgumentParser(description=self.__doc__)
         self.mainthreadonly = False
 
-class Announcer(Handler):
+class CorePlugin(StandardPlugin):
+    pass
+
+class Announcer(Plugin):
     def __init__(self):
-        Handler.__init__(self)
+        Plugin.__init__(self)
         self.quit = False
 
     def callme(self):
         #myprint("%s called" % self.__class__.__name__)
         tgts = []
         if "__all__" in self.where():
-            for name in settings.connections:
-                params = settings.connections[name]
-                tgts.append((name, params.channels))
+            for name, params in settings.connections().items():
+                tgts.append((name, params["channels"]))
         else:
             tgts = self.where()
 
-        for network, channels in tgts:
+        for network, channels in tgts.items():
             conn = self.tehbot._get_connection(network)
             if conn is None:
                 continue
@@ -145,7 +185,7 @@ class Announcer(Handler):
             self.tehbot.core.queue.put((self, (conn, None, {"channels":channels})))
 
     def schedule(self, at):
-        if self.quit:
+        if self.quit or not self.settings["enabled"]:
             return
 
         self.tehbot.core.reactor.scheduler.execute_at(at, self.callme)
@@ -164,7 +204,7 @@ class Announcer(Handler):
 
 class Poller(Announcer):
     def schedule(self, timeout):
-        if self.quit:
+        if self.quit or not self.settings["enabled"]:
             return
 
         self.tehbot.core.reactor.scheduler.execute_after(timeout, self.callme)
@@ -263,18 +303,23 @@ def register_plugin(cmd, plugin):
             myprint("Warning: Duplicate command \"%s\" defined!" % cmd)
         else:
             _tehbot.cmd_handlers[cmd] = plugin
+            _tehbot.handlers.append(plugin)
 
 def register_channel_handler(plugin):
     _tehbot.channel_handlers.append(plugin)
+    _tehbot.handlers.append(plugin)
 
 def register_channel_join_handler(plugin):
     _tehbot.channel_join_handlers.append(plugin)
+    _tehbot.handlers.append(plugin)
 
 def register_poller(plugin):
     _tehbot.pollers.append(plugin)
+    _tehbot.handlers.append(plugin)
 
 def register_announcer(plugin):
     _tehbot.announcers.append(plugin)
+    _tehbot.handlers.append(plugin)
 
 def split(s, mx=450):
     if len(s) <= mx:

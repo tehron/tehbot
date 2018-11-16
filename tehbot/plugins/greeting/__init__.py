@@ -1,8 +1,13 @@
 from tehbot.plugins import *
-import tehbot.settings as settings
 
 class GreetingHandler(ChannelJoinHandler):
+    def default_settings(self):
+        return {
+                "no_greet" : [ ]
+                }
+
     def initialize(self, dbconn):
+        ChannelJoinHandler.initialize(self, dbconn)
         with dbconn:
             dbconn.execute("create table if not exists Greetings(id integer primary key, text varchar)")
             dbconn.executemany("insert or ignore into Greetings values(?, ?)", [
@@ -19,11 +24,11 @@ class GreetingHandler(ChannelJoinHandler):
             ])
 
     def execute(self, connection, event, extra, dbconn):
-        for network, channels in settings.plugins[self.__class__.__name__].where:
+        for network, channels in self.settings["where"].items():
             if connection.name != network or (event.target not in channels and channels != "__all__"):
                 return
 
-        if event.source.nick in settings.plugins[self.__class__.__name__].no_greet:
+        if event.source.nick in self.settings["no_greet"]:
             return
 
         if event.source.nick == "RichardBrook":
@@ -37,9 +42,9 @@ class GreetingHandler(ChannelJoinHandler):
 
 register_channel_join_handler(GreetingHandler())
 
-class GreetPlugin(Plugin):
+class GreetPlugin(StandardPlugin):
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         group = self.parser.add_mutually_exclusive_group(required=True)
         group.add_argument("who", nargs="?")
         group.add_argument("-a", "--add", metavar="greeting")

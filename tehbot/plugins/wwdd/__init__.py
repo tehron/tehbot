@@ -1,14 +1,15 @@
 from tehbot.plugins import *
 import random
 
-class WwddPlugin(Plugin):
+class WwddPlugin(StandardPlugin):
     """What would dloser do?"""
 
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("-a", "--add", metavar="what")
 
     def initialize(self, dbconn):
+        StandardPlugin.initialize(self, dbconn)
         with dbconn:
             dbconn.execute("create table if not exists WwddPlugin(id integer primary key, text varchar)")
             dbconn.executemany("insert or ignore into WwddPlugin values(?, ?)", [

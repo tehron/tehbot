@@ -56,5 +56,5 @@ docs/_build/
 # PyBuilder
 target/
 
-tehbot/settings.py
-tehbot.sqlite
+data/tehbot.sqlite
+tehbot/plugins/challenge/hackthis.py

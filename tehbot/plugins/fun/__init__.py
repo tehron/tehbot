@@ -4,7 +4,7 @@ import urllib
 from random import *
 import shlex
 
-class BlamePlugin(Plugin):
+class BlamePlugin(StandardPlugin):
     def execute(self, connection, event, extra, dbconn):
         try:
             pargs = self.parser.parse_args(extra["args"])
@@ -23,7 +23,7 @@ class BlamePlugin(Plugin):
 
 register_plugin("blame", BlamePlugin())
 
-class FamPlugin(Plugin):
+class FamPlugin(StandardPlugin):
     """This help at fam"""
 
     def execute(self, connection, event, extra, dbconn):
@@ -39,12 +39,13 @@ class FamPlugin(Plugin):
 register_plugin("fam", FamPlugin())
 
 
-class LiarsPlugin(Plugin):
+class LiarsPlugin(StandardPlugin):
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("-a", "--add", metavar="who")
 
     def initialize(self, dbconn):
+        StandardPlugin.initialize(self, dbconn)
         with dbconn:
             dbconn.execute("create table if not exists LiarsPlugin(id integer primary key, liar varchar)")
             dbconn.executemany("insert or ignore into LiarsPlugin values(?, ?)", [
@@ -82,12 +83,13 @@ class LiarsPlugin(Plugin):
 register_plugin("liars", LiarsPlugin())
 
 
-class PricksPlugin(Plugin):
+class PricksPlugin(StandardPlugin):
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("-a", "--add", metavar="who")
 
     def initialize(self, dbconn):
+        StandardPlugin.initialize(self, dbconn)
         with dbconn:
             dbconn.execute("create table if not exists PricksPlugin(id integer primary key, prick varchar)")
             dbconn.executemany("insert or ignore into PricksPlugin values(?, ?)", [
@@ -120,7 +122,7 @@ class PricksPlugin(Plugin):
 register_plugin("pricks", PricksPlugin())
 
 
-class BeerPlugin(Plugin):
+class BeerPlugin(StandardPlugin):
     """Serves the best beer on IRC (way better than Lamb3's!)"""
 
     def beers(self, dbconn):
@@ -144,7 +146,7 @@ class BeerPlugin(Plugin):
             dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(beers), ))
 
     def __init__(self, lang):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.lang = lang
         group = self.parser.add_mutually_exclusive_group()
         group.add_argument("recipient", nargs="?")
@@ -235,10 +237,10 @@ from socket import *
 import string
 import time
 import tehbot.plugins as plugins
-class BOSPlugin(Plugin):
+class BOSPlugin(StandardPlugin):
     """Can you solve The BrownOS? [WeChall]"""
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("data", nargs=1)
 
     def execute(self, connection, event, extra, dbconn):
@@ -305,9 +307,9 @@ register_plugin("bos", BOSPlugin())
 #plugins.register_plugin("shoot", shoot)
 
 import pipes
-class DecidePlugin(Plugin):
+class DecidePlugin(StandardPlugin):
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("choices", nargs="+")
         self.parser.add_argument("-o", "--or", action="store_true")
 
@@ -331,11 +333,11 @@ class DecidePlugin(Plugin):
 register_plugin("decide", DecidePlugin())
 
 
-class HugPlugin(Plugin):
+class HugPlugin(StandardPlugin):
     """Use this command if you really like (or dislike) someone."""
 
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("huggee")
         self.parser.add_argument("-l", "--long", action="store_true")
         self.parser.add_argument("-t", "--tight", action="store_true")
@@ -383,7 +385,7 @@ class HugPlugin(Plugin):
 
 register_plugin("hug", HugPlugin())
 
-class RoflcopterPlugin(Plugin):
+class RoflcopterPlugin(StandardPlugin):
     def execute(self, connection, event, extra, dbconn):
         if not self.privileged(connection, event):
             return self.request_priv(extra)
@@ -430,7 +432,7 @@ class RouletteHandler(ChannelHandler):
 
 
 
-class WixxerdPlugin(Plugin):
+class WixxerdPlugin(StandardPlugin):
     def execute(self, connection, event, extra, dbconn):
         if not self.privileged(connection, event):
             return self.request_priv(extra)
@@ -469,7 +471,6 @@ register_plugin("wixxerd", WixxerdPlugin())
 
 
 import re
-import tehbot.settings as settings
 class BeerGrabber(ChannelHandler):
     def execute(self, connection, event, extra, dbconn):
         match = re.search(r'and (\w+) pass (\d+) of \d+ bottles of cold beer around to (\w+)\.', extra["msg"])
@@ -480,7 +481,7 @@ class BeerGrabber(ChannelHandler):
         cnt = int(match.group(2))
         who = match.group(3)
 
-        if cnt > 0 and who == settings.bot_name:
+        if cnt > 0 and who == connection.get_nickname():
             with dbconn:
                 dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(cnt), ))
 

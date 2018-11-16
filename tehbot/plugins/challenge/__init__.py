@@ -28,11 +28,11 @@ sitemap = {
     "wixxerd" : "wix"
 }
 
-class StatsPlugin(Plugin):
+class StatsPlugin(StandardPlugin):
     """Shows current stats for a user on a challenge site."""
 
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("user_or_rank", nargs="?")
         self.parser.add_argument("-n", "--numeric", action="store_true")
         group = self.parser.add_mutually_exclusive_group()
@@ -68,17 +68,18 @@ class StatsPlugin(Plugin):
             return "Unknown site: %s" % site
 
         module = importlib.import_module("." + sitemap[site], path)
+        module.settings = self.settings
         globals()[module.__name__] = module
         return module.stats(user, rank)
 
 register_plugin("stats", StatsPlugin())
 
-class SolversPlugin(Plugin):
+class SolversPlugin(StandardPlugin):
     """Shows how many solved a challenge."""
 
     def __init__(self):
-        Plugin.__init__(self)
-        self.parser.add_argument("challenge_name_or_nr")
+        StandardPlugin.__init__(self)
+        self.parser.add_argument("challenge_name_or_nr", nargs="+")
         self.parser.add_argument("-n", "--numeric", action="store_true")
         self.parser.add_argument("-s", "--site", choices=sorted(set(sitemap.keys())))
         self.parser.add_argument("-u", "--user")
@@ -90,7 +91,7 @@ class SolversPlugin(Plugin):
             pargs = self.parser.parse_args(extra["args"])
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
-            challenge_name_or_nr = pargs.challenge_name_or_nr
+            challenge_name_or_nr = " ".join(pargs.challenge_name_or_nr)
             if pargs.numeric:
                 challenge_name_or_nr = int(challenge_name_or_nr)
             site = pargs.site.lower()
@@ -102,6 +103,7 @@ class SolversPlugin(Plugin):
             return u"Unknown site: %s" % site
 
         module = importlib.import_module("." + sitemap[site], path)
+        module.settings = self.settings
         globals()[module.__name__] = module
         return module.solvers(challenge_name_or_nr, user=user)
 

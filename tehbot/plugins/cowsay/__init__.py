@@ -1,9 +1,9 @@
 from tehbot.plugins import *
 from cowsay import cowsay
 
-class CowSayPlugin(Plugin):
+class CowSayPlugin(StandardPlugin):
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("msg", nargs=1)
 
     def execute(self, connection, event, extra, dbconn):

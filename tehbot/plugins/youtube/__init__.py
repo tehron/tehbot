@@ -7,7 +7,6 @@ try:
     locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
 except:
     pass
-import tehbot.settings as settings
 
 searchurl = "https://www.googleapis.com/youtube/v3/videos?key=%s&id=%s&part=snippet,contentDetails,statistics"
 # regex = re.compile("youtube.com/watch(\?|\?.*&|\?.*&amp;)v=([0-9a-zA-Z+-_]{11})")
@@ -31,18 +30,37 @@ class YoutubeHandler(plugins.ChannelHandler):
         if vid in info_cache:
             txt = info_cache[vid] + " (cached)"
         else:
-            req = urllib2.Request(searchurl % (settings.youtube_api_key, vid))
-            req.add_header("Referer", settings.youtube_referer)
+            req = urllib2.Request(searchurl % (self.settings["youtube_api_key"], vid))
+            req.add_header("Referer", self.settings["youtube_referer"])
             resp = urllib2.urlopen(req).read()
             resp = json.loads(resp)
             entry = resp["items"][0]
             name = entry["snippet"]["title"]
-            duration = entry['contentDetails']['duration'][2:].lower()
-            views = int(entry['statistics']['viewCount'])
-            likes = int(entry['statistics']['likeCount'])
-            dislikes = int(entry['statistics']['dislikeCount'])
 
-            txt = "\x0303[YouTube]\x03 %s (%s) | Views: %s | Likes: +%s/-%s" % (name, duration, plugins.grouped(views), plugins.grouped(likes), plugins.grouped(dislikes))
+            try:
+                duration = entry['contentDetails']['duration'][2:].lower()
+            except:
+                duration = "?"
+
+            try:
+                v = int(entry['statistics']['viewCount'])
+                views = plugins.grouped(v)
+            except:
+                views = "?"
+
+            try:
+                l = int(entry['statistics']['likeCount'])
+                likes = plugins.grouped(l)
+            except:
+                likes = "?"
+
+            try:
+                d = int(entry['statistics']['dislikeCount'])
+                dislikes = plugins.grouped(d)
+            except:
+                dislikes = "?"
+
+            txt = "\x0303[YouTube]\x03 %s (%s) | Views: %s | Likes: +%s/-%s" % (name, duration, views, likes, dislikes)
             info_cache[vid] = txt
 
         return txt

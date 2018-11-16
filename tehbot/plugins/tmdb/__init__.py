@@ -1,17 +1,16 @@
 from tehbot.plugins import *
 import tehbot.plugins as plugins
 import tmdbsimple as tmdb
-import tehbot.settings as settings
-tmdb.API_KEY = settings.tmdb_api_key
 
-class MoviePlugin(Plugin):
+class MoviePlugin(StandardPlugin):
     """Shows information about movies from themoviedb.org"""
 
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("movie")
 
     def execute(self, connection, event, extra, dbconn):
+        tmdb.API_KEY = self.settings["tmdb_api_key"]
         try:
             pargs = self.parser.parse_args(extra["args"])
             if self.parser.help_requested:
@@ -44,14 +43,15 @@ class MoviePlugin(Plugin):
 
 register_plugin("movie", MoviePlugin())
 
-class TvPlugin(Plugin):
+class TvPlugin(StandardPlugin):
     """Shows information about TV series from themoviedb.org"""
 
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("show")
 
     def execute(self, connection, event, extra, dbconn):
+        tmdb.API_KEY = self.settings["tmdb_api_key"]
         try:
             pargs = self.parser.parse_args(extra["args"])
             if self.parser.help_requested:

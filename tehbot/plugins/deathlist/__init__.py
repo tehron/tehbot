@@ -1,6 +1,6 @@
 from tehbot.plugins import *
 
-class DeathlistPlugin(Plugin):
+class DeathlistPlugin(StandardPlugin):
     def execute(self, connection, event, extra, dbconn):
         return "blanky"
 

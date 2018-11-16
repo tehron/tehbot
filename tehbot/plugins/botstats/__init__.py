@@ -3,7 +3,7 @@ import psutil
 import os
 import time
 
-class BotStatsPlugin(Plugin):
+class BotStatsPlugin(StandardPlugin):
     """Shows various information about tehbot"""
 
     @staticmethod

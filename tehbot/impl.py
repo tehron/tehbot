@@ -1,5 +1,5 @@
 import plugins
-import settings
+from settings import Settings
 import irc.client
 from Queue import Queue, Empty
 import traceback
@@ -15,6 +15,7 @@ import os.path
 from types import ModuleType
 
 import ctypes
+import shlex
 
 def _terminate_thread(thread):
     """Terminates a python thread from another thread.
@@ -55,6 +56,7 @@ class TehbotImpl:
     def __init__(self, tehbot):
         self.core = tehbot
         self.dispatcher = Dispatcher(self)
+        self.handlers = []
         self.cmd_handlers = {}
         self.channel_handlers = []
         self.channel_join_handlers = []
@@ -63,11 +65,13 @@ class TehbotImpl:
         self.queue = Queue(maxsize=0)
         self.workers = []
         self.quit_called = False
-        self.dbfile = os.path.join(os.path.dirname(__file__), "../tehbot.sqlite")
+        self.dbfile = os.path.join(os.path.dirname(__file__), "../data/tehbot.sqlite")
         self.dbconn = sqlite3.connect(self.dbfile)
         self.mainqueue = Queue()
         self.privusers = defaultdict(set)
         self.privqueue = defaultdict(Queue)
+        self.settings = Settings()
+        self.settings.load(self.dbconn)
 
     def collect_plugins(self):
         plugins.collect()
@@ -127,6 +131,8 @@ class TehbotImpl:
                 self.queue.task_done()
             except Empty:
                 pass
+            except SystemExit:
+                raise
             except:
                 traceback.print_exc()
 
@@ -136,7 +142,7 @@ class TehbotImpl:
         dbconn.close()
 
     def start_workers(self):
-        while len(self.workers) < settings.nr_worker_threads:
+        while len(self.workers) < self.settings.value("nr_worker_threads"):
             worker = threading.Thread(target=self._process)
             self.workers.append(worker)
             worker.start()
@@ -152,22 +158,29 @@ class TehbotImpl:
         return None
 
     def connect(self):
-        for name in settings.connections:
-            print "Connecting to %s" % name
-            conn = self.core.reactor.server()
-            conn.name = name
-            conn.locks = dict()
-            self.reconnect(conn)
+        for name in self.settings.connections():
+            conn = self._get_connection(name)
+            if conn is None:
+                print "Connecting to %s" % name
+                conn = self.core.reactor.server()
+                conn.name = name
+                conn.locks = dict()
+                self.reconnect(conn)
+            else:
+                self.dispatcher.join_channels(conn)
 
     def reconnect(self, connection):
-        params = settings.connections[connection.name]
+        params = self.settings.connection_params(connection)
 
-        if params.use_ssl:
+        if params["ssl"]:
             import ssl
             factory = irc.client.connection.Factory(wrapper=ssl.wrap_socket)
         else:
             factory = irc.client.connection.Factory()
-        connection.connect(params.host, params.port, settings.bot_name, params.bot_password, settings.bot_name, settings.bot_name, factory)
+        botname = self.settings.value("botname", connection)
+        username = self.settings.value("username", connection)
+        ircname = self.settings.value("ircname", connection)
+        connection.connect(params["host"], params["port"], botname, params.get("password", None), username, ircname, factory)
         connection.set_rate_limit(2)
         connection.set_keepalive(60)
 
@@ -187,14 +200,21 @@ class TehbotImpl:
         print "quit called"
         self.quit_called = True
         self.core.reactor.disconnect_all(msg or "bye-bye")
-        raise SystemExit
+
+    def reload(self):
+        self.core.reload()
+
+    def finalize(self):
+        self.core.finalize()
+        self.connect()
 
     def kbd_reload(self, args):
-        self.core.reload()
-        self.core.finalize()
+        self.reload()
+        self.finalize()
 
     def kbd_quit(self, args):
         self.quit(args)
+        raise SystemExit
 
     def kbd_stats(self, args):
         print "Connections"
@@ -209,10 +229,75 @@ class TehbotImpl:
         for c, nicks in self.privusers.items():
             print " * %s: %r" % (c.name, sorted(nicks))
 
+    def kbd_config(self, args):
+        arr = shlex.split(args or "")
+        if not arr:
+            return
+        print self.config(arr[0], arr[1:], self.dbconn)
+
+    def config(self, handler, arr, dbconn):
+        if handler == "tehbot":
+            if arr[0] == "connections":
+                if arr[1] == "add":
+                    name = arr[2]
+
+                    if name in self.settings.connections():
+                        return "That name already exists!"
+
+                    self.settings["connections"][name] = { }
+                    self.settings.save(dbconn)
+                    return "Ok"
+                elif arr[1] == "modify":
+                    name = arr[2]
+                    action = arr[3]
+                    key = arr[4]
+                    value = arr[5]
+
+                    if name not in self.settings.connections():
+                        return "Connction not found: %s" % name
+
+                    if action not in ["set", "add"]:
+                        return "Illegal action: %s" % action
+
+                    if key == "ssl":
+                        value = bool(value)
+                    elif key == "port":
+                        value = int(value)
+
+                    if key == "channels":
+                        if not self.settings["connections"][name].has_key(key):
+                            self.settings["connections"][name][key] = []
+                        self.settings["connections"][name][key].append(value)
+                    elif key == "operators":
+                        if not self.settings["connections"][name].has_key(key):
+                            self.settings["connections"][name][key] = []
+                        self.settings["connections"][name][key].append(("nickserv", value))
+                    else:
+                        self.settings["connections"][name][key] = value
+                    self.settings.save(dbconn)
+                    return "Ok"
+                elif arr[1] == "show":
+                    return "no!"
+                    #return repr(self.settings["connections"])
+            elif arr[0] == "modify":
+                if arr[1] == "set":
+                    key = arr[2]
+                    value = arr[3]
+                    self.settings[key] = value
+                    self.settings.save(dbconn)
+                    return "Ok"
+        else:
+            for h in self.handlers:
+                if h.__class__.__name__ == handler:
+                    return h.config(arr, dbconn)
+
 
 class Dispatcher:
     def __init__(self, tehbot):
         self.tehbot = tehbot
+
+    def value(self, key, connection=None):
+        return self.tehbot.value(key, connection)
 
     def dispatch(self, connection, event):
         method = getattr(self, "on_" + event.type, None)
@@ -225,9 +310,9 @@ class Dispatcher:
     def on_whoisaccount(self, connection, event):
         nick = event.arguments[0]
         account = event.arguments[1]
-        params = settings.connections[connection.name]
+        params = self.tehbot.settings.connection_params(connection)
 
-        for t, s in params.ops:
+        for t, s in params["operators"]:
             if t == "nickserv" and s == account:
                 self.tehbot.privusers[connection].add(nick)
                 break
@@ -260,11 +345,16 @@ class Dispatcher:
         self.tehbot.core.reactor.scheduler.execute_after(2, functools.partial(self.join_channels, connection))
 
     def join_channels(self, connection):
-        params = settings.connections[connection.name]
-        for ch in params.channels:
+        params = self.tehbot.settings.connection_params(connection)
+        channels = params.get("channels", [])
+
+        if not channels:
+            return
+
+        for ch in channels:
             connection.locks[ch] = threading.Lock()
 
-        mchans = ",".join(params.channels)
+        mchans = ",".join(channels)
         plugins.myprint("%s: joining %s" % (connection.name, mchans))
         connection.send_raw("JOIN %s" % mchans)
 
@@ -288,8 +378,9 @@ class Dispatcher:
         plugins.myprint("%s: %s: %s joined" % (connection.name, event.target, event.source.nick))
         nick = event.source.nick
         channel = event.target
+        botname = self.tehbot.settings.value("botname", connection)
 
-        if nick == settings.bot_name:
+        if nick == botname:
             return
 
         for h in self.tehbot.channel_join_handlers:
@@ -304,10 +395,11 @@ class Dispatcher:
 
     def on_quit(self, connection, event):
         plugins.myprint("%s: %s has quit (%s)" % (connection.name, event.source.nick, event.arguments[0]))
+        botname = self.tehbot.settings.value("botname", connection)
 
         # reconquer our nick!
-        if event.source.nick == settings.bot_name:
-            connection.nick(settings.bot_name)
+        if event.source.nick == botname:
+            connection.nick(botname)
 
         try:
             self.tehbot.privusers[connection].remove(event.source.nick)
@@ -346,9 +438,10 @@ class Dispatcher:
     def on_pubmsg(self, connection, event):
         msg = event.arguments[0]
         plugins.logmsg(time.time(), connection.name, event.target, event.source.nick, msg, False, self.tehbot.dbconn)
+        cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
-            if msg[0] == settings.cmd_prefix:
+            if msg[0] == cmdprefix:
                 self.react_to_command(connection, event, msg[1:])
 
             for h in self.tehbot.channel_handlers:
@@ -357,19 +450,21 @@ class Dispatcher:
     def on_privmsg(self, connection, event):
         msg = event.arguments[0]
         plugins.logmsg(time.time(), connection.name, event.source.nick, event.source.nick, msg, False, self.tehbot.dbconn)
+        cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
-            if msg[0] == settings.cmd_prefix:
+            if msg[0] == cmdprefix:
                 self.react_to_command(connection, event, msg[1:])
 
     def on_nick(self, connection, event):
         oldnick = event.source.nick
         newnick = event.target
         plugins.myprint("%s: %s is now known as %s" % (connection.name, oldnick, newnick))
+        botname = self.tehbot.settings.value("botname", connection)
 
         # reconquer our nick!
-        if oldnick == settings.bot_name:
-            connection.nick(settings.bot_name)
+        if oldnick == botname:
+            connection.nick(botname)
 
         try:
             self.tehbot.privusers[connection].remove(event.source.nick)

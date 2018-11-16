@@ -5,9 +5,9 @@ import urllib2
 import lxml.html
 import shlex
 
-class TranslatePlugin(Plugin):
+class TranslatePlugin(StandardPlugin):
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("words", metavar='W', nargs="+")
         self.parser.add_argument("-f", "--from-lang", default="auto")
         self.parser.add_argument("-t", "--to-lang", default="en")

@@ -17,9 +17,9 @@ def toXPathStringLiteral(s):
     if '"' not in s: return '"%s"' % s
     return "concat('%s')" % s.replace("'", "',\"'\",'")
 
-class XkcdPlugin(Plugin):
+class XkcdPlugin(StandardPlugin):
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("search_term", nargs="?")
 
     def execute(self, connection, event, extra, dbconn):

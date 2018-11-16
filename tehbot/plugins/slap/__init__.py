@@ -3,9 +3,9 @@ import tehbot.plugins as plugins
 import random
 import os.path
 
-class SlapPlugin(Plugin):
+class SlapPlugin(StandardPlugin):
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("victim")
 
         self.slaps = [
@@ -40,7 +40,7 @@ class SlapPlugin(Plugin):
 
 register_plugin("slap", SlapPlugin())
 
-class LivinSlapPlugin(Plugin):
+class LivinSlapPlugin(StandardPlugin):
     def slap2(self, victim):
         return [
                 ("me", "slaps %s around a bit with a Piece of bacon" % victim),

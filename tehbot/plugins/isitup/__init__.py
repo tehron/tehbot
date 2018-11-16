@@ -5,11 +5,11 @@ import httplib
 from struct import unpack
 from socket import AF_INET, inet_pton, getaddrinfo
 
-class IsitupPlugin(Plugin):
+class IsitupPlugin(StandardPlugin):
     """Checks if a web server is up."""
 
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("host", nargs="?", default="google.com")
 
     @staticmethod

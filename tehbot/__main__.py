@@ -19,7 +19,7 @@ def kbdinput():
                     args = tmp[1] if len(tmp) > 1 else None
                     queue.put(("kbd_" + cmd, args))
 
-        except EOFError:
+        except EOFError, SystemExit:
             break
         except:
             print Tehbot.ts()
@@ -53,8 +53,13 @@ except:
     #signal.signal(signal.SIGHUP, sighandler)
 
 while True:
+    print "loop"
+    if bot.quit_called:
+        print "loop should be quit"
+        break
+
     try:
-        bot.process_once(0.2)
+        bot.process_once(0)
 
         try:
             cmd, args = queue.get(False)
@@ -72,11 +77,11 @@ while True:
         func(args)
     except KeyboardInterrupt:
         bot.quit()
-    except SystemExit:
-        break
     except irc.client.ServerConnectionError as e:
         print "%s: %s" % (Tehbot.ts(), e)
         traceback.print_exc()
     except:
         print Tehbot.ts()
         traceback.print_exc()
+
+print "end reached"

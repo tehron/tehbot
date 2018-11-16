@@ -1,5 +1,4 @@
 import tehbot.plugins as plugins
-import tehbot.settings as settings
 import urllib
 import urllib2
 import urlparse
@@ -7,7 +6,7 @@ import lxml.html
 import re
 
 prefix = "\x0303[wixxerd.com]\x03 "
-url = "http://www.wixxerd.com/challenges/userScore.cfm?username=%s&authkey=%s"
+url = "https://www.wixxerd.com/challenges/userScore.cfm?username=%s&authkey=%s"
 
 def stats(user, rank):
     if rank:
@@ -17,7 +16,7 @@ def stats(user, rank):
 
 def userstats(user):
     try:
-        page = urllib.urlopen(url % (urllib.quote_plus(user), settings.wixxerd_api_key)).read()
+        page = urllib.urlopen(url % (urllib.quote_plus(user), settings["wixxerd_api_key"])).read()
     except:
         return "Network error"
 

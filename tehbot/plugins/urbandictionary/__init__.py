@@ -3,14 +3,13 @@ import tehbot.plugins as plugins
 import urllib2
 import urllib
 import lxml.html
-import shlex
 import json
 
-class UrbanDictionaryPlugin(Plugin):
+class UrbanDictionaryPlugin(StandardPlugin):
     """Looks up definitions in Urban Dictionary"""
 
     def __init__(self):
-        Plugin.__init__(self)
+        StandardPlugin.__init__(self)
         self.parser.add_argument("search_term", nargs="+")
         self.parser.add_argument("-n", "--nr", type=int, help="request definition number NR")
 
