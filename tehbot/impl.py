@@ -210,9 +210,7 @@ class TehbotImpl:
         self.connect()
 
     def kbd_reload(self, args):
-        print "Reloading..."
         self.reload()
-        print "Finalizing..."
         self.finalize()
 
     def kbd_quit(self, args):
