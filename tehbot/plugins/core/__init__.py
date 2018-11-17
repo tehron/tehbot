@@ -99,19 +99,6 @@ class ConfigPlugin(CorePlugin):
         CorePlugin.__init__(self)
         self.parser.add_argument("args", nargs="*")
 
-    def initialize(self, dbconn):
-        CorePlugin.initialize(self, dbconn)
-        with dbconn:
-            dbconn.execute("create table if not exists Settings(key text primary key, value text)")
-            dbconn.executemany("insert or ignore into Settings values(?, ?)", [
-                ("WeChallActivityPoller", '{"timeout":10,"where":{"WeChall IRC":["#wechall"]}}'),
-                ("WeChallSitesPoller", '{"timeout":10,"where":{"WeChall IRC":["#wechall"]}}'),
-                ("WeChallStatsAnnouncer", '{"at":72000,"where":{"WeChall IRC":["#wechall"]}}'),
-                ("GreetingHandler", '{"where":{"Macak":"__all__"}}'),
-                ("QuoteHandler", '{"where":{"WeChall IRC":["#wechall"]}}'),
-                ("OpHandler", '{"where":{"WeChall IRC":["#wechall"]},"who":"__all__"}'),
-            ])
-
     def execute(self, connection, event, extra, dbconn):
         try:
             pargs = self.parser.parse_args(extra["args"])

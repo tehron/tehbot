@@ -15,6 +15,7 @@ class Settings:
                 "nr_worker_threads" : 10,
                 "connections" : { }
                 }
+        dbconn.execute("create table if not exists Settings(key text primary key, value text)")
         c = dbconn.execute("select value from Settings where key='tehbot'")
         res = c.fetchone()
         if res is not None:

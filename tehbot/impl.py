@@ -164,6 +164,7 @@ class TehbotImpl:
                 print "Connecting to %s" % name
                 conn = self.core.reactor.server()
                 conn.name = name
+                conn.channels = set()
                 conn.locks = dict()
                 self.reconnect(conn)
             else:
@@ -209,7 +210,9 @@ class TehbotImpl:
         self.connect()
 
     def kbd_reload(self, args):
+        print "Reloading..."
         self.reload()
+        print "Finalizing..."
         self.finalize()
 
     def kbd_quit(self, args):
@@ -346,17 +349,26 @@ class Dispatcher:
 
     def join_channels(self, connection):
         params = self.tehbot.settings.connection_params(connection)
-        channels = params.get("channels", [])
+        channels = set(params.get("channels", []))
 
-        if not channels:
-            return
+        channels_to_join = channels.difference(connection.channels)
+        channels_to_part = connection.channels.difference(channels)
 
-        for ch in channels:
+        for ch in channels_to_join:
             connection.locks[ch] = threading.Lock()
 
-        mchans = ",".join(channels)
-        plugins.myprint("%s: joining %s" % (connection.name, mchans))
-        connection.send_raw("JOIN %s" % mchans)
+        for ch in channels_to_part:
+            del connection.locks[ch]
+
+        if channels_to_join:
+            mchans = ",".join(channels_to_join)
+            plugins.myprint("%s: joining %s" % (connection.name, mchans))
+            connection.send_raw("JOIN %s" % mchans)
+
+        if channels_to_part:
+            mchans = ",".join(channels_to_part)
+            plugins.myprint("%s: parting %s" % (connection.name, mchans))
+            connection.part(channels_to_part)
 
     def on_disconnect(self, connection, event):
         if self.tehbot.quit_called:
@@ -381,6 +393,14 @@ class Dispatcher:
         botname = self.tehbot.settings.value("botname", connection)
 
         if nick == botname:
+            connection.channels.add(channel.lower())
+
+            params = self.tehbot.settings.connection_params(connection)
+            channels = set(params.get("channels", []))
+
+            if channel.lower() not in channels:
+                connection.part(channel)
+
             return
 
         for h in self.tehbot.channel_join_handlers:
@@ -388,6 +408,13 @@ class Dispatcher:
 
     def on_part(self, connection, event):
         plugins.myprint("%s: %s: %s left" % (connection.name, event.target, event.source.nick))
+        nick = event.source.nick
+        channel = event.target
+        botname = self.tehbot.settings.value("botname", connection)
+
+        if nick == botname:
+            connection.channels.remove(channel.lower())
+
         try:
             self.tehbot.privusers[connection].remove(event.source.nick)
         except:
