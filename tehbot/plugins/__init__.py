@@ -109,9 +109,14 @@ class Plugin:
 
         c = dbconn.execute("select value from Settings where key=?", (self.__class__.__name__, ))
         res = c.fetchone()
+        stored_settings = { }
         if res is not None:
-            self.settings.update(json.loads(res[0]))
-        self.save(dbconn)
+            stored_settings = json.loads(res[0])
+
+        self.settings.update(stored_settings)
+
+        if stored_settings != self.settings:
+            self.save(dbconn)
 
     def finalize(self):
         pass
