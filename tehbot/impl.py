@@ -217,7 +217,6 @@ class TehbotImpl:
 
     def kbd_quit(self, args):
         self.quit(args)
-        raise SystemExit
 
     def kbd_stats(self, args):
         print "Connections"
