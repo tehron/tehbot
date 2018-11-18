@@ -241,8 +241,8 @@ def logmsg(time, network, target, nick, msg, is_action, dbconn=None):
     print sys_time.strftime("%H:%M:%S", sys_time.localtime(time)), s.encode(encoding, "backslashreplace")
 
     if dbconn is not None:
-        # create table Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, message varchar)
         with dbconn:
+            dbconn.execute("create table if not exists Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, message varchar)")
             dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?)", (time, network, target, nick, msg_clean))
 
 def grouped(val):
