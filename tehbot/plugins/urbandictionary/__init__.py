@@ -4,6 +4,7 @@ import urllib2
 import urllib
 import lxml.html
 import json
+import re
 
 class UrbanDictionaryPlugin(StandardPlugin):
     """Looks up definitions in Urban Dictionary"""
@@ -43,10 +44,12 @@ class UrbanDictionaryPlugin(StandardPlugin):
 
             txt = "%s (%d/%d)\n" % (term, index + 1, count)
             definition = "\n".join(entry["definition"].splitlines())
+            definition = re.sub(r'\[([^\[]*)\]', "\x02\\1\x0f", definition)
             txt += plugins.shorten(definition, 300)
 
             if entry.has_key("example"):
                 example = "\n".join(entry["example"].splitlines())
+                example = re.sub(r'\[([^\[]*)\]', "\x02\\1\x0f", example)
                 txt += "\n\x02Example:\x0f " + plugins.shorten(example, 300)
         except Exception as e:
             print e
