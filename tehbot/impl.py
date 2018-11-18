@@ -244,7 +244,13 @@ class TehbotImpl:
                     if name in self.settings.connections():
                         return "That name already exists!"
 
-                    self.settings["connections"][name] = { }
+                    self.settings["connections"][name] = {
+                            "host" : None,
+                            "port" : 6667,
+                            "ssl" : False,
+                            "channels" : [ ],
+                            "operators" : [ ]
+                            }
                     self.settings.save(dbconn)
                     return "Ok"
                 elif arr[1] == "modify":
