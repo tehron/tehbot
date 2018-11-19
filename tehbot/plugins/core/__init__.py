@@ -37,7 +37,7 @@ class ReloadPlugin(CorePlugin):
 
         self.res = self.tehbot.reload()
         if self.res is None:
-            return u"Okay, ready to crush ricer!"
+            return u"Okay"
         else:
             return u"Error: %s" % self.res
 
