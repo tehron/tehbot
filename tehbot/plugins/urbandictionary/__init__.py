@@ -20,7 +20,7 @@ class UrbanDictionaryPlugin(StandardPlugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return u"Error: %s" % unicode(e)
 
         url = "http://api.urbandictionary.com/v0/define?%s"
 
@@ -31,7 +31,7 @@ class UrbanDictionaryPlugin(StandardPlugin):
 
         data = {
             "page" : page,
-            "term" : term
+            "term" : plugins.to_utf8(term)
         }
 
         prefix = "\x0303[Urban Dictionary]\x03 "
