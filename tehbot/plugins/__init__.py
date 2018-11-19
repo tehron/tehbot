@@ -231,7 +231,7 @@ def myprint(s):
     s = regex.sub("", s)
     print sys_time.strftime("%H:%M:%S"), s.encode(encoding, "backslashreplace")
 
-def logmsg(time, network, target, nick, msg, is_action, dbconn=None):
+def logmsg(time, network, target, nick, msg, is_action, typ, dbconn=None):
     msg_clean = regex.sub("", msg)
     if is_action:
         s = "%s: %s: *%s %s" % (network, target, nick, msg_clean)
@@ -242,8 +242,8 @@ def logmsg(time, network, target, nick, msg, is_action, dbconn=None):
 
     if dbconn is not None:
         with dbconn:
-            dbconn.execute("create table if not exists Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, message varchar)")
-            dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?)", (time, network, target, nick, msg_clean))
+            dbconn.execute("create table if not exists Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, type integer, message varchar)")
+            dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?, ?)", (time, network, target, nick, typ, msg_clean))
 
 def grouped(val):
     return "{:,}".format(val)

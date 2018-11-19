@@ -2,6 +2,7 @@ from tehbot.plugins import *
 import shlex
 import sqlite3
 import time
+import irc.client
 
 class SeenPlugin(StandardPlugin):
     """Shows when a user was last seen."""
@@ -20,14 +21,18 @@ class SeenPlugin(StandardPlugin):
         except Exception as e:
             return u"Error: %s" % str(e)
 
+        requser = event.source.nick
         c = dbconn.cursor()
-        c.execute(u"select * from Messages where nick=? order by ts desc limit 1", (user,))
+        c.execute(u"select * from Messages where nick=? and type=0 order by ts desc limit 2", (user,))
         res = c.fetchone()
 
         if res is None:
             return u"I've never seen %s." % user
 
-        _, ts, server, channel, nick, message = res
+        if user == requser and irc.client.is_channel(event.target):
+            res = c.fetchone()
+
+        _, ts, server, channel, nick, _, message = res
         return u"I saw %s on %s in %s at %s saying '%s'." % (user, server, channel, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)), message)
 
 register_plugin(["seen", "last"], SeenPlugin())

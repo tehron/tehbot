@@ -467,7 +467,8 @@ class Dispatcher:
 
     def on_pubmsg(self, connection, event):
         msg = event.arguments[0]
-        plugins.logmsg(time.time(), connection.name, event.target, event.source.nick, msg, False, self.tehbot.dbconn)
+        typ = self.tehbot.settings.log_type(connection.name, event.target)
+        plugins.logmsg(time.time(), connection.name, event.target, event.source.nick, msg, False, typ, self.tehbot.dbconn)
         cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
@@ -479,7 +480,7 @@ class Dispatcher:
 
     def on_privmsg(self, connection, event):
         msg = event.arguments[0]
-        plugins.logmsg(time.time(), connection.name, event.source.nick, event.source.nick, msg, False, self.tehbot.dbconn)
+        plugins.logmsg(time.time(), connection.name, event.source.nick, event.source.nick, msg, False, 1, self.tehbot.dbconn)
         cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
