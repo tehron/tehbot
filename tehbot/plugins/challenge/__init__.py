@@ -108,14 +108,14 @@ class SolversPlugin(StandardPlugin):
         return module.solvers(challenge_name_or_nr, user=user)
 
 class SolvedHandler(ChannelHandler):
-    def __init__(self):
-        ChannelHandler.__init__(self)
-        self.regex = []
-        self.regex.append(re.compile(r'''^ok\s+tehbot,\s*has\s+(?P<who>\w+)\s+solved\s+(?P<chall>\w[\s\w]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\w[\s\w]*?|"[^"]+"|'[^']+'))?\s*\??$''', re.I))
-        self.regex.append(re.compile(r'''^ok\s+tehbot,\s*did\s+(?P<who>\w+)\s+solve\s+(?P<chall>\w[\s\w]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\w[\s\w]*?|"[^"]+"|'[^']+'))?\s*\??$''', re.I))
-
     def execute(self, connection, event, extra, dbconn):
-        for r in self.regex:
+        botname = self.tehbot.settings.value("botname", connection)
+        regex = [
+                re.compile(r'''^ok(?:ay)?\s+%s,?\s*has\s+(?P<who>\w+)\s+solved\s+(?P<chall>\w[\s\w]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\w[\s\w]*?|"[^"]+"|'[^']+'))?\s*\??$''' % botname, re.I),
+                re.compile(r'''^ok(?:ay)?\s+%s,?\s*did\s+(?P<who>\w+)\s+solve\s+(?P<chall>\w[\s\w]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\w[\s\w]*?|"[^"]+"|'[^']+'))?\s*\??$''' % botname, re.I)
+                ]
+
+        for r in regex:
             match = r.search(extra["msg"])
             if match is not None:
                 user = match.group(1)
