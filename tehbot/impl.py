@@ -285,6 +285,23 @@ class TehbotImpl:
                 elif arr[1] == "show":
                     return "no!"
                     #return repr(self.settings["connections"])
+            elif arr[0] == "logging":
+                if arr[1] == "modify":
+                    action = arr[2]
+                    key = arr[3]
+                    value = arr[4]
+
+                    if action != "add":
+                        return "Illegal action: %s" % action
+
+                    network, channel = value.split(",")
+
+                    dt = self.settings["logging"][key]
+                    if not dt.has_key(network):
+                        dt[network] = []
+                    dt[network].append(channel)
+                    self.settings.save(dbconn)
+                    return "Ok"
             elif arr[0] == "modify":
                 if arr[1] == "set":
                     key = arr[2]
