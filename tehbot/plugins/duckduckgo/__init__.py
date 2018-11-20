@@ -74,15 +74,15 @@ class DuckDuckGoPlugin(StandardPlugin):
             if typ == "D":
                 topics = set()
                 self.collect_topics(v, "RelatedTopics", topics)
-                result = u"Did you mean %s?" % self.orstr(sorted(topics))
+                result = u"Did you mean %s" % self.orstr(sorted(topics))
             elif typ == "A":
                 result = v["AbstractText"]
             else:
-                result = u"I don't know..."
+                result = u"I don't know what you mean."
         except Exception as e:
             print e
             return txt + u"Parse Error"
 
-        return txt + plugins.shorten(result, 450)
+        return plugins.shorten(txt + result, 450) + '?'
 
 register_plugin(["duckduckgo", "ddg", "search"], DuckDuckGoPlugin())
