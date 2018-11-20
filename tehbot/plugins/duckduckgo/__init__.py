@@ -29,12 +29,12 @@ class DuckDuckGoPlugin(StandardPlugin):
 
     def orstr(self, lst):
         if not lst:
-            return ""
+            return u""
 
         if len(lst) == 1:
             return lst[0]
 
-        return ", ".join(lst[:-1]) + ", or %s" % lst[-1]
+        return u", ".join(lst[:-1]) + u", or %s" % lst[-1]
 
     def collect_topics(self, json, key, topics):
         for x in json[key]:
@@ -44,11 +44,13 @@ class DuckDuckGoPlugin(StandardPlugin):
                 url = x["FirstURL"]
                 m = re.search(r'/?q=([^/]+)$', url)
                 if m is not None:
-                    top = urllib.unquote_plus(m.group(1))
+                    top = m.group(1)
                 else:
                     m = re.search(r'/([^/]+)$', url)
-                    top = m.group(1).replace('_', ' ')
-                topics.add('\x02%s\x0f' % top)
+                    top = m.group(1).replace("_", " ")
+
+                top = from_utf8(urllib.unquote(str(top)))
+                topics.add(u'\x02%s\x0f' % top)
 
     def execute(self, connection, event, extra, dbconn):
         try:
@@ -59,7 +61,7 @@ class DuckDuckGoPlugin(StandardPlugin):
         except Exception as e:
             return u"Error: %s" % unicode(e)
 
-        txt = "\x0303[DuckDuckGo]\x03 "
+        txt = u"\x0303[DuckDuckGo]\x03 "
 
         try:
             res = self.search(to_utf8(query))
@@ -74,15 +76,15 @@ class DuckDuckGoPlugin(StandardPlugin):
             if typ == "D":
                 topics = set()
                 self.collect_topics(v, "RelatedTopics", topics)
-                result = u"Did you mean %s?" % self.orstr(sorted(topics))
+                result = u"Did you mean %s" % self.orstr(sorted(topics))
             elif typ == "A":
                 result = v["AbstractText"]
             else:
-                result = u"I don't know..."
+                result = u"I don't know what you mean."
         except Exception as e:
             print e
             return txt + u"Parse Error"
 
-        return txt + plugins.shorten(result, 450)
+        return plugins.shorten(txt + result, 350) + u'?'
 
 register_plugin(["duckduckgo", "ddg", "search"], DuckDuckGoPlugin())
