@@ -18,7 +18,7 @@ class WikipediaPlugin(StandardPlugin):
 
     def __init__(self):
         StandardPlugin.__init__(self)
-        self.parser.add_argument("term")
+        self.parser.add_argument("term", nargs="+")
 
     def execute(self, connection, event, extra, dbconn):
         try:
@@ -31,7 +31,7 @@ class WikipediaPlugin(StandardPlugin):
         data = {
             "action" : "query",
             "list" : "search",
-            "srsearch" : plugins.to_utf8(pargs.term),
+            "srsearch" : plugins.to_utf8(u" ".join(pargs.term)),
             "srlimit" : 1,
             "srprop" : "",
             "format" : "json",
