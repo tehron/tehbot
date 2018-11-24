@@ -73,7 +73,10 @@ class OpHandler(ChannelJoinHandler):
         connection.mode(event.target, "+o " + event.source.nick)
 
     def config(self, args, dbconn):
-        ChannelJoinHandler.config(self, args, dbconn)
+        res = ChannelJoinHandler.config(self, args, dbconn)
+
+        if res:
+            return res
 
         if args[0] == "modify":
             if args[1] == "add":
@@ -84,5 +87,6 @@ class OpHandler(ChannelJoinHandler):
                     self.settings["whonot"].append(nick)
                     print self.settings
                     self.save(dbconn)
+                    return "Ok"
 
 register_channel_join_handler(OpHandler())

@@ -125,7 +125,7 @@ class Plugin:
         if args[0] == "modify":
             if args[1] == "set":
                 if args[2] == "enabled":
-                    state = bool(args[3])
+                    state = args[3].lower() == "true"
                     self.settings["enabled"] = state
                     self.save(dbconn)
                     return "Ok"
