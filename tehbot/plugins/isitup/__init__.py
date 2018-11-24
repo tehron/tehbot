@@ -1,7 +1,7 @@
 from tehbot.plugins import *
 import tehbot.plugins as plugins
 from urlparse import urlparse
-import httplib
+import urllib2
 from struct import unpack
 from socket import AF_INET, inet_pton, getaddrinfo
 
@@ -11,6 +11,7 @@ class IsitupPlugin(StandardPlugin):
     def __init__(self):
         StandardPlugin.__init__(self)
         self.parser.add_argument("host", nargs="?", default="google.com")
+        self.parser.add_argument("--no-follow", action="store_true")
 
     @staticmethod
     def _check(host):
@@ -34,12 +35,44 @@ class IsitupPlugin(StandardPlugin):
             pass
         return False
 
+    @staticmethod
+    def isitup(prot, host, no_follow):
+        if not IsitupPlugin._check(host):
+            return False
+
+        class MyRequest(urllib2.Request):
+            def __init__(self, url, method, **kwargs):
+                urllib2.Request.__init__(self, url, **kwargs)
+                self.method = method
+
+            def get_method(self):
+                return self.method
+
+        class MyHTTPRedirectHandler(urllib2.HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, hdrs, newurl):
+                if no_follow:
+                    return None
+                return HTTPRedirectHandler.redirect_request(self, req, fp, code, msg, hdrs, newurl)
+
+        try:
+            opener = urllib2.build_opener(MyHTTPRedirectHandler)
+            req = MyRequest("%s://%s" % (prot, host), "HEAD")
+            res = opener.open(req, timeout=5)
+            return 200 <= res.code < 300
+        except urllib2.HTTPError as e:
+            return 200 <= e.code < 400
+        except Exception as e:
+            pass
+        return False
+
+
     def execute(self, connection, event, extra, dbconn):
         try:
             pargs = self.parser.parse_args(extra["args"])
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
             parts = urlparse(pargs.host)
+            no_follow = pargs.no_follow
         except Exception as e:
             return u"Error: %s" % str(e)
 
@@ -55,15 +88,7 @@ class IsitupPlugin(StandardPlugin):
         if prot != "http" and prot != "https":
             return "Error: only scheme http and https supported"
 
-        res = None
-        if IsitupPlugin._check(host):
-            try:
-                clazz = httplib.HTTPSConnection if prot == "https" else httplib.HTTPConnection
-                conn = clazz(host, timeout=5)
-                conn.request("HEAD", "/")
-                res = conn.getresponse()
-            except Exception as e:
-                pass
+        res = IsitupPlugin.isitup(prot, host, no_follow)
 
         prefix = "\x0303[Isitup]\x03 "
         msg = u"%s is \x0303up \U0001f44d\x03." if res else u"%s seems to be \x0304down \U0001f44e\x03."
