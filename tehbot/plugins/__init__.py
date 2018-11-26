@@ -13,7 +13,7 @@ import shlex
 import datetime
 import json
 
-__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "from_utf8", "to_utf8"]
+__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "from_utf8", "to_utf8", "green", "red"]
 
 _tehbot = None
 _modules = []
@@ -349,6 +349,16 @@ def shorten(msg, maxlen):
             return "..."
         return msg[:maxlen - 3] + "..."
     return msg
+
+def green(msg):
+    return u"\x0303%s\x03" % msg
+
+def red(msg):
+    return u"\x0304%s\x03" % msg
+
+def exc2str(ex):
+    cls = ex.__class__.__name__
+    return "%s: %s" % (cls, ex.message) if ex.message else cls
 
 def collect():
     _path = os.path.dirname(__file__)
