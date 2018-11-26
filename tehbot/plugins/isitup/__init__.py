@@ -52,7 +52,7 @@ class IsitupPlugin(StandardPlugin):
             def redirect_request(self, req, fp, code, msg, hdrs, newurl):
                 if no_follow:
                     return None
-                return HTTPRedirectHandler.redirect_request(self, req, fp, code, msg, hdrs, newurl)
+                return urllib2.HTTPRedirectHandler.redirect_request(self, req, fp, code, msg, hdrs, newurl)
 
         try:
             opener = urllib2.build_opener(MyHTTPRedirectHandler)
@@ -62,7 +62,7 @@ class IsitupPlugin(StandardPlugin):
         except urllib2.HTTPError as e:
             return 200 <= e.code < 400
         except Exception as e:
-            pass
+            print e
         return False
 
 
