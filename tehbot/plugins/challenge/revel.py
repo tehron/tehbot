@@ -1,5 +1,6 @@
 from tehbot.plugins.challenge import *
 import urllib2
+import urllib
 import urlparse
 import lxml.html
 import re
@@ -84,6 +85,13 @@ class Site(BaseSite):
         return ranks[rank]
 
     @staticmethod
+    def fixurl(url):
+        # damn sabre still hasn't fixed url encoding in query string?
+        scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
+        query = urllib.urlencode(urlparse.parse_qsl(query))
+        return urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+
+    @staticmethod
     def parse_challs(url):
         challs = {}
         tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
@@ -103,7 +111,9 @@ class Site(BaseSite):
             if not e2:
                 continue
 
-            challs[nr] = (name, urlparse.urljoin(url, e2[0]))
+            u = urlparse.urljoin(url, e2[0])
+            u = Site.fixurl(u)
+            challs[nr] = (name, u)
 
         return challs
 
