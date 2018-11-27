@@ -8,7 +8,7 @@ import re
 import irc.client
 import pipes
 
-__all__ = [ "BaseSite", "NoSuchChallenge", "plugins" ]
+__all__ = [ "BaseSite", "NoSuchChallengeError", "NoSuchUserError", "ChallengesNotNumberedError", "plugins" ]
 
 path = __name__
 
