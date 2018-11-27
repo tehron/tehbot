@@ -57,4 +57,3 @@ docs/_build/
 target/
 
 data/tehbot.sqlite
-tehbot/plugins/challenge/hackthis.py

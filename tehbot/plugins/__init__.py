@@ -358,7 +358,8 @@ def red(msg):
 
 def exc2str(ex):
     cls = ex.__class__.__name__
-    return "%s: %s" % (cls, ex.message) if ex.message else cls
+    msg = unicode(ex)
+    return u"%s: %s" % (cls, msg) if msg else cls
 
 def collect():
     _path = os.path.dirname(__file__)

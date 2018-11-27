@@ -1,4 +1,4 @@
-import tehbot.plugins as plugins
+from tehbot.plugins.challenge import *
 import urllib
 import urllib2
 import urlparse
@@ -10,128 +10,107 @@ url2 = "https://www.wechall.net/wechallchalls.php?username=%s"
 challurl = "https://www.wechall.net/challs"
 rankurl = "https://www.wechall.net/site/ranking/for/1/WeChall/page-%d"
 solversurl = "https://www.wechall.net/challenge_solvers_for/%d/%s/page-%d"
-prefix = "\x0303[WeChall]\x03 "
 
-def stats(user, rank):
-    if rank:
-        return rankstats(rank)
+class Site(BaseSite):
+    def prefix(self):
+        return u"[WeChall]"
 
-    return userstats(user)
-
-def rankstats(rank):
-    txt = "\x0303[WeChall]\x03 "
-    page = 1 + (rank - 1) / 50
-
-    if page < 1:
-        return txt + "No such rank."
-
-    try:
-        tree = lxml.html.parse(urllib2.urlopen(rankurl % page))
-    except Exception as e:
-        return txt + "Network error."
-
-    for row in tree.xpath("//div[@id='page']/div[@class='gwf_table']/table//tr"):
-        r = row.xpath("td[1]")
-        n = row.xpath("td[3]")
-
-        if not r or not n:
-            continue
-
-        if int(r[0].text_content()) == rank:
-            return userstats(n[0].text_content())
-
-    return txt + "No such rank."
-
-def userstats(user):
-    txt = "\x0303[WeChall]\x03 "
-
-    try:
-        tree = lxml.html.parse(urllib2.urlopen(url % plugins.to_utf8(user)))
+    def userstats(self, user):
         page = urllib2.urlopen(url2 % plugins.to_utf8(user)).read()
-    except Exception as e:
-        return txt + "Network error."
 
-    # ugly wechall parsing, thx a lot gizmore! ;PP
-    try:
-        real_user = tree.xpath("//div[@id='page']//th[text()='Username']/../td")[0].text_content()
-        challs_solved = int(tree.xpath("count(//table[@id='wc_profile_challenges']/tr//a[@class='wc_chall_solved_1'])"))
-        challs_total = int(tree.xpath("count(//table[@id='wc_profile_challenges']/tr)"))
-        users_total = int(tree.xpath("//div[@id='wc_sidebar']//div[@class='wc_side_content']//div/a[@href='/users']")[0].text_content().split()[0])
-        rank = int(re.findall(r'\d+', page)[-1])
-    except:
-        return txt + "The requested user was not found, you can register at https://www.wechall.net"
-
-    txt += "%s solved %d (of %d) challenges and is on rank %s (of %d)." % (real_user, challs_solved, challs_total, rank, users_total)
-    return txt
-
-def parse_challs(url):
-    challs = {}
-    tree = lxml.html.parse(urllib2.urlopen(url))
-    for e in tree.xpath("//table[@class='wc_chall_table']/tr"):
-        e2 = e.xpath("td[2]/a[1]")
-        if not e2:
-            continue
-        name = e2[0].text_content().strip()
-        e2 = e.xpath("td[3]/a")
-        if not e2:
-            continue
-        solvers = int(e2[0].text_content().strip())
-        e2 = e.xpath("td[3]/a/@href")
-        if not e2:
-            continue
-        match = re.search(r'challenge_solvers_for/(\d+)/', e2[0])
+        match = re.search(r'(\w+) solved (\d+) of (\d+) Challenges with (\d+) of (\d+) possible points \(\d\d\.\d\d%\). Rank for the site WeChall: (\d+)', page)
         if not match:
-            continue
-        nr = int(match.group(1))
-        challs[nr] = (name, urlparse.urljoin(url, e2[0]), solvers)
+            return None
 
-    return challs
-
-def user_solved(user, nr, name):
-    try:
+        # ugly wechall parsing, thx a lot gizmore! ;PP
         tree = lxml.html.parse(urllib2.urlopen(url % plugins.to_utf8(user)))
-    except:
-        return False, True
+        users_total = int(tree.xpath("//div[@id='wc_sidebar']//div[@class='wc_side_content']//div/a[@href='/users']")[0].text_content().split()[0])
 
-    for row in tree.xpath("//div[@id='page']/table[@id='wc_profile_challenges']//tr"):
-        e = row.xpath("td[2]/a[1]")
-        if e:
-            n = e[0].text_content()
-            if n.lower().startswith(name.lower()):
-                e2 = e[0].xpath("@class")
-                return e2 and e2[0] == "wc_chall_solved_1", False
+        real_user, challs_solved, challs_total, score, scoremax, rank = match.groups()
+        return real_user, int(challs_solved), int(challs_total), str(int(rank)), int(users_total), int(score), int(scoremax), None
 
-    return False, False
+    def rankstats(self, rank):
+        page = 1 + (rank - 1) / 50
 
-def solvers(challenge_name_or_nr, user=None):
-    challs = parse_challs(challurl)
-    nr, name, url, solvers = None, None, None, None
+        if page < 1:
+            return None
 
-    if isinstance(challenge_name_or_nr, int):
-        if challs.has_key(challenge_name_or_nr):
-            nr = challenge_name_or_nr
-            name, url, solvers = challs[challenge_name_or_nr]
-    else:
-        for key, val in challs.items():
-            if val[0].lower().startswith(challenge_name_or_nr.lower()):
-                nr = key
-                name, url, solvers = val
-                break
-            if challenge_name_or_nr.lower() in val[0].lower():
-                nr = key
-                name, url, solvers = val
+        tree = lxml.html.parse(urllib2.urlopen(rankurl % page))
 
-    txt = "No such challenge."
-    if solvers is not None:
-        if user:
-            solved, err = user_solved(user, nr, name)
-            if err:
-                return prefix + "Network error."
-            txt = "Challenge Nr. %d, %s, has %sbeen solved by %s." % (nr, name, "" if solved else "not ", user)
+        for row in tree.xpath("//div[@id='page']/div[@class='gwf_table']/table//tr"):
+            r = row.xpath("td[1]")
+            n = row.xpath("td[3]")
+
+            if not r or not n:
+                continue
+
+            if int(r[0].text_content()) == rank:
+                res = self.userstats(n[0].text_content())
+                real_user, challs_solved, challs_total, rank, users_total, score, score_max, _ = res
+                return challs_solved, [real_user]
+
+        return None
+
+    @staticmethod
+    def parse_challs(url):
+        challs = {}
+        tree = lxml.html.parse(urllib2.urlopen(url))
+        for e in tree.xpath("//table[@class='wc_chall_table']/tr"):
+            e2 = e.xpath("td[2]/a[1]")
+            if not e2:
+                continue
+            name = e2[0].text_content().strip()
+            e2 = e.xpath("td[3]/a")
+            if not e2:
+                continue
+            solvers = int(e2[0].text_content().strip())
+            e2 = e.xpath("td[3]/a/@href")
+            if not e2:
+                continue
+            match = re.search(r'challenge_solvers_for/(\d+)/', e2[0])
+            if not match:
+                continue
+            nr = int(match.group(1))
+            challs[nr] = (name, urlparse.urljoin(url, e2[0]), solvers)
+
+        return challs
+
+    @staticmethod
+    def user_solved(user, nr, name):
+        tree = lxml.html.parse(urllib2.urlopen(url % plugins.to_utf8(user)))
+
+        for row in tree.xpath("//div[@id='page']/table[@id='wc_profile_challenges']//tr"):
+            e = row.xpath("td[2]/a[1]")
+            if e:
+                n = e[0].text_content()
+                if n.lower().startswith(name.lower()):
+                    e2 = e[0].xpath("@class")
+                    return e2 and e2[0] == "wc_chall_solved_1"
+
+        return False
+
+    def solvers(self, challname, challnr, user):
+        challs = Site.parse_challs(challurl)
+        nr, name, url, solvers = None, None, None, None
+
+        if challname is not None:
+            for key, val in challs.items():
+                if val[0].lower().startswith(challname.lower()):
+                    nr = key
+                    name, url, solvers = val
+                    break
+                if challname.lower() in val[0].lower():
+                    nr = key
+                    name, url, solvers = val
         else:
-            txt = "Challenge Nr. %d, %s, hasn't been solved by anyone yet." % (nr, name)
+            if challs.has_key(challnr):
+                nr = challnr
+                name, url, solvers = challs[challnr]
 
-            if solvers > 0:
-                txt = "Challenge Nr. %d, %s, has been solved by %d user%s." % (nr, name, solvers, "" if solvers == 1 else "s")
+        if name is None:
+            return NoSuchChallenge
 
-    return prefix + txt
+        cnt = solvers
+        solved = Site.user_solved(user, nr, name) if user else False
+
+        return nr, name, cnt, [], user, solved
