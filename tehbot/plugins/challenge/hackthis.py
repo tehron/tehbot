@@ -81,7 +81,7 @@ class Site(BaseSite):
 
     def solvers(self, challname, challnr, user):
         if challname is None:
-            raise ChallengesNotNumbered
+            raise ChallengesNotNumberedError
 
         data = {"action" : "stats.level", "level" : challname}
         if user is not None:
@@ -92,7 +92,7 @@ class Site(BaseSite):
             page = urllib2.urlopen("https://www.hackthis.co.uk/?api&key=%s" % self.settings["hackthis_api_key"], data).read()
         except urllib2.HTTPError as e:
             if e.code == 400:
-                raise NoSuchChallenge
+                raise NoSuchChallengeError
             raise e
 
         jdata = json.loads(page)

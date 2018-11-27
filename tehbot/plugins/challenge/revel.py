@@ -14,7 +14,7 @@ class Site(BaseSite):
     def userstats(self, user):
         #url = "https://revolutionelite.co.uk/w3ch4ll/userscore.php?username=%s"
         url = "https://www.sabrefilms.co.uk/revolutionelite/w3ch4ll/userscore.php?username=%s"
-        page = urllib2.urlopen(url % (plugins.to_utf8(user))).read()
+        page = urllib2.urlopen(url % (plugins.to_utf8(user)), timeout=5).read()
 
         if page == "0":
             return None
@@ -86,7 +86,7 @@ class Site(BaseSite):
     @staticmethod
     def parse_challs(url):
         challs = {}
-        tree = lxml.html.parse(urllib2.urlopen(url))
+        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
         for e in tree.xpath("//div[@class='content']/center/table/tr"):
             e2 = e.xpath("td[2]")
             if not e2:
@@ -136,10 +136,10 @@ class Site(BaseSite):
                 name, url = challs[challnr]
 
         if not name:
-            raise NoSuchChallenge
+            raise NoSuchChallengeError
 
         cnt = 0
-        page = urllib2.urlopen(url).read()
+        page = urllib2.urlopen(url, timeout=5).read()
         solvers = Site.get_solvers(page)
         match = re.search(r'\((\d+) solvers\) \(latest first\)', page)
 

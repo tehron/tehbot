@@ -16,7 +16,7 @@ class Site(BaseSite):
         return u"http://www.happy-security.de"
 
     def userstats(self, user):
-        page = urllib2.urlopen(url1 % plugins.to_latin1(user)).read()
+        page = urllib2.urlopen(url1 % plugins.to_latin1(user), timeout=5).read()
         page = page.decode("latin1")
 
         match = page.split(":")
@@ -30,7 +30,7 @@ class Site(BaseSite):
             if int(rank) > 1:
                 try:
                     user2 = Site.hs_rank_to_user(int(rank) - 1)
-                    result = urllib2.urlopen(url1 % plugins.to_latin1(user2)).read().decode("latin1").split(":")
+                    result = urllib2.urlopen(url1 % plugins.to_latin1(user2), timeout=5).read().decode("latin1").split(":")
                     if len(result) == 6:
                         rank2, challs_solved2, challs_total2, users_total2, challs_contributed2, user2 = result
                         count = int(challs_solved2) - int(challs_solved)
@@ -60,7 +60,7 @@ class Site(BaseSite):
     @staticmethod
     def parse_challs(url):
         challs = {}
-        tree = lxml.html.parse(urllib2.urlopen(url))
+        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
         for e in tree.xpath("//td[@class='middle']//table[@class='mtable']/tr"):
             e2 = e.xpath("td[2]//a[1]")
             e3 = e.xpath("td[4]/a")
@@ -76,7 +76,7 @@ class Site(BaseSite):
 
     @staticmethod
     def get_last_solvers(url):
-        tree = lxml.html.parse(urllib2.urlopen(url))
+        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
         solvers = []
         for p in tree.xpath("//td[@class='middle']//table[@class='mtable']/tr/td[2]/a"):
             solvers.append(p.text_content().strip())
@@ -112,7 +112,7 @@ class Site(BaseSite):
                 name, url, solvers = challs[challnr]
 
         if not name:
-            raise NoSuchChallenge
+            raise NoSuchChallengeError
 
         cnt = solvers
         solvers = Site.get_last_solvers(url)

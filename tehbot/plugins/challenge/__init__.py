@@ -43,13 +43,16 @@ class BaseSite:
     def rankstats(self, rank):
         raise NotImplementedError
 
-    def solvers(self, challname, challnr):
+    def solvers(self, challname, challnr, user):
         raise NotImplementedError
 
-class NoSuchChallenge(Exception):
+class NoSuchChallengeError(Exception):
     pass
 
-class ChallengesNotNumbered(Exception):
+class NoSuchUserError(Exception):
+    pass
+
+class ChallengesNotNumberedError(Exception):
     pass
 
 
@@ -142,6 +145,9 @@ class SolversPlugin(StandardPlugin):
 
     def solvers(self, site, challenge_name_or_nr, user=None):
         try:
+            if user is not None and not site.userstats(user):
+                raise NoSuchUserError
+
             if isinstance(challenge_name_or_nr, int):
                 res = site.solvers(None, int(challenge_name_or_nr), user)
             else:
