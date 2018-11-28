@@ -65,7 +65,6 @@ class DuckDuckGoPlugin(StandardPlugin):
 
         try:
             res = self.search(to_utf8(query))
-            print res
         except Exception as e:
             print e
             return txt + u"Network Error"
@@ -77,14 +76,17 @@ class DuckDuckGoPlugin(StandardPlugin):
                 topics = set()
                 self.collect_topics(v, "RelatedTopics", topics)
                 result = u"Did you mean %s" % self.orstr(sorted(topics))
+                result = plugins.shorten(txt + result, 350) + u"?"
             elif typ == "A":
                 result = v["AbstractText"]
+                result = plugins.shorten(txt + result, 350)
             else:
-                result = u"I don't know what you mean."
+                print res
+                result = txt + u"I don't know what you mean."
         except Exception as e:
             print e
             return txt + u"Parse Error"
 
-        return plugins.shorten(txt + result, 350) + u'?'
+        return result
 
 register_plugin(["duckduckgo", "ddg", "search"], DuckDuckGoPlugin())
