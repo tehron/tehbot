@@ -166,6 +166,7 @@ class TehbotImpl:
                 conn.name = name
                 conn.channels = set()
                 conn.locks = dict()
+                conn.users = dict()
                 self.reconnect(conn)
             else:
                 self.dispatcher.join_channels(conn)
@@ -522,3 +523,28 @@ class Dispatcher:
     def on_396(self, connection, event):
         # TODO join channel before 5s wait time is over
         pass
+
+    def on_namreply(self, connection, event):
+        ch_type, channel, nick_list = event.arguments
+
+        if channel == "*":
+            return
+
+        try:
+            connection.users
+        except:
+            connection.users = dict()
+
+        connection.users[channel] = []
+
+        for nick in nick_list.split():
+            nick_modes = []
+
+            if nick[0] in connection.features.prefix:
+                nick_modes.append(connection.features.prefix[nick[0]])
+                nick = nick[1:]
+
+            for mode in nick_modes:
+                self.channels[channel].set_mode(mode, nick)
+
+            connection.users[channel].append(nick)
