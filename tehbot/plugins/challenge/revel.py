@@ -10,11 +10,10 @@ class Site(BaseSite):
         return u"[Revolution Elite]"
 
     def siteurl(self):
-        return "https://revolutionelite.co.uk"
+        return "https://www.revolutionelite.co.uk"
 
     def userstats(self, user):
-        #url = "https://revolutionelite.co.uk/w3ch4ll/userscore.php?username=%s"
-        url = "https://www.sabrefilms.co.uk/revolutionelite/w3ch4ll/userscore.php?username=%s"
+        url = "https://www.revolutionelite.co.uk/w3ch4ll/userscore.php?username=%s"
         page = urllib2.urlopen(url % (plugins.to_utf8(user)), timeout=5).read()
 
         if page == "0":
@@ -36,8 +35,7 @@ class Site(BaseSite):
 
     @staticmethod
     def parsescores(page):
-        url = "https://www.sabrefilms.co.uk/revolutionelite/rank.php?page=%d"
-        #url = "https://revolutionelite.co.uk/rank.php?page=%d"
+        url = "https://www.revolutionelite.co.uk/rank.php?page=%d"
         scores = []
 
         tree = lxml.html.parse(urllib2.urlopen(url % page, timeout=5))
@@ -126,8 +124,7 @@ class Site(BaseSite):
         return solvers
 
     def solvers(self, challname, challnr, user):
-        url = "https://www.sabrefilms.co.uk/revolutionelite/credits.php"
-        #url = "https://revolutionelite.co.uk/credits.php"
+        url = "https://www.revolutionelite.co.uk/credits.php"
         challs = Site.parse_challs(url)
         nr, name, url = None, None, None
 
