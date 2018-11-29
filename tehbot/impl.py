@@ -166,7 +166,7 @@ class TehbotImpl:
                 conn.name = name
                 conn.channels = set()
                 conn.locks = dict()
-                conn.users = dict()
+                conn.tehbot_users = dict()
                 self.reconnect(conn)
             else:
                 self.dispatcher.join_channels(conn)
@@ -413,6 +413,9 @@ class Dispatcher:
         channel = event.target
         botname = self.tehbot.settings.value("botname", connection)
 
+        connection.tehbot_users[channel].append(nick)
+        print "join", channel, connection.tehbot_users[channel]
+
         if nick == botname:
             connection.channels.add(channel.lower())
 
@@ -433,6 +436,13 @@ class Dispatcher:
         channel = event.target
         botname = self.tehbot.settings.value("botname", connection)
 
+        try:
+            connection.tehbot_users[channel].remove(nick)
+        except ValueError as e:
+            pass
+
+        print "part", channel, connection.tehbot_users[channel]
+
         if nick == botname:
             connection.channels.remove(channel.lower())
 
@@ -444,13 +454,22 @@ class Dispatcher:
     def on_quit(self, connection, event):
         plugins.myprint("%s: %s has quit (%s)" % (connection.name, event.source.nick, event.arguments[0]))
         botname = self.tehbot.settings.value("botname", connection)
+        nick = event.source.nick
+
+        for channel in connection.tehbot_users.keys():
+            try:
+                connection.tehbot_users[channel].remove(nick)
+            except ValueError as e:
+                pass
+
+        print "part", channel, connection.tehbot_users[channel]
 
         # reconquer our nick!
-        if event.source.nick == botname:
+        if nick == botname:
             connection.nick(botname)
 
         try:
-            self.tehbot.privusers[connection].remove(event.source.nick)
+            self.tehbot.privusers[connection].remove(nick)
         except:
             pass
 
@@ -511,6 +530,13 @@ class Dispatcher:
         plugins.myprint("%s: %s is now known as %s" % (connection.name, oldnick, newnick))
         botname = self.tehbot.settings.value("botname", connection)
 
+        for channel in connection.tehbot_users.keys():
+            try:
+                connection.tehbot_users[channel].remove(oldnick)
+            except ValueError:
+                pass
+            connection.tehbot_users[channel].append(newnick)
+
         # reconquer our nick!
         if oldnick == botname:
             connection.nick(botname)
@@ -531,11 +557,11 @@ class Dispatcher:
             return
 
         try:
-            connection.users
+            connection.tehbot_users
         except:
-            connection.users = dict()
+            connection.tehbot_users = dict()
 
-        connection.users[channel] = []
+        connection.tehbot_users[channel] = []
 
         for nick in nick_list.split():
             nick_modes = []
@@ -544,7 +570,10 @@ class Dispatcher:
                 nick_modes.append(connection.features.prefix[nick[0]])
                 nick = nick[1:]
 
-            for mode in nick_modes:
-                self.channels[channel].set_mode(mode, nick)
+            # for mode in nick_modes:
+                # self.channels[channel].set_mode(mode, nick)
 
-            connection.users[channel].append(nick)
+            connection.tehbot_users[channel].append(nick)
+
+
+        print "namreply", channel, connection.tehbot_users[channel]

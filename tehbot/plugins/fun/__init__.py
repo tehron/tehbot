@@ -4,6 +4,31 @@ import urllib
 from random import *
 import shlex
 
+class DeadHourPlugin(StandardPlugin):
+    def execute(self, connection, event, extra, dbconn):
+        channel = event.target
+
+        if channel != "#wechall":
+            return
+
+        if not self.privileged(connection, event):
+            return self.request_priv(extra)
+
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % unicode(e)
+
+        happy_users = [ "ChanServ", "giz|work", "giz|lazer", "giz|lazer|2", "gizmore", "dloser", "Lamb3", "tehbot" ]
+        dead_users = set(connection.users[channel]).difference(happy_users)
+
+        for u in dead_users:
+            connection.mode(channel, "-o " + u)
+
+register_plugin("dead_hour", DeadHourPlugin())
+
 class BlamePlugin(StandardPlugin):
     def execute(self, connection, event, extra, dbconn):
         try:
