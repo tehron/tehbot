@@ -38,7 +38,7 @@ class BlamePlugin(StandardPlugin):
         except Exception as e:
             return u"Error: %s" % unicode(e)
 
-        space = u"spaceone"
+        space = u"\xd1\x95paceone"
         goats = zip((space for one in range(23)), 42 * [ reduce(random, [], space) ])
         shuffle(goats)
         goats.sort(key=lambda x: random())
