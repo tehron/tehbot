@@ -25,11 +25,12 @@ class Site(BaseSite):
 
         _, rank, pts, ptsmax, solved, solvedmax, usercount = match
 
-        # fix rank reported incorrectly by sabretooth's script
-        try:
-            rank = str(int(rank) + 1)
-        except:
-            pass
+        # sabre can't make up his mind!
+        ## fix rank reported incorrectly by sabretooth's script
+        #try:
+        #    rank = str(int(rank) + 1)
+        #except:
+        #    pass
 
         return user, int(solved), int(solvedmax), rank, int(usercount), None, None, None
 
