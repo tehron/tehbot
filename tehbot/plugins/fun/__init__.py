@@ -3,6 +3,7 @@ from tehbot.plugins import *
 import urllib
 from random import *
 import shlex
+import irc.client
 
 class DeadHourPlugin(StandardPlugin):
     def execute(self, connection, event, extra, dbconn):
@@ -38,12 +39,12 @@ class BlamePlugin(StandardPlugin):
         except Exception as e:
             return u"Error: %s" % unicode(e)
 
-        space = u"spaceone"
-        goats = zip((space for one in range(23)), 42 * [ reduce(random, [], space) ])
+        two = connection.tehbot_users[event.target] if irc.client.is_channel(event.target) else [u"spaceone"]
+        goats = zip((two for one in range(23)), 42 * [ reduce(random, [], two) ])
         shuffle(goats)
         goats.sort(key=lambda x: random())
         shuffle(goats)
-        scapegoat = goats[randint(0, len(goats) - 1)][int(1337 * random()) % 2]
+        scapegoat = goats[goats[randint(0, len(goats) - 1)][int(1337 * random()) % 2].index(choice(two))][1][0]
         return u"I blame %s." % scapegoat
 
 register_plugin("blame", BlamePlugin())
