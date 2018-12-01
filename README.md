@@ -24,7 +24,7 @@ Tehbot has an active command line which accepts the following commands (commands
 * `/config tehbot modify set cmdprefix "!"` -- set tehbot's command prefix to `!` (tehbot will react to IRC messages that start with `!`)
 * `/config tehbot connections add "IRC Network"` -- add an IRC network tehbot should connect to as "IRC Network"
   * `/config tehbot connections modify "IRC Network" set host "irc.network.org"`
-  * `/config tehbot connections modify "IRC Network" set port "7000"`
+  * `/config tehbot connections modify "IRC Network" set port 7000`
   * `/config tehbot connections modify "IRC Network" set ssl "True"`
   * `/config tehbot connections modify "IRC Network" add channels "#channel1"`
   * `/config tehbot connections modify "IRC Network" add channels "#channel2"`
