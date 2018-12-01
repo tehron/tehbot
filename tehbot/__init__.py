@@ -1,6 +1,7 @@
 import irc.client
 import plugins
 import impl
+import sys
 import traceback
 import time
 import settings
@@ -26,8 +27,7 @@ class Tehbot:
             map(reload, modules)
             self.newimpl.collect_plugins()
         except Exception as e:
-            print Tehbot.ts()
-            traceback.print_exc()
+            Tehbot.print_exc()
             self.newimpl = None
             return e
 
@@ -38,17 +38,21 @@ class Tehbot:
         try:
             self.impl and self.impl.deinit()
         except:
-            print Tehbot.ts()
-            traceback.print_exc()
+            Tehbot.print_exc()
 
         try:
             self.newimpl.postinit()
         except:
-            print Tehbot.ts()
-            traceback.print_exc()
+            Tehbot.print_exc()
 
         self.impl = self.newimpl
         self.newimpl = None
+
+    @staticmethod
+    def print_exc():
+        exctype, value = sys.exc_info()[:2]
+        print u"%s: %s" % (Tehbot.ts(), exctype)
+        traceback.print_exc()
 
     @staticmethod
     def ts():

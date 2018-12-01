@@ -1,4 +1,6 @@
 import sys
+import os
+import psutil
 import threading
 import traceback
 from tehbot import *
@@ -22,8 +24,7 @@ def kbdinput():
         except EOFError, SystemExit:
             break
         except:
-            print Tehbot.ts()
-            traceback.print_exc()
+            Tehbot.print_exc()
 
 
 queue = Queue()
@@ -36,8 +37,7 @@ try:
     bot = Tehbot()
     bot.connect()
 except:
-    print Tehbot.ts()
-    traceback.print_exc()
+    Tehbot.print_exc()
     try:
         bot.quit()
     finally:
@@ -75,9 +75,16 @@ while True:
         func(args)
     except KeyboardInterrupt:
         bot.quit()
-    except irc.client.ServerConnectionError as e:
-        print "%s: %s" % (Tehbot.ts(), e)
-        traceback.print_exc()
     except:
-        print Tehbot.ts()
-        traceback.print_exc()
+        Tehbot.print_exc()
+
+if bot.restart_called:
+    try:
+        p = psutil.Process(os.getpid())
+        for handler in p.get_open_files() + p.connections():
+            os.close(handler.fd)
+    except:
+        Tehbot.print_exc()
+
+    python = sys.executable
+    os.execl(python, python, *sys.argv)

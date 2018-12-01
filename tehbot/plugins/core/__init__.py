@@ -36,10 +36,7 @@ class ReloadPlugin(CorePlugin):
             return self.request_priv(extra)
 
         self.res = self.tehbot.reload()
-        if self.res is None:
-            return u"Okay"
-        else:
-            return u"Error: %s" % self.res
+        return "Okay" if self.res is None else u"Error: %s" % exc2str(self.res)
 
     def finalize(self):
         try:
@@ -51,11 +48,27 @@ class ReloadPlugin(CorePlugin):
 register_plugin("reload", ReloadPlugin())
 
 class QuitPlugin(CorePlugin):
+    def __init__(self):
+        CorePlugin.__init__(self)
+        self.parser.add_argument("msg", nargs="*")
+        self.parser.add_argument("--restart", "-r", action="store_true")
+
     def execute(self, connection, event, extra, dbconn):
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % unicode(e)
+
         if not self.privileged(connection, event):
             return self.request_priv(extra)
 
-        self.tehbot.quit(extra["args"])
+        msg = " ".join(pargs.msg)
+        if pargs.restart:
+            self.tehbot.restart(msg)
+        else:
+            self.tehbot.quit(msg)
 
 register_plugin("quit", QuitPlugin())
 

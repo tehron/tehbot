@@ -16,6 +16,7 @@ from types import ModuleType
 
 import ctypes
 import shlex
+import argparse
 
 def _terminate_thread(thread):
     """Terminates a python thread from another thread.
@@ -65,6 +66,7 @@ class TehbotImpl:
         self.queue = Queue(maxsize=0)
         self.workers = []
         self.quit_called = False
+        self.restart_called = False
         self.dbfile = os.path.join(os.path.dirname(__file__), "../data/tehbot.sqlite")
         self.dbconn = sqlite3.connect(self.dbfile)
         self.mainqueue = Queue()
@@ -98,6 +100,7 @@ class TehbotImpl:
 
         self.dbconn.close()
         self.quit_called = True
+        self.restart_called = False
 
     def postinit(self):
         self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
@@ -147,7 +150,7 @@ class TehbotImpl:
             self.workers.append(worker)
             worker.start()
 
-    def _kill_workers(self):
+    def __kill_workers(self):
         while self.workers:
             _terminate_thread(self.workers.pop())
 
@@ -195,16 +198,20 @@ class TehbotImpl:
             self.mainqueue.task_done()
         except Empty:
             pass
-        except:
-            traceback.print_exc()
 
     def quit(self, msg=None):
         print "quit called"
         self.quit_called = True
         self.core.reactor.disconnect_all(msg or "bye-bye")
 
+    def restart(self, msg=None):
+        print "restart called"
+        self.quit_called = True
+        self.restart_called = True
+        self.core.reactor.disconnect_all(msg or "I'll be back!")
+
     def reload(self):
-        self.core.reload()
+        return self.core.reload()
 
     def finalize(self):
         self.core.finalize()
@@ -215,7 +222,16 @@ class TehbotImpl:
         self.finalize()
 
     def kbd_quit(self, args):
-        self.quit(args)
+        parser = argparse.ArgumentParser()
+        parser.add_argument("msg", nargs="*")
+        parser.add_argument("--restart", "-r", action="store_true")
+        pargs = parser.parse_args(shlex.split(args or ""))
+
+        msg = " ".join(pargs.msg)
+        if pargs.restart:
+            self.restart(msg)
+        else:
+            self.quit(msg)
 
     def kbd_stats(self, args):
         print "Connections"

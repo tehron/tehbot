@@ -13,7 +13,7 @@ import shlex
 import datetime
 import json
 
-__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "from_utf8", "to_utf8", "green", "red"]
+__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "from_utf8", "to_utf8", "green", "red", "bold", "exc2str"]
 
 _tehbot = None
 _modules = []
