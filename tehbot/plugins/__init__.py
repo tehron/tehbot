@@ -196,6 +196,9 @@ class Announcer(Plugin):
         self.tehbot.core.reactor.scheduler.execute_at(at, self.callme)
 
     def handle(self, connection, event, extra, dbconn):
+        if not self.settings["enabled"]:
+            return
+
         try:
             msg = self.execute(connection, event, extra, dbconn)
 
@@ -215,6 +218,9 @@ class Poller(Announcer):
         self.tehbot.core.reactor.scheduler.execute_after(timeout, self.callme)
 
     def handle(self, connection, event, extra, dbconn):
+        if not self.settings["enabled"]:
+            return
+
         try:
             msg = self.execute(connection, event, extra, dbconn)
 
@@ -355,6 +361,9 @@ def green(msg):
 
 def red(msg):
     return u"\x0304%s\x03" % msg
+
+def bold(msg):
+    return u"\x02%s\x0f" % msg
 
 def exc2str(ex):
     cls = ex.__class__.__name__
