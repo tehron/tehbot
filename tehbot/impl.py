@@ -413,10 +413,8 @@ class Dispatcher:
         channel = event.target
         botname = self.tehbot.settings.value("botname", connection)
 
-        connection.tehbot_users[channel].append(nick)
-        print "join", channel, connection.tehbot_users[channel]
-
         if nick == botname:
+            connection.tehbot_users[channel] = []
             connection.channels.add(channel.lower())
 
             params = self.tehbot.settings.connection_params(connection)
@@ -425,6 +423,9 @@ class Dispatcher:
             if channel.lower() not in channels:
                 connection.part(channel)
 
+        connection.tehbot_users[channel].append(nick)
+
+        if nick == botname:
             return
 
         for h in self.tehbot.channel_join_handlers:
@@ -441,9 +442,8 @@ class Dispatcher:
         except ValueError as e:
             pass
 
-        print "part", channel, connection.tehbot_users[channel]
-
         if nick == botname:
+            del connection.tehbot_users[channel]
             connection.channels.remove(channel.lower())
 
         try:
@@ -461,8 +461,6 @@ class Dispatcher:
                 connection.tehbot_users[channel].remove(nick)
             except ValueError as e:
                 pass
-
-        print "part", channel, connection.tehbot_users[channel]
 
         # reconquer our nick!
         if nick == botname:
@@ -556,11 +554,6 @@ class Dispatcher:
         if channel == "*":
             return
 
-        try:
-            connection.tehbot_users
-        except:
-            connection.tehbot_users = dict()
-
         connection.tehbot_users[channel] = []
 
         for nick in nick_list.split():
@@ -574,6 +567,3 @@ class Dispatcher:
                 # self.channels[channel].set_mode(mode, nick)
 
             connection.tehbot_users[channel].append(nick)
-
-
-        print "namreply", channel, connection.tehbot_users[channel]
