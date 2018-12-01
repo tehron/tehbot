@@ -31,7 +31,7 @@ class AiHandler(ChannelHandler):
     def execute(self, connection, event, extra, dbconn):
         botname = self.tehbot.settings.value("botname", connection)
         decide_regex = [
-                re.compile(r'''^(?:ok(?:ay)?|hey)\s+%s,?\s*(?:is|are|has|was|were)\s+\w[\s\w]*\?''' % botname, re.I),
+                re.compile(r'''^(?:ok(?:ay)?|hey)\s+%s,?\s*(?:is|are|can|has|was|were)\s+\w[\s\w]*\?''' % botname, re.I),
                 ]
         regex = [
                 re.compile(r'''^(?:ok(?:ay)?|hey)\s+%s,?\s*(?P<what>.*?)\s*\??$''' % botname, re.I),
