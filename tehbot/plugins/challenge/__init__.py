@@ -6,6 +6,7 @@ import urllib
 import urllib2
 import re
 import irc.client
+import time
 
 __all__ = [ "BaseSite", "NoSuchChallengeError", "NoSuchUserError", "ChallengesNotNumberedError", "plugins" ]
 
@@ -198,3 +199,88 @@ class SolversPlugin(StandardPlugin):
         return self.solvers(site, challenge_name_or_nr, user)
 
 register_plugin("solvers", SolversPlugin())
+
+
+class RevelSolvedPoller(Poller):
+    def timeout(self):
+        return self.settings["timeout"]
+
+    def where(self):
+        return self.settings["where"]
+
+    def prefix(self):
+        return u"[Revolution Elite]"
+
+    def datestamp(self, ts):
+        return time.strftime('%Y%m%d%H%M%S', time.localtime(ts))
+
+    def timestamp(self, datestamp):
+        try:
+            t = time.strptime(datestamp, '%Y%m%d%H%M%S')
+            ts = time.mktime(t)
+        except:
+            ts = 0
+        return ts
+
+    def config(self, args, dbconn):
+        if args[0] == "modify":
+            if args[1] == "add" and args[2] == "where":
+                network = args[3]
+                channel = args[4]
+                if not self.settings.has_key("where"):
+                    self.settings["where"] = dict()
+                if not self.settings["where"].has_key(network):
+                    self.settings["where"][network] = []
+                self.settings["where"][network].append(channel)
+                self.save(dbconn)
+                return "Ok"
+            elif args[1] == "set" and args[2] == "timeout":
+                self.settings["timeout"] = int(args[3])
+                self.save(dbconn)
+                return "Ok"
+
+        return Poller.config(self, args, dbconn)
+
+    def execute(self, connection, event, extra, dbconn):
+        url = "http://www.revolutionelite.co.uk/w3ch4ll/solvers_revel.php?datestamp=%s"
+
+        try:
+            ts = self.settings["ts"]
+        except:
+            ts = 0
+
+        reply = urllib2.urlopen(url % self.datestamp(ts), timeout=3)
+        entries = []
+
+        for entry in reply.readlines():
+            try:
+                uid, cid, solvedate, firstdate, views, options, timetaken, tries, username, challname, solvercount, challurl = map(lambda x: x.replace(r"\:", ":"), entry.split("::"))
+                uid = int(uid)
+                cid = int(cid)
+                tssolve = self.timestamp(solvedate)
+                ts1stsolve = self.timestamp(firstdate)
+                views = int(views)
+                tries = int(tries)
+                solvercount = int(solvercount) - 1
+                entries.append((tssolve, username, challname, solvercount))
+            except:
+                pass
+
+        msgs = []
+        for tssolve, user, chall, solvers in sorted(entries):
+            ts = tssolve
+
+            msg = "%s has just solved %s." % (plugins.bold(username), plugins.bold(challname))
+            if solvercount <= 0:
+                msg += " This challenge has never been solved before!"
+            else:
+                msg += " This challenge has been solved %d time%s before." % (solvercount, "" if solvercount == 1 else "s")
+
+            msgs.append(u"%s %s" % (plugins.green(self.prefix()), msg))
+
+        self.settings["ts"] = ts
+        self.save(dbconn)
+
+        return u"\n".join(msgs)
+
+register_poller(RevelSolvedPoller())
