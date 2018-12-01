@@ -1,3 +1,4 @@
+import readline
 import sys
 import os
 import psutil
@@ -81,10 +82,12 @@ while True:
 if bot.restart_called:
     try:
         p = psutil.Process(os.getpid())
-        for handler in p.get_open_files() + p.connections():
+        for handler in p.open_files() + p.connections():
             os.close(handler.fd)
     except:
         Tehbot.print_exc()
 
     python = sys.executable
-    os.execl(python, python, *sys.argv)
+    # somehow "python -m tehbot" gets turned into "python -c ..."!?
+    #os.execl(python, python, *sys.argv)
+    os.execl(python, python, '-m', 'tehbot')

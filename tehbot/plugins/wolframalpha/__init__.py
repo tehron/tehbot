@@ -48,20 +48,13 @@ class WolframAlphaPlugin(StandardPlugin):
         s = pt.get_string()
         return s
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
-
+    def command(self, connection, event, extra, dbconn):
         txt = "\x0303[Wolfram|Alpha]\x03 "
 
         try:
             res = None
             misc = []
-            for p in self.client.query(" ".join(pargs.query)).pods:
+            for p in self.client.query(" ".join(self.pargs.query)).pods:
                 if p.id == "Input":
                     inp = " | ".join(p.text.splitlines())
                 elif p.id == "Result" and p.text:

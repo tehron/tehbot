@@ -22,15 +22,8 @@ class WwddPlugin(StandardPlugin):
                 (7, "%s says: so helpful"),
             ])
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
-
-        if pargs.add is None:
+    def command(self, connection, event, extra, dbconn):
+        if self.pargs.add is None:
             c = dbconn.execute("select text from WwddPlugin order by random() limit 1")
             what = c.fetchone()
 
@@ -38,7 +31,8 @@ class WwddPlugin(StandardPlugin):
                 return what[0] % "dloser"
             return
 
-        what = pargs.add
+        what = self.pargs.add
+
         if not self.privileged(connection, event):
             return self.request_priv(extra)
 
@@ -51,5 +45,7 @@ class WwddPlugin(StandardPlugin):
         with dbconn:
             if dbconn.execute("insert into WwddPlugin values(null, ?)", (what,)).rowcount != 1:
                 return "Error: Query failed. :("
+
+        return "Okay"
 
 register_plugin("wwdd", WwddPlugin())

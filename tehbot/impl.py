@@ -224,7 +224,7 @@ class TehbotImpl:
     def kbd_quit(self, args):
         parser = argparse.ArgumentParser()
         parser.add_argument("msg", nargs="*")
-        parser.add_argument("--restart", "-r", action="store_true")
+        parser.add_argument("-r", "--restart", action="store_true")
         pargs = parser.parse_args(shlex.split(args or ""))
 
         msg = " ".join(pargs.msg)
@@ -269,7 +269,7 @@ class TehbotImpl:
                             "operators" : [ ]
                             }
                     self.settings.save(dbconn)
-                    return "Ok"
+                    return "Okay"
                 elif arr[1] == "modify":
                     name = arr[2]
                     action = arr[3]
@@ -298,7 +298,7 @@ class TehbotImpl:
                     else:
                         self.settings["connections"][name][key] = value
                     self.settings.save(dbconn)
-                    return "Ok"
+                    return "Okay"
                 elif arr[1] == "show":
                     return "no!"
                     #return repr(self.settings["connections"])
@@ -318,14 +318,14 @@ class TehbotImpl:
                         dt[network] = []
                     dt[network].append(channel)
                     self.settings.save(dbconn)
-                    return "Ok"
+                    return "Okay"
             elif arr[0] == "modify":
                 if arr[1] == "set":
                     key = arr[2]
                     value = arr[3]
                     self.settings[key] = value
                     self.settings.save(dbconn)
-                    return "Ok"
+                    return "Okay"
         else:
             for h in self.handlers:
                 if h.__class__.__name__ == handler:

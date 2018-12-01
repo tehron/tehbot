@@ -2,19 +2,13 @@ from tehbot.plugins import *
 import threading
 import time
 
-class PrivilegedPlugin(CorePlugin):
+class PrivPlugin(CorePlugin):
     def __init__(self):
         CorePlugin.__init__(self)
-        self.parser.add_argument("--password", "-p", nargs=1)
+        self.parser.add_argument("-p", "--password", nargs=1)
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-            pw = vars(pargs)["password"]
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
+    def command(self, connection, event, extra, dbconn):
+        pw = vars(self.pargs)["password"]
 
         if pw is not None and pw[0] == self.tehbot.settings["privpassword"]:
             self.priv_override(connection, event)
@@ -24,19 +18,21 @@ class PrivilegedPlugin(CorePlugin):
 
         return "%s is privileged" % (event.source.nick)
 
-register_plugin("priv", PrivilegedPlugin())
+register_plugin("priv", PrivPlugin())
 
-class ReloadPlugin(CorePlugin):
+class ReloadPlugin(PrivilegedCorePlugin):
     def __init__(self):
-        CorePlugin.__init__(self)
+        PrivilegedCorePlugin.__init__(self)
         self.mainthreadonly = True
 
-    def execute(self, connection, event, extra, dbconn):
-        if not self.privileged(connection, event):
-            return self.request_priv(extra)
-
+    def command(self, connection, event, extra, dbconn):
         self.res = self.tehbot.reload()
-        return "Okay" if self.res is None else u"Error: %s" % exc2str(self.res)
+
+        if self.res is None:
+            return "Okay"
+        
+        mod, lineno, exc = self.res
+        return u"Error in %s(%d): %s" % (mod, lineno, exc2str(exc))
 
     def finalize(self):
         try:
@@ -47,36 +43,23 @@ class ReloadPlugin(CorePlugin):
 
 register_plugin("reload", ReloadPlugin())
 
-class QuitPlugin(CorePlugin):
+class QuitPlugin(PrivilegedCorePlugin):
     def __init__(self):
-        CorePlugin.__init__(self)
+        PrivilegedCorePlugin.__init__(self)
         self.parser.add_argument("msg", nargs="*")
-        self.parser.add_argument("--restart", "-r", action="store_true")
+        self.parser.add_argument("-r", "--restart", action="store_true")
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
-        if not self.privileged(connection, event):
-            return self.request_priv(extra)
-
-        msg = " ".join(pargs.msg)
-        if pargs.restart:
+    def command(self, connection, event, extra, dbconn):
+        msg = " ".join(self.pargs.msg)
+        if self.pargs.restart:
             self.tehbot.restart(msg)
         else:
             self.tehbot.quit(msg)
 
 register_plugin("quit", QuitPlugin())
 
-class RawPlugin(CorePlugin):
-    def execute(self, connection, event, extra, dbconn):
-        if not self.privileged(connection, event):
-            return self.request_priv(extra)
-
+class RawPlugin(PrivilegedCorePlugin):
+    def command(self, connection, event, extra, dbconn):
         args = extra["args"]
         if args:
             connection.send_raw(args)
@@ -88,16 +71,10 @@ class HelpPlugin(CorePlugin):
         CorePlugin.__init__(self)
         self.parser.add_argument("command", nargs="?")
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
+    def command(self, connection, event, extra, dbconn):
+        cmd = self.pargs.command
 
         try:
-            cmd = pargs.command
             txt = self.tehbot.cmd_handlers[cmd].parser.format_help().strip()
         except:
             txt = u"Available commands: "
@@ -107,23 +84,13 @@ class HelpPlugin(CorePlugin):
 
 register_plugin("help", HelpPlugin())
 
-class ConfigPlugin(CorePlugin):
+class ConfigPlugin(PrivilegedCorePlugin):
     def __init__(self):
-        CorePlugin.__init__(self)
+        PrivilegedCorePlugin.__init__(self)
         self.parser.add_argument("args", nargs="*")
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
-        if not self.privileged(connection, event):
-            return self.request_priv(extra)
-
-        args = pargs.args
+    def command(self, connection, event, extra, dbconn):
+        args = self.pargs.args
         if not args:
             return "This should be the help :P"
 

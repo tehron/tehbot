@@ -13,14 +13,7 @@ class SeenPlugin(StandardPlugin):
         self.parser.add_argument("user", nargs=1)
 
     def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-            user = pargs.user[0]
-        except Exception as e:
-            return u"Error: %s" % str(e)
-
+        user = self.pargs.user[0]
         requser = event.source.nick
         c = dbconn.cursor()
         c.execute(u"select * from Messages where nick=? and type=0 order by ts desc limit 2", (user,))
@@ -40,16 +33,10 @@ register_plugin(["seen", "last"], SeenPlugin())
 class PingPlugin(CorePlugin):
     def __init__(self):
         CorePlugin.__init__(self)
-        self.parser.add_argument("--verbose", "-v", action="store_true")
+        self.parser.add_argument("-v", "--verbose", action="store_true")
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-            verbose = vars(pargs)["verbose"]
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
+    def command(self, connection, event, extra, dbconn):
+        verbose = vars(self.pargs)["verbose"]
 
         if verbose:
             return u"pong from Thread %s at %f" % (threading.current_thread().name, time.time())
@@ -87,6 +74,6 @@ class OpHandler(ChannelJoinHandler):
                     self.settings["whonot"].append(nick)
                     print self.settings
                     self.save(dbconn)
-                    return "Ok"
+                    return "Okay"
 
 register_channel_join_handler(OpHandler())

@@ -20,18 +20,11 @@ class WikipediaPlugin(StandardPlugin):
         StandardPlugin.__init__(self)
         self.parser.add_argument("term", nargs="+")
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
-
+    def command(self, connection, event, extra, dbconn):
         data = {
             "action" : "query",
             "list" : "search",
-            "srsearch" : plugins.to_utf8(u" ".join(pargs.term)),
+            "srsearch" : plugins.to_utf8(u" ".join(self.pargs.term)),
             "srlimit" : 1,
             "srprop" : "",
             "format" : "json",

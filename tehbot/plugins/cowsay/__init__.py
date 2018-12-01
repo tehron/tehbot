@@ -1,23 +1,12 @@
 from tehbot.plugins import *
 from cowsay import cowsay
 
-class CowSayPlugin(StandardPlugin):
+class CowSayPlugin(PrivilegedPlugin):
     def __init__(self):
-        StandardPlugin.__init__(self)
-        self.parser.add_argument("msg", nargs=1)
+        PrivilegedPlugin.__init__(self)
+        self.parser.add_argument("msg", nargs="+")
 
-    def execute(self, connection, event, extra, dbconn):
-        if not self.privileged(connection, event):
-            return self.request_priv(extra)
-
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-            msg = pargs.msg[0]
-        except Exception as e:
-            return u"Error: %s" % str(e)
-
-        return cowsay(msg)
+    def command(self, connection, event, extra, dbconn):
+        return cowsay(" ".join(self.pargs.msg))
 
 register_plugin("cowsay", CowSayPlugin())

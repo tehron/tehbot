@@ -18,19 +18,12 @@ class SlapPlugin(StandardPlugin):
         ]
         self.slapitems = open("%s/slaps.txt" % os.path.dirname(__file__)).read().splitlines()
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
-
+    def command(self, connection, event, extra, dbconn):
         if random.randint(0, len(self.slapitems)) == len(self.slapitems):
             slap = self.slaps[0]
         else:
             slap = self.slaps[1]
-        txt = slap.format(victim=pargs.victim, howmuch=random.choice(["", " a bit", " a little bit"]), withitem=random.choice(self.slapitems))
+        txt = slap.format(victim=self.pargs.victim, howmuch=random.choice(["", " a bit", " a little bit"]), withitem=random.choice(self.slapitems))
         res = [("me", txt)]
 
         if random.random() < 0.5:
@@ -47,14 +40,7 @@ class LivinSlapPlugin(StandardPlugin):
                 ("say", "Hey, %s, eat some pork!" % victim)
                 ]
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
-
+    def command(self, connection, event, extra, dbconn):
         return self.slap2("livinskull")
 
 register_plugin("livinslap", LivinSlapPlugin())

@@ -233,11 +233,11 @@ class RevelSolvedPoller(Poller):
                     self.settings["where"][network] = []
                 self.settings["where"][network].append(channel)
                 self.save(dbconn)
-                return "Ok"
+                return "Okay"
             elif args[1] == "set" and args[2] == "timeout":
                 self.settings["timeout"] = int(args[3])
                 self.save(dbconn)
-                return "Ok"
+                return "Okay"
 
         return Poller.config(self, args, dbconn)
 

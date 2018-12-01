@@ -71,6 +71,7 @@ class GreetPlugin(StandardPlugin):
             with dbconn:
                 if dbconn.execute("insert into Greetings values(null, ?)", (greeting,)).rowcount != 1:
                     return "Error: Query failed. :("
+            return "Okay"
         else:
             c = dbconn.execute("select text from Greetings order by random() limit 1")
             res = c.fetchone()

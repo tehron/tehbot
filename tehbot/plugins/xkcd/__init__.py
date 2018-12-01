@@ -22,21 +22,12 @@ class XkcdPlugin(StandardPlugin):
         StandardPlugin.__init__(self)
         self.parser.add_argument("search_term", nargs="?")
 
-    def execute(self, connection, event, extra, dbconn):
-        self.parser.set_defaults(user=event.source.nick)
-
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
-
+    def command(self, connection, event, extra, dbconn):
         txt = "\x0303[xkcd]\x03 "
 
         try:
             tree = lxml.html.parse(urllib2.urlopen(url % "/archive/"))
-            res = [(e.text_content(), e.attrib["href"]) for e in tree.xpath("//a[contains(lower-case(.), %s)]" % toXPathStringLiteral(pargs.search_term))]
+            res = [(e.text_content(), e.attrib["href"]) for e in tree.xpath("//a[contains(lower-case(.), %s)]" % toXPathStringLiteral(self.pargs.search_term))]
 
             if not res:
                 txt += "No results."

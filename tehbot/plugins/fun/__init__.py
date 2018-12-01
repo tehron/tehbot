@@ -5,22 +5,12 @@ from random import *
 import shlex
 import irc.client
 
-class DeadHourPlugin(StandardPlugin):
-    def execute(self, connection, event, extra, dbconn):
+class DeadHourPlugin(PrivilegedPlugin):
+    def command(self, connection, event, extra, dbconn):
         channel = event.target
 
         if channel != "#wechall":
             return
-
-        if not self.privileged(connection, event):
-            return self.request_priv(extra)
-
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
 
         happy_users = [ "ChanServ", "giz|work", "giz|lazer", "giz|lazer|2", "gizmore", "dloser", "Lamb3", "tehbot" ]
         dead_users = set(connection.users[channel]).difference(happy_users)
@@ -31,14 +21,7 @@ class DeadHourPlugin(StandardPlugin):
 register_plugin("dead_hour", DeadHourPlugin())
 
 class BlamePlugin(StandardPlugin):
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
+    def command(self, connection, event, extra, dbconn):
         two = connection.tehbot_users[event.target] if irc.client.is_channel(event.target) else [u"spaceone"]
         goats = zip((two for one in range(23)), 42 * [ reduce(random, [], two) ])
         shuffle(goats)
@@ -52,14 +35,7 @@ register_plugin("blame", BlamePlugin())
 class FamPlugin(StandardPlugin):
     """This help at fam"""
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
+    def command(self, connection, event, extra, dbconn):
         return ".quoet fom"
 
 register_plugin("fam", FamPlugin())
@@ -82,19 +58,13 @@ class LiarsPlugin(StandardPlugin):
                 (5, "thefinder"),
             ])
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
-        if pargs.add is None:
+    def command(self, connection, event, extra, dbconn):
+        if self.pargs.add is None:
             c = dbconn.execute("select liar from LiarsPlugin order by id")
             return ", ".join(a for (a,) in c.fetchall())
 
-        who = pargs.add
+        who = self.pargs.add
+
         if not self.privileged(connection, event):
             return self.request_priv(extra)
 
@@ -105,6 +75,7 @@ class LiarsPlugin(StandardPlugin):
             if dbconn.execute("insert into LiarsPlugin values(null, ?)", (who,)).rowcount != 1:
                 return "Error: Query failed. :("
 
+        return "Okay"
 
 register_plugin("liars", LiarsPlugin())
 
@@ -122,19 +93,13 @@ class PricksPlugin(StandardPlugin):
                 (1, "dloser"),
             ])
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
-        if pargs.add is None:
+    def command(self, connection, event, extra, dbconn):
+        if self.pargs.add is None:
             c = dbconn.execute("select prick from PricksPlugin order by id")
             return ", ".join(a for (a,) in c.fetchall())
 
-        who = pargs.add
+        who = self.pargs.add
+
         if not self.privileged(connection, event):
             return self.request_priv(extra)
 
@@ -144,6 +109,8 @@ class PricksPlugin(StandardPlugin):
         with dbconn:
             if dbconn.execute("insert into PricksPlugin values(null, ?)", (who,)).rowcount != 1:
                 return "Error: Query failed. :("
+
+        return "Okay"
 
 register_plugin("pricks", PricksPlugin())
 
@@ -267,19 +234,13 @@ class BOSPlugin(StandardPlugin):
     """Can you solve The BrownOS? [WeChall]"""
     def __init__(self):
         StandardPlugin.__init__(self)
-        self.parser.add_argument("data", nargs=1)
+        self.parser.add_argument("data", nargs="+")
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
+    def command(self, connection, event, extra, dbconn):
+        data = " ".join(self.pargs.data).lower()
 
         sock = socket()
         sock.connect(("wc3.wechall.net", 61221))
-        data = "".join(pargs.data[0]).lower()
         data = data.replace("qd", "05 00 FD 00 05 00 FD 03 FD FE FD 02 FD FE FD FE")
         #data = filter(lambda x: x in string.hexdigits, data)
         data = data.replace(" ", "")
@@ -339,18 +300,11 @@ class DecidePlugin(StandardPlugin):
         self.parser.add_argument("choices", nargs="+")
         self.parser.add_argument("-o", "--or", action="store_true")
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
+    def command(self, connection, event, extra, dbconn):
+        if vars(self.pargs)["or"]:
+            return choice(self.pargs.choices)
 
-        if vars(pargs)["or"]:
-            return choice(pargs.choices)
-
-        word1 = pargs.choices[0].lower()
+        word1 = self.pargs.choices[0].lower()
         if word1 == "ban" or word1 == "kick":
             return "Tempting..."
 
@@ -372,57 +326,40 @@ class HugPlugin(StandardPlugin):
         self.parser.add_argument("--from-behind", action="store_true")
         self.parser.add_argument("--surprise-me", action="store_true")
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
+    def command(self, connection, event, extra, dbconn):
         options = []
 
-        if pargs.surprise_me:
-            pargs.long = choice([True, False])
-            pargs.tight = choice([True, False])
-            pargs.creepy = choice([True, False])
-            pargs.from_behind = choice([True, False])
-            pargs.with_a_certain_something = choice([True, False])
+        if self.pargs.surprise_me:
+            self.pargs.long = choice([True, False])
+            self.pargs.tight = choice([True, False])
+            self.pargs.creepy = choice([True, False])
+            self.pargs.from_behind = choice([True, False])
+            self.pargs.with_a_certain_something = choice([True, False])
 
-        if pargs.long:
+        if self.pargs.long:
             options.append("long")
-        if pargs.tight:
+        if self.pargs.tight:
             options.append("tight")
-        if pargs.creepy:
+        if self.pargs.creepy:
             options.append("creepy")
 
         if not options:
-            msg = u"hugs %s" % pargs.huggee
+            msg = u"hugs %s" % self.pargs.huggee
         else:
-            msg = u"gives %s a %s hug" % (pargs.huggee, " and ".join(options))
+            msg = u"gives %s a %s hug" % (self.pargs.huggee, " and ".join(options))
 
-        if pargs.from_behind:
+        if self.pargs.from_behind:
             msg += " from behind"
 
-        if pargs.with_a_certain_something:
+        if self.pargs.with_a_certain_something:
             msg += " with a certain something"
 
         return [("me", msg)]
 
 register_plugin("hug", HugPlugin())
 
-class RoflcopterPlugin(StandardPlugin):
+class RoflcopterPlugin(PrivilegedPlugin):
     def execute(self, connection, event, extra, dbconn):
-        if not self.privileged(connection, event):
-            return self.request_priv(extra)
-
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
         return """    ROFL:ROFL:ROFL:ROFL
          ___^___ _
  L    __/      [] \\
@@ -458,18 +395,8 @@ class RouletteHandler(ChannelHandler):
 
 
 
-class WixxerdPlugin(StandardPlugin):
+class WixxerdPlugin(PrivilegedPlugin):
     def execute(self, connection, event, extra, dbconn):
-        if not self.privileged(connection, event):
-            return self.request_priv(extra)
-
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
         return r"""       .##...##..######..##..##..##..##..######..#####...#####..
        .##...##....##.....####....####...##......##..##..##..##.
        .##.#.##....##......##......##....####....#####...##..##.

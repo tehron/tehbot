@@ -9,17 +9,11 @@ class MoviePlugin(StandardPlugin):
         StandardPlugin.__init__(self)
         self.parser.add_argument("movie")
 
-    def execute(self, connection, event, extra, dbconn):
+    def command(self, connection, event, extra, dbconn):
         tmdb.API_KEY = self.settings["tmdb_api_key"]
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
 
         id = -1
-        res = tmdb.Search().movie(query=pargs.movie)
+        res = tmdb.Search().movie(query=self.pargs.movie)
         if res["total_results"] > 0:
             id = res["results"][0]["id"]
 
@@ -50,17 +44,11 @@ class TvPlugin(StandardPlugin):
         StandardPlugin.__init__(self)
         self.parser.add_argument("show")
 
-    def execute(self, connection, event, extra, dbconn):
+    def command(self, connection, event, extra, dbconn):
         tmdb.API_KEY = self.settings["tmdb_api_key"]
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
 
         id = -1
-        res = tmdb.Search().tv(query=pargs.show)
+        res = tmdb.Search().tv(query=self.pargs.show)
         if res["total_results"] > 0:
             id = res["results"][0]["id"]
 

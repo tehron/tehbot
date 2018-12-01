@@ -52,14 +52,8 @@ class DuckDuckGoPlugin(StandardPlugin):
                 top = from_utf8(urllib.unquote(str(top)))
                 topics.add(u'\x02%s\x0f' % top)
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-            query = " ".join(pargs.query)
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
+    def command(self, connection, event, extra, dbconn):
+        query = " ".join(self.pargs.query)
 
         txt = u"\x0303[DuckDuckGo]\x03 "
 

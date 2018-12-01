@@ -13,7 +13,7 @@ import shlex
 import datetime
 import json
 
-__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "from_utf8", "to_utf8", "green", "red", "bold", "exc2str"]
+__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "PrivilegedPlugin", "PrivilegedCorePlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "from_utf8", "to_utf8", "green", "red", "bold", "exc2str"]
 
 _tehbot = None
 _modules = []
@@ -128,13 +128,13 @@ class Plugin:
                     state = args[3].lower() == "true"
                     self.settings["enabled"] = state
                     self.save(dbconn)
-                    return "Ok"
+                    return "Okay"
                 else:
                     key = args[2]
                     value = args[3]
                     self.settings[key] = value
                     self.save(dbconn)
-                    return "Ok"
+                    return "Okay"
 
     def save(self, dbconn):
         value = json.dumps(self.settings)
@@ -165,7 +165,26 @@ class StandardPlugin(Plugin):
         self.parser = ThrowingArgumentParser(description=self.__doc__)
         self.mainthreadonly = False
 
+    def execute(self, connection, event, extra, dbconn):
+        try:
+            self.pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+        except Exception as e:
+            return u"Error: %s" % unicode(e)
+
+        if isinstance(self, PrivilegedPlugin) and not self.privileged(connection, event):
+            return self.request_priv(extra)
+
+        return self.command(connection, event, extra, dbconn)
+
+class PrivilegedPlugin(StandardPlugin):
+    pass
+
 class CorePlugin(StandardPlugin):
+    pass
+
+class PrivilegedCorePlugin(CorePlugin, PrivilegedPlugin):
     pass
 
 class Announcer(Plugin):

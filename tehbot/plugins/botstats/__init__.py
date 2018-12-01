@@ -36,14 +36,7 @@ class BotStatsPlugin(StandardPlugin):
         out, err = Popen(["git", "log", "-n", "1"], stdout=PIPE).communicate()
         return re.search(r'([0-9A-Fa-f]{40})', out).group(0)
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
-
+    def command(self, connection, event, extra, dbconn):
         txt = "\x0303[tehbot]\x03 "
 
         stats = []

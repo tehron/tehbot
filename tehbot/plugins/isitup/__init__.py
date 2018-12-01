@@ -66,18 +66,12 @@ class IsitupPlugin(StandardPlugin):
         return False
 
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-            parts = urlparse(pargs.host)
-            no_follow = pargs.no_follow
-        except Exception as e:
-            return u"Error: %s" % str(e)
+    def command(self, connection, event, extra, dbconn):
+        parts = urlparse(self.pargs.host)
+        no_follow = self.pargs.no_follow
 
         if not parts.scheme:
-            parts = urlparse("http://" + pargs.host)
+            parts = urlparse("http://" + self.pargs.host)
 
         if not parts.scheme or not parts.netloc:
             return "Error: unparsable url"

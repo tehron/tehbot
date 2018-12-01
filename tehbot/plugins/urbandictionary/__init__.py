@@ -14,20 +14,13 @@ class UrbanDictionaryPlugin(StandardPlugin):
         self.parser.add_argument("search_term", nargs="+")
         self.parser.add_argument("-n", "--nr", type=int, help="request definition number NR")
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
+    def command(self, connection, event, extra, dbconn):
         url = "http://api.urbandictionary.com/v0/define?%s"
 
-        index = (pargs.nr or 1) - 1
+        index = (self.pargs.nr or 1) - 1
         page = index / 10 + 1
         index %= 10
-        term = " ".join(pargs.search_term)
+        term = " ".join(self.pargs.search_term)
 
         data = {
             "page" : page,

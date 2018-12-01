@@ -3,6 +3,7 @@ import plugins
 import impl
 import sys
 import traceback
+import inspect
 import time
 import settings
 
@@ -29,7 +30,10 @@ class Tehbot:
         except Exception as e:
             Tehbot.print_exc()
             self.newimpl = None
-            return e
+            frm = inspect.trace()[-1]
+            mod = inspect.getmodule(frm[0])
+            lineno = frm[0].f_lineno
+            return (mod.__name__, lineno, e)
 
     def finalize(self):
         if self.newimpl is None:

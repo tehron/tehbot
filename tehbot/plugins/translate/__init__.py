@@ -12,25 +12,19 @@ class TranslatePlugin(StandardPlugin):
         self.parser.add_argument("-f", "--from-lang", default="auto")
         self.parser.add_argument("-t", "--to-lang", default="en")
 
-    def execute(self, connection, event, extra, dbconn):
+    def command(self, connection, event, extra, dbconn):
         prefix = "[Translate]"
-        try:
-            pargs = self.parser.parse_args(extra["args"], decode=False)
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
 
-        if not pargs.words:
+        if not self.pargs.words:
             return
 
         headers = { 'User-Agent' : 'Mozilla/5.0 (X11; Linux x86_64; rv:14.0) Gecko/20100101 Firefox/14.0.1' }
         data = {
                 'client' : 'gtx',
-                'sl' : pargs.from_lang,
-                'tl' : pargs.to_lang,
+                'sl' : self.pargs.from_lang,
+                'tl' : self.pargs.to_lang,
                 'dt' : 't',
-                'q' : ' '.join(pargs.words)
+                'q' : ' '.join(self.pargs.words)
         }
 
         try:
