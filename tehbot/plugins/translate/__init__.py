@@ -2,7 +2,7 @@ from tehbot.plugins import *
 import tehbot.plugins as plugins
 import urllib
 import urllib2
-import lxml.html
+import json
 import shlex
 
 class TranslatePlugin(StandardPlugin):
@@ -13,6 +13,7 @@ class TranslatePlugin(StandardPlugin):
         self.parser.add_argument("-t", "--to-lang", default="en")
 
     def execute(self, connection, event, extra, dbconn):
+        prefix = "[Translate]"
         try:
             pargs = self.parser.parse_args(extra["args"], decode=False)
             if self.parser.help_requested:
@@ -25,24 +26,25 @@ class TranslatePlugin(StandardPlugin):
 
         headers = { 'User-Agent' : 'Mozilla/5.0 (X11; Linux x86_64; rv:14.0) Gecko/20100101 Firefox/14.0.1' }
         data = {
+                'client' : 'gtx',
                 'sl' : pargs.from_lang,
                 'tl' : pargs.to_lang,
-                'hl' : 'en',
-                'ie' : 'UTF-8',
+                'dt' : 't',
                 'q' : ' '.join(pargs.words)
         }
 
         try:
-            req = urllib2.Request("https://translate.google.com/?%s" % urllib.urlencode(data), headers=headers)
-            tree = lxml.html.parse(urllib2.urlopen(req))
-
-            trans = tree.xpath("//span[@id='result_box']")
-            if len(trans) > 0:
-                txt = trans[0].text_content().strip()
-                return "\x0303[Translation]\x03 %s" % txt
-        except urllib2.HTTPError as h:
-            return "\x0304[HTTP Error]\x03 %s" % str(h)
+            url = "https://translate.googleapis.com/translate_a/single?%s"
+            url = url % urllib.urlencode(data)
+            print url
+            req = urllib2.Request(url, headers=headers)
+            reply = json.load(urllib2.urlopen(req, timeout=5))
+            print reply
+            txt = reply[0][0][0]
+            answer = u"%s %s" % (plugins.green(prefix), txt)
         except Exception as e:
-            return "\x0304[Error]\x03 %s" % str(e)
+            answer = u"%s %s" % (plugins.red(prefix), unicode(e))
+
+        return answer
 
 register_plugin(["translate", "tr"], TranslatePlugin())
