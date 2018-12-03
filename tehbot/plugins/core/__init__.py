@@ -59,10 +59,14 @@ class QuitPlugin(PrivilegedCorePlugin):
 register_plugin("quit", QuitPlugin())
 
 class RawPlugin(PrivilegedCorePlugin):
+    def __init__(self):
+        PrivilegedCorePlugin.__init__(self)
+        self.parser.add_argument("args", nargs="+")
+
     def command(self, connection, event, extra, dbconn):
-        args = extra["args"]
+        args = self.pargs.args
         if args:
-            connection.send_raw(args)
+            connection.send_raw(u" ".join(args))
 
 register_plugin("raw", RawPlugin())
 
