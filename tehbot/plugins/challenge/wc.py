@@ -108,7 +108,7 @@ class Site(BaseSite):
                 name, url, solvers = challs[challnr]
 
         if name is None:
-            return NoSuchChallenge
+            raise NoSuchChallengeError
 
         cnt = solvers
         solved = Site.user_solved(user, nr, name) if user else False
