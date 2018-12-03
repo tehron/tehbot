@@ -71,7 +71,7 @@ class Plugin:
             if r[0] == "say" or r[0] == "me":
                 globals()[r[0]](connection, target, r[1], dbconn if self.logtodb else None)
             elif r[0] == "nopriv":
-                say(connection, target, u"%s is NOT privileged" % event.source.nick, dbconn if self.logtodb else None)
+                say(connection, target, u"%s is \x02not\x02 privileged" % event.source.nick, dbconn if self.logtodb else None)
                 break
             elif r[0] == "doauth":
                 extra["request_priv_called"] = True
