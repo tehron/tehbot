@@ -159,7 +159,7 @@ class SolversPlugin(StandardPlugin):
                 txt = pre + u"hasn't been solved by anyone yet."
             else:
                 if user is not None:
-                    txt = pre + u"has%s been solved by %s." % ("" if solved else " not", user)
+                    txt = pre + u"has%s been solved by %s." % ("" if solved else " \x02not\x02", user)
                 else:
                     txt = pre + u"has been solved by %d user%s." % (cnt, "" if cnt == 1 else "s")
                     if cnt > 0 and solvers:
