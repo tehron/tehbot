@@ -12,7 +12,7 @@ class SeenPlugin(StandardPlugin):
         self.logtodb = False
         self.parser.add_argument("user", nargs=1)
 
-    def execute(self, connection, event, extra, dbconn):
+    def command(self, connection, event, extra, dbconn):
         user = self.pargs.user[0]
         requser = event.source.nick
         c = dbconn.cursor()
