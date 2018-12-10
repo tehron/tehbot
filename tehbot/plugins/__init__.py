@@ -256,7 +256,7 @@ def myprint(s):
     s = regex.sub("", s)
     print sys_time.strftime("%H:%M:%S"), s.encode(encoding, "backslashreplace")
 
-def logmsg(time, network, target, nick, msg, is_action, typ, dbconn=None):
+def logmsg(time, network, target, nick, msg, is_action, typ, dbconn):
     msg_clean = regex.sub("", msg)
     if is_action:
         s = "%s: %s: *%s %s" % (network, target, nick, msg_clean)
@@ -297,30 +297,42 @@ def mysplit(s, decode=True):
 def say(connection, target, msg, dbconn):
     if not target or not msg: return
     if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
+    if irc.client.is_channel(target):
+        typ = _tehbot.settings.log_type(connection.name, target)
+    else:
+        typ = 1
     with connection.locks[target]:
         for m in msg.split("\n"):
             m = m.replace("\r", "?");
             if m.strip():
-                logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), m, False, dbconn if irc.client.is_channel(target) else None)
+                logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), m, False, typ, dbconn)
                 connection.privmsg(target, m)
 
 def say_nick(connection, target, nick, msg, dbconn):
     if not target or not nick: return
     if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
+    if irc.client.is_channel(target):
+        typ = _tehbot.settings.log_type(connection.name, target)
+    else:
+        typ = 1
     with connection.locks[target]:
         for m in msg.split("\n"):
             m = m.replace("\r", "?");
             if m.strip():
                 m2 = "%s: %s" % (nick, m)
-                logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), m2, False, dbconn if irc.client.is_channel(target) else None)
+                logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), m2, False, typ, dbconn)
                 connection.privmsg(target, m2)
 
 def me(connection, target, msg, dbconn):
     msg = msg.replace("\r", "?").replace("\n", "?")
     if not target or not msg: return
     if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
+    if irc.client.is_channel(target):
+        typ = _tehbot.settings.log_type(connection.name, target)
+    else:
+        typ = 1
     with connection.locks[target]:
-        logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), msg, True, None)
+        logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), msg, True, typ, dbconn)
         # b0rk for unicode
         #connection.action(target, msg)
         connection.privmsg(target, "\001ACTION " + msg + "\001")
