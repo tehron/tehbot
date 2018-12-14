@@ -3,6 +3,7 @@ import shlex
 import sqlite3
 import time
 import irc.client
+import threading
 
 class SeenPlugin(StandardPlugin):
     """Shows when a user was last seen."""
