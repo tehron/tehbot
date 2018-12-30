@@ -21,19 +21,17 @@ class TranslatePlugin(StandardPlugin):
         headers = { 'User-Agent' : 'Mozilla/5.0 (X11; Linux x86_64; rv:14.0) Gecko/20100101 Firefox/14.0.1' }
         data = {
                 'client' : 'gtx',
-                'sl' : self.pargs.from_lang,
-                'tl' : self.pargs.to_lang,
+                'sl' : to_utf8(self.pargs.from_lang),
+                'tl' : to_utf8(self.pargs.to_lang),
                 'dt' : 't',
-                'q' : ' '.join(self.pargs.words)
+                'q' : ' '.join(map(to_utf8, self.pargs.words))
         }
 
         try:
             url = "https://translate.googleapis.com/translate_a/single?%s"
             url = url % urllib.urlencode(data)
-            print url
             req = urllib2.Request(url, headers=headers)
             reply = json.load(urllib2.urlopen(req, timeout=5))
-            print reply
             txt = reply[0][0][0]
             answer = u"%s %s" % (plugins.green(prefix), txt)
         except Exception as e:

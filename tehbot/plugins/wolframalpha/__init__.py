@@ -54,7 +54,7 @@ class WolframAlphaPlugin(StandardPlugin):
         try:
             res = None
             misc = []
-            for p in self.client.query(" ".join(self.pargs.query)).pods:
+            for p in self.client.query(" ".join(map(to_utf8, self.pargs.query))).pods:
                 if p.id == "Input":
                     inp = " | ".join(p.text.splitlines())
                 elif p.id == "Result" and p.text:
