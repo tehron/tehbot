@@ -113,4 +113,4 @@ class Site(BaseSite):
         cnt = solvers
         solved = Site.user_solved(user, nr, name) if user else False
 
-        return nr, name, cnt, [], user, solved
+        return nr, name, cnt, [], solved
