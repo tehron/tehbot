@@ -76,6 +76,33 @@ class Site(BaseSite):
         return challs
 
     @staticmethod
+    def get_last5_solvers(nr):
+        url = solversurl % (nr, "dummy", 1)
+        tree = lxml.html.parse(urllib2.urlopen(url))
+        pages = tree.xpath("//div[@id='page']/div[@class='gwf_pagemenu']//a")
+        solvers = []
+
+        if not pages:
+            for row in tree.xpath("//div[@id='page']/table//tr"):
+                e = row.xpath("td[2]/a[1]")
+                if e:
+                    n = e[0].text_content()
+                    solvers.append(n)
+        else:
+            lastpage = int(pages[-1].text_content())
+            for p in [lastpage - 1, lastpage]:
+                url = solversurl % (nr, "dummy", p)
+                tree = lxml.html.parse(urllib2.urlopen(url))
+
+                for row in tree.xpath("//div[@id='page']/table//tr"):
+                    e = row.xpath("td[2]/a[1]")
+                    if e:
+                        n = e[0].text_content()
+                        solvers.append(n)
+
+        return solvers[::-1][:5]
+
+    @staticmethod
     def user_solved(user, nr, name):
         tree = lxml.html.parse(urllib2.urlopen(url % plugins.to_utf8(user)))
 
@@ -91,26 +118,26 @@ class Site(BaseSite):
 
     def solvers(self, challname, challnr, user):
         challs = Site.parse_challs(challurl)
-        nr, name, url, solvers = None, None, None, None
+        nr, name, url, cnt = None, None, None, None
 
         if challname is not None:
             for key, val in challs.items():
                 if val[0].lower().startswith(challname.lower()):
                     nr = key
-                    name, url, solvers = val
+                    name, url, cnt = val
                     break
                 if challname.lower() in val[0].lower():
                     nr = key
-                    name, url, solvers = val
+                    name, url, cnt = val
         else:
             if challs.has_key(challnr):
                 nr = challnr
-                name, url, solvers = challs[challnr]
+                name, url, cnt = challs[challnr]
 
         if name is None:
             raise NoSuchChallengeError
 
-        cnt = solvers
+        solvers = Site.get_last5_solvers(nr)
         solved = Site.user_solved(user, nr, name) if user else False
 
-        return nr, name, cnt, [], solved
+        return nr, name, cnt, solvers, solved
