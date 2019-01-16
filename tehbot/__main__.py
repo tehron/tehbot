@@ -58,7 +58,7 @@ while True:
         break
 
     try:
-        bot.process_once(0.01)
+        bot.process_once(0.2)
 
         try:
             cmd, args = queue.get(False)
