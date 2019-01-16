@@ -13,7 +13,7 @@ class DeadHourPlugin(PrivilegedPlugin):
             return
 
         happy_users = [ "ChanServ", "giz|work", "giz|lazer", "giz|lazer|2", "gizmore", "dloser", "Lamb3", "tehbot" ]
-        dead_users = set(connection.users[channel]).difference(happy_users)
+        dead_users = set(connection.tehbot_users[channel]).difference(happy_users)
 
         for u in dead_users:
             connection.mode(channel, "-o " + u)
