@@ -47,7 +47,7 @@ class Site(BaseSite):
             if int(r[0].text_content()) == rank:
                 res = self.userstats(n[0].text_content())
                 real_user, challs_solved, challs_total, rank, users_total, score, score_max, _ = res
-                return challs_solved, [real_user]
+                return challs_solved, [real_user], challs_total
 
         return None
 

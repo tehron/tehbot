@@ -85,8 +85,8 @@ class StatsPlugin(StandardPlugin):
                 if res is None:
                     txt = u"No user is at rank %d." % rank
                 else:
-                    score, who = res
-                    txt = ", ".join(who) + (" is" if len(who) == 1 else " are") + " at rank %d with %d challenge%s solved." % (rank, score, "s" if score else "")
+                    score, who, maxscore = res
+                    txt = ", ".join(who) + (" is" if len(who) == 1 else " are") + " at rank %d with %d (of %d) challenge%s solved." % (rank, score, maxscore, "s" if score else "")
         except Exception as e:
             return u"%s %s" % (plugins.red(site.prefix()), plugins.exc2str(e))
 

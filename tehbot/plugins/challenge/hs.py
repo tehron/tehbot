@@ -55,7 +55,7 @@ class Site(BaseSite):
     def rankstats(self, rank):
         res = self.userstats(Site.hs_rank_to_user(rank))
         user, solved, solvedmax, rank, usercount, score, scoremax, extra = res
-        return solved, [user]
+        return solved, [user], solvedmax
 
     @staticmethod
     def parse_challs(url):

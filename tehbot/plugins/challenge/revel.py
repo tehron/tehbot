@@ -67,6 +67,13 @@ class Site(BaseSite):
         ranks = dict([(i + 1, (k, sc[k])) for i, k in enumerate(keys)])
         return ranks
 
+    @staticmethod
+    def maxscore():
+        url = "https://www.revolutionelite.co.uk/credits.php"
+        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+
+        return len(tree.xpath("//div[@class='content']/center/table/tr")) - 1
+
     def rankstats(self, rank):
         page = 1
         scores = []
@@ -81,7 +88,7 @@ class Site(BaseSite):
         if rank not in ranks:
             return None
 
-        return ranks[rank]
+        return ranks[rank] + (Site.maxscore(),)
 
     @staticmethod
     def fixurl(url):
