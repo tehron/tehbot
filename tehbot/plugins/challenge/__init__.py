@@ -27,7 +27,10 @@ sitemap = {
     "ht" : "hackthis",
     "hackthis" : "hackthis",
     "wix" : "wix",
-    "wixxerd" : "wix"
+    "wixxerd" : "wix",
+    "tbs" : "tbs",
+    "st" : "st",
+    "securitytraps" : "st",
 }
 
 class BaseSite:
