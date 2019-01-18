@@ -15,6 +15,9 @@ class Site(BaseSite):
     def prefix(self):
         return u"[WeChall]"
 
+    def siteurl(self):
+        return "https://www.wechall.net"
+
     def userstats(self, user):
         page = urllib2.urlopen(url2 % plugins.to_utf8(user)).read()
 
