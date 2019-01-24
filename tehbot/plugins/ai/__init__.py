@@ -31,14 +31,14 @@ class AiHandler(ChannelHandler):
     def execute(self, connection, event, extra, dbconn):
         botname = self.tehbot.settings.value("botname", connection)
         decide_regex = [
-                re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s,?\s*(?:is|are|can|has|was|were|should|do|does)\s+\S[\s\S]*\?''' % botname, re.I),
+                re.compile(r'''^(?:(?:ok(?:ay)?|hey|hay)\s+%s,?)|(?:%s[:,]?)\s*(?:is|are|can|has|was|were|should|do|does)\s+\S[\s\S]*\?''' % (botname, botname), re.I),
                 ]
         regex = [
-                re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s,?\s*(?P<what>.*?)\s*\??$''' % botname, re.I),
+                re.compile(r'''^(?:(?:ok(?:ay)?|hey|hay)\s+%s,?)|(?:%s[:,]?)\s*(?P<what>.*?)\s*\??$''' % (botname, botname), re.I),
                 ]
         solved_regex = [
-                re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s,?\s*has\s+(?P<who>\S+)\s+solved\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % botname, re.I),
-                re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s,?\s*did\s+(?P<who>\S+)\s+solve\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % botname, re.I)
+                re.compile(r'''^(?:(?:ok(?:ay)?|hey|hay)\s+%s,?)|(?:%s[:,]?)\s*has\s+(?P<who>\S+)\s+solved\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % (botname, botname), re.I),
+                re.compile(r'''^(?:(?:ok(?:ay)?|hey|hay)\s+%s,?)|(?:%s[:,]?)\s*did\s+(?P<who>\S+)\s+solve\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % (botname, botname), re.I)
                 ]
 
         for r in solved_regex:
