@@ -8,7 +8,7 @@ import re
 import irc.client
 import time
 
-__all__ = [ "BaseSite", "NoSuchChallengeError", "NoSuchUserError", "ChallengesNotNumberedError", "plugins" ]
+__all__ = [ "BaseSite", "NoSuchChallengeError", "NoSuchUserError", "ChallengesNotNumberedError", "UnknownReplyFormat", "plugins" ]
 
 path = __name__
 
@@ -35,7 +35,7 @@ sitemap = {
 
 class BaseSite:
     def prefix(self):
-        return u"[Challenges]"
+        return u"[Challenge]"
 
     def siteurl(self):
         return "https://www.google.com"
@@ -56,6 +56,9 @@ class NoSuchUserError(Exception):
     pass
 
 class ChallengesNotNumberedError(Exception):
+    pass
+
+class UnknownReplyFormat(Exception):
     pass
 
 
@@ -146,27 +149,19 @@ class SolversPlugin(StandardPlugin):
         self.parser.add_argument("-s", "--site", choices=sorted(set(sitemap.keys())))
         self.parser.add_argument("-u", "--user")
 
-    def solvers(self, site, challenge_name_or_nr, user=None):
+    def solvers(self, site, challname, challnr, user):
         try:
-            if user is not None and not site.userstats(user):
-                raise NoSuchUserError
-
-            if isinstance(challenge_name_or_nr, int):
-                res = site.solvers(None, int(challenge_name_or_nr), user)
-            else:
-                res = site.solvers(challenge_name_or_nr, None, user)
-
-            nr, name, cnt, solvers, solved = res
+            nr, name, cnt, solvers, solved = site.solvers(challname, challnr, user)
             pre = u"Challenge Nr. %d, %s, " % (nr, name) if nr is not None else u"Challenge '%s' " % name
-            if cnt == 0:
+
+            if user is not None:
+                txt = pre + u"has%s been solved by %s." % ("" if solved else " \x02not\x02", user)
+            elif cnt == 0:
                 txt = pre + u"hasn't been solved by anyone yet."
             else:
-                if user is not None:
-                    txt = pre + u"has%s been solved by %s." % ("" if solved else " \x02not\x02", user)
-                else:
-                    txt = pre + u"has been solved by %d user%s." % (cnt, "" if cnt == 1 else "s")
-                    if cnt > 0 and solvers:
-                        txt += u" Last by %s." % u", ".join(solvers[:5])
+                txt = pre + u"has been solved by %d user%s." % (cnt, "" if cnt == 1 else "s")
+                if solvers:
+                    txt += u" Last by %s." % u", ".join(solvers[:5])
         except Exception as e:
             return u"%s %s" % (plugins.red(site.prefix()), plugins.exc2str(e))
 
@@ -181,7 +176,9 @@ class SolversPlugin(StandardPlugin):
                 return self.parser.format_help().strip()
             challenge_name_or_nr = " ".join(pargs.challenge_name_or_nr)
             if pargs.numeric:
-                challenge_name_or_nr = int(challenge_name_or_nr)
+                challname, challnr = None, int(challenge_name_or_nr)
+            else:
+                challname, challnr = challenge_name_or_nr, None
             site = pargs.site.lower()
             user = pargs.user
         except Exception as e:
@@ -199,7 +196,7 @@ class SolversPlugin(StandardPlugin):
             print e
             return u"SiteImportError: %s" % site
 
-        return self.solvers(site, challenge_name_or_nr, user)
+        return self.solvers(site, challname, challnr, user)
 
 register_plugin("solvers", SolversPlugin())
 

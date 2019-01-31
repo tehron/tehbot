@@ -5,7 +5,7 @@ import urlparse
 import lxml.html
 import re
 
-url = "https://www.wechall.net/profile/%s"
+profileurl = "https://www.wechall.net/profile/%s"
 url2 = "https://www.wechall.net/wechallchalls.php?username=%s"
 challurl = "https://www.wechall.net/challs"
 rankurl = "https://www.wechall.net/site/ranking/for/1/WeChall/page-%d"
@@ -26,7 +26,7 @@ class Site(BaseSite):
             return None
 
         # ugly wechall parsing, thx a lot gizmore! ;PP
-        tree = lxml.html.parse(urllib2.urlopen(url % plugins.to_utf8(user)))
+        tree = lxml.html.parse(urllib2.urlopen(profileurl % plugins.to_utf8(user)))
         users_total = int(tree.xpath("//div[@id='wc_sidebar']//div[@class='wc_side_content']//div/a[@href='/users']")[0].text_content().split()[0])
 
         real_user, challs_solved, challs_total, score, scoremax, rank = match.groups()
@@ -54,29 +54,51 @@ class Site(BaseSite):
 
         return None
 
-    @staticmethod
-    def parse_challs(url):
-        challs = {}
-        tree = lxml.html.parse(urllib2.urlopen(url))
-        for e in tree.xpath("//table[@class='wc_chall_table']/tr"):
-            e2 = e.xpath("td[2]/a[1]")
-            if not e2:
-                continue
-            name = e2[0].text_content().strip()
-            e2 = e.xpath("td[3]/a")
-            if not e2:
-                continue
-            solvers = int(e2[0].text_content().strip())
-            e2 = e.xpath("td[3]/a/@href")
-            if not e2:
-                continue
-            match = re.search(r'challenge_solvers_for/(\d+)/', e2[0])
-            if not match:
-                continue
-            nr = int(match.group(1))
-            challs[nr] = (name, urlparse.urljoin(url, e2[0]), solvers)
+    def solvers(self, challname, challnr, user):
+        if user:
+            url = profileurl % plugins.to_utf8(user)
+            xp = "//div[@id='page']/table[@id='wc_profile_challenges']//tr"
+        else:
+            url = challurl
+            xp = "//table[@class='wc_chall_table']/tr"
 
-        return challs
+        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+        rows = tree.xpath(xp)
+
+        if not rows:
+            if user:
+                raise NoSuchUserError
+            raise UnknownReplyFormat
+
+        res = None
+
+        for row in rows:
+            ename = row.xpath("td[2]/a[1]")
+            enr = row.xpath("td[3]/a/@href")
+            ecnt = row.xpath("td[3]/a")
+
+            if not ename or not enr or not ecnt:
+                continue
+
+            name = ename[0].text_content().strip()
+            cnt = int(ecnt[0].text_content().strip())
+            nr = int(re.search(r'challenge_solvers_for/(\d+)/', enr[0]).group(1))
+            esolved = ename[0].xpath("@class")
+            solved = esolved and esolved[0] == "wc_chall_solved_1"
+
+            if (challnr and nr == challnr) or (challname and name.lower().startswith(challname.lower())):
+                res = (nr, name, cnt, solved)
+                break
+
+            if not res and challname and challname.lower() in name.lower():
+                res = (nr, name, cnt, solved)
+
+        if not res:
+            raise NoSuchChallengeError
+
+        nr, name, cnt, solved = res
+        solvers = None if user or cnt == 0 else Site.get_last5_solvers(nr)
+        return nr, name, cnt, solvers, solved
 
     @staticmethod
     def get_last5_solvers(nr):
@@ -104,43 +126,3 @@ class Site(BaseSite):
                         solvers.append(n)
 
         return solvers[::-1][:5]
-
-    @staticmethod
-    def user_solved(user, nr, name):
-        tree = lxml.html.parse(urllib2.urlopen(url % plugins.to_utf8(user)))
-
-        for row in tree.xpath("//div[@id='page']/table[@id='wc_profile_challenges']//tr"):
-            e = row.xpath("td[2]/a[1]")
-            if e:
-                n = e[0].text_content()
-                if n.lower().startswith(name.lower()):
-                    e2 = e[0].xpath("@class")
-                    return e2 and e2[0] == "wc_chall_solved_1"
-
-        return False
-
-    def solvers(self, challname, challnr, user):
-        challs = Site.parse_challs(challurl)
-        nr, name, url, cnt = None, None, None, None
-
-        if challname is not None:
-            for key, val in challs.items():
-                if val[0].lower().startswith(challname.lower()):
-                    nr = key
-                    name, url, cnt = val
-                    break
-                if challname.lower() in val[0].lower():
-                    nr = key
-                    name, url, cnt = val
-        else:
-            if challs.has_key(challnr):
-                nr = challnr
-                name, url, cnt = challs[challnr]
-
-        if name is None:
-            raise NoSuchChallengeError
-
-        solvers = Site.get_last5_solvers(nr)
-        solved = Site.user_solved(user, nr, name) if user else False
-
-        return nr, name, cnt, solvers, solved

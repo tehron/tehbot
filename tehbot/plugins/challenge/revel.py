@@ -12,6 +12,14 @@ class Site(BaseSite):
     def siteurl(self):
         return "https://www.revolutionelite.co.uk"
 
+    @staticmethod
+    def challurl():
+        return "https://www.revolutionelite.co.uk/credits.php"
+
+    @staticmethod
+    def profileurl():
+        return "https://www.revolutionelite.co.uk/profile.php?user=%s"
+
     def userstats(self, user):
         url = "https://www.revolutionelite.co.uk/w3ch4ll/userscore.php?username=%s"
         page = urllib2.urlopen(url % (plugins.to_utf8(user)), timeout=5).read()
@@ -98,32 +106,6 @@ class Site(BaseSite):
         return urlparse.urlunsplit((scheme, netloc, path, query, fragment))
 
     @staticmethod
-    def parse_challs(url):
-        challs = {}
-        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
-        for e in tree.xpath("//div[@class='content']/center/table/tr"):
-            e2 = e.xpath("td[2]")
-            if not e2:
-                continue
-            try:
-                nr = int(e2[0].text_content().strip())
-            except ValueError:
-                continue
-            e2 = e.xpath("td[3]")
-            if not e2:
-                continue
-            name = e2[0].text_content().strip()
-            e2 = e.xpath("td[3]/center/a/@href")
-            if not e2:
-                continue
-
-            u = urlparse.urljoin(url, e2[0])
-            u = Site.fixurl(u)
-            challs[nr] = (name, u)
-
-        return challs
-
-    @staticmethod
     def get_solvers(page):
         tree = lxml.html.fromstring(page)
         solvers = []
@@ -132,33 +114,61 @@ class Site(BaseSite):
         return solvers
 
     def solvers(self, challname, challnr, user):
-        url = "https://www.revolutionelite.co.uk/credits.php"
-        challs = Site.parse_challs(url)
-        nr, name, url = None, None, None
-
-        if challname is not None:
-            for key, val in challs.items():
-                if val[0].lower().startswith(challname.lower()):
-                    nr = key
-                    name, url = val
-                    break
-                if challname.lower() in val[0].lower():
-                    nr = key
-                    name, url = val
+        if user:
+            url = Site.profileurl() % plugins.to_utf8(user)
+            xp = "//div[@class='content']/center[2]/table/tr"
+            xpnr = "td[1]"
+            xpname = "td[2]"
+            xpsolved = "td[3]"
         else:
-            if challs.has_key(challnr):
-                nr = challnr
-                name, url = challs[challnr]
+            url = Site.challurl()
+            xp = "//div[@class='content']/center/table/tr"
+            xpnr = "td[2]"
+            xpname = "td[3]"
+            xpsolved = "/foobar"
 
-        if not name:
+        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+        rows = tree.xpath(xp)
+
+        if not rows:
+            if user:
+                raise NoSuchUserError
+            raise UnknownReplyFormat
+
+        res = None
+
+        for row in rows:
+            enr = row.xpath(xpnr)
+            ename = row.xpath(xpname)
+            esolved = row.xpath(xpsolved)
+
+            if not enr or not ename:
+                continue
+
+            nr = int(enr[0].text_content().strip())
+            name = ename[0].text_content().strip()
+            u = urlparse.urljoin(url, ename[0].xpath(".//a/@href")[0])
+            u = Site.fixurl(u)
+            solved = esolved and esolved[0].text_content().strip().lower() == "solved"
+
+            if (challnr and nr == challnr) or (challname and name.lower().startswith(challname.lower())):
+                res = (nr, name, u, solved)
+                break
+
+            if not res and challname and challname.lower() in name.lower():
+                res = (nr, name, u, solved)
+
+        if not res:
             raise NoSuchChallengeError
 
+        nr, name, u, solved = res
         cnt = 0
-        page = urllib2.urlopen(url, timeout=5).read()
-        solvers = Site.get_solvers(page)
-        match = re.search(r'\((\d+) solvers\) \(latest first\)', page)
-
-        if match:
+        solvers = None
+        
+        if not user:
+            page = urllib2.urlopen(u, timeout=5).read()
+            match = re.search(r'\((\d+) solvers\) \(latest first\)', page)
             cnt = int(match.group(1))
+            solvers = Site.get_solvers(page)
 
-        return nr, name, cnt, solvers, user in solvers
+        return nr, name, cnt, solvers, solved
