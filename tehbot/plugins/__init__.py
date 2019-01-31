@@ -171,7 +171,7 @@ class StandardPlugin(Plugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % unicode(e)
+            return u"Error: %s" % exc2str(e)
 
         if isinstance(self, PrivilegedPlugin) and not self.privileged(connection, event):
             return self.request_priv(extra)
