@@ -28,7 +28,14 @@ class UnicodePlugin(StandardPlugin):
         try:
             sign = tree.xpath("//div[@class='content']/ol[@class='search-results']/li/h2/a/span[@class='emoji']")[0].text_content()
         except:
-            return u"%s %s" % (red(UnicodePlugin.prefix()), "Unknown Format in Reply")
+            try:
+                noresults = tree.xpath("//div[@class='content']/ol[@class='search-results']/li/p")[0].text_content()
+                if "no results" in noresults.lower():
+                    sign = "No Results"
+                else:
+                    raise Exception
+            except:
+                return u"%s %s" % (red(UnicodePlugin.prefix()), "Unknown Format in Reply")
 
         return u"%s %s" % (green(UnicodePlugin.prefix()), sign)
 
