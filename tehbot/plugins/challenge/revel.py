@@ -168,7 +168,10 @@ class Site(BaseSite):
         if not user:
             page = urllib2.urlopen(u, timeout=5).read()
             match = re.search(r'\((\d+) solvers\) \(latest first\)', page)
-            cnt = int(match.group(1))
-            solvers = Site.get_solvers(page)
+            cnt, solvers = 0, []
+
+            if match:
+                cnt = int(match.group(1))
+                solvers = Site.get_solvers(page)
 
         return nr, name, cnt, solvers, solved
