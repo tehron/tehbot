@@ -120,12 +120,14 @@ class Site(BaseSite):
             xpnr = "td[1]"
             xpname = "td[2]"
             xpsolved = "td[3]"
+            xpuser = "//div[@class='content']/h3"
         else:
             url = Site.challurl()
             xp = "//div[@class='content']/center/table/tr"
             xpnr = "td[2]"
             xpname = "td[3]"
             xpsolved = "/foobar"
+            xpuser = "/foobar"
 
         tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
         rows = tree.xpath(xp)
@@ -141,6 +143,7 @@ class Site(BaseSite):
             enr = row.xpath(xpnr)
             ename = row.xpath(xpname)
             esolved = row.xpath(xpsolved)
+            euser = row.xpath(xpuser)
 
             if not enr or not ename:
                 continue
@@ -150,6 +153,8 @@ class Site(BaseSite):
             u = urlparse.urljoin(url, ename[0].xpath(".//a/@href")[0])
             u = Site.fixurl(u)
             solved = esolved and esolved[0].text_content().strip().lower() == "solved"
+            if euser:
+                user = re.search(r'Profile for (\w+)', euser[0].text_content()).group(1)
 
             if (challnr and nr == challnr) or (challname and name.lower().startswith(challname.lower())):
                 res = (nr, name, u, solved)
@@ -174,4 +179,4 @@ class Site(BaseSite):
                 cnt = int(match.group(1))
                 solvers = Site.get_solvers(page)
 
-        return nr, name, cnt, solvers, solved
+        return user, nr, name, cnt, solvers, solved

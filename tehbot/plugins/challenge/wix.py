@@ -98,4 +98,4 @@ class Site(BaseSite):
 
         cid, name = res
         solvers = Site.get_solvers(cid)
-        return cid, name, len(solvers), solvers, user in solvers
+        return user, cid, name, len(solvers), solvers, user in solvers

@@ -117,4 +117,4 @@ class Site(BaseSite):
         cnt = solvers
         solvers = Site.get_last_solvers(url)
 
-        return nr, name, cnt, solvers, user in solvers
+        return user, nr, name, cnt, solvers, user in solvers

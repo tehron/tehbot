@@ -151,7 +151,7 @@ class SolversPlugin(StandardPlugin):
 
     def solvers(self, site, challname, challnr, user):
         try:
-            nr, name, cnt, solvers, solved = site.solvers(challname, challnr, user)
+            user, nr, name, cnt, solvers, solved = site.solvers(challname, challnr, user)
             pre = u"Challenge Nr. %d, %s, " % (nr, name) if nr is not None else u"Challenge '%s' " % name
 
             if user is not None:

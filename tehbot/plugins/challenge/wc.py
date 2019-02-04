@@ -61,6 +61,7 @@ class Site(BaseSite):
         else:
             url = challurl
             xp = "//table[@class='wc_chall_table']/tr"
+            xpuser = "/foobar"
 
         tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
         rows = tree.xpath(xp)
@@ -69,6 +70,14 @@ class Site(BaseSite):
             if user:
                 raise NoSuchUserError
             raise UnknownReplyFormat
+
+        if user:
+            xpuser = "//div[@id='page']/div[@class='fl']/table/tr"
+            for row in tree.xpath(xpuser):
+                etag = row.xpath("th")
+                evalue = row.xpath("td")
+                if etag and evalue and etag[0].text_content().strip().lower() == "username":
+                    user = evalue[0].text_content().strip()
 
         res = None
 
@@ -98,7 +107,7 @@ class Site(BaseSite):
 
         nr, name, cnt, solved = res
         solvers = None if user or cnt == 0 else Site.get_last5_solvers(nr)
-        return nr, name, cnt, solvers, solved
+        return user, nr, name, cnt, solvers, solved
 
     @staticmethod
     def get_last5_solvers(nr):

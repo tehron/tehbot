@@ -108,4 +108,4 @@ class Site(BaseSite):
             cnt = int(jdata["completed"])
             solvers = [s["user"] for s in jdata["solvers"][:5]]
 
-        return nr, name, cnt, solvers, solved
+        return user, nr, name, cnt, solvers, solved
