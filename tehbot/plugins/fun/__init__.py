@@ -359,7 +359,7 @@ class HugPlugin(StandardPlugin):
 register_plugin("hug", HugPlugin())
 
 class RoflcopterPlugin(PrivilegedPlugin):
-    def execute(self, connection, event, extra, dbconn):
+    def command(self, connection, event, extra, dbconn):
         return """    ROFL:ROFL:ROFL:ROFL
          ___^___ _
  L    __/      [] \\
@@ -396,7 +396,7 @@ class RouletteHandler(ChannelHandler):
 
 
 class WixxerdPlugin(PrivilegedPlugin):
-    def execute(self, connection, event, extra, dbconn):
+    def command(self, connection, event, extra, dbconn):
         return r"""       .##...##..######..##..##..##..##..######..#####...#####..
        .##...##....##.....####....####...##......##..##..##..##.
        .##.#.##....##......##......##....####....#####...##..##.
