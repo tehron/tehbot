@@ -13,7 +13,9 @@ import shlex
 import datetime
 import json
 
-__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "PrivilegedPlugin", "PrivilegedCorePlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "from_utf8", "to_utf8", "green", "red", "bold", "exc2str"]
+__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "PrivilegedPlugin", "PrivilegedCorePlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
+    "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "register_prefix_handler",
+    "from_utf8", "to_utf8", "green", "red", "bold", "exc2str"]
 
 _tehbot = None
 _modules = []
@@ -185,6 +187,9 @@ class CorePlugin(StandardPlugin):
     pass
 
 class PrivilegedCorePlugin(CorePlugin, PrivilegedPlugin):
+    pass
+
+class PrefixHandler(StandardPlugin):
     pass
 
 class Announcer(Plugin):
@@ -361,6 +366,10 @@ def register_poller(plugin):
 
 def register_announcer(plugin):
     _tehbot.announcers.append(plugin)
+    _tehbot.handlers.append(plugin)
+
+def register_prefix_handler(plugin):
+    _tehbot.prefix_handlers.append(plugin);
     _tehbot.handlers.append(plugin)
 
 def split(s, mx=450):

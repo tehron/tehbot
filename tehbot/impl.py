@@ -63,6 +63,7 @@ class TehbotImpl:
         self.channel_join_handlers = []
         self.pollers = []
         self.announcers = []
+        self.prefix_handlers = []
         self.queue = Queue(maxsize=0)
         self.workers = []
         self.quit_called = False
@@ -82,6 +83,7 @@ class TehbotImpl:
         print "chn join handlers:", sorted(h.__class__.__name__ for h in self.channel_join_handlers)
         print "          pollers:", sorted(h.__class__.__name__ for h in self.pollers)
         print "       announcers:", sorted(h.__class__.__name__ for h in self.announcers)
+        print "   prefix handlers", sorted(h.__class__.__name__ for h in self.prefix_handlers)
 
     def deinit(self):
         self.core.reactor.remove_global_handler("all_events", self.dispatcher.dispatch)
@@ -504,15 +506,17 @@ class Dispatcher:
 
         plugins.myprint("%s: %s: *%s %s" % (connection.name, target, nick, msg))
 
-    def react_to_command(self, connection, event, msg):
+    def react_to_command(self, connection, event, msg, plugin=None):
         if not msg:
             return
 
         cmd = msg.split(" ", 1)[0]
         args = msg[len(cmd) + 1:]
 
-        if cmd in self.tehbot.cmd_handlers:
+        if not plugin and cmd in self.tehbot.cmd_handlers:
             plugin = self.tehbot.cmd_handlers[cmd]
+
+        if plugin:
             q = self.tehbot.mainqueue if plugin.mainthreadonly else self.tehbot.queue
             q.put((plugin, (connection, event, {"cmd":cmd, "args":args})))
 
@@ -525,6 +529,10 @@ class Dispatcher:
         if msg:
             if msg[0] == cmdprefix:
                 self.react_to_command(connection, event, msg[1:])
+            else:
+                for ph in self.tehbot.prefix_handlers:
+                    if msg[0] == ph.command_prefix():
+                        self.react_to_command(connection, event, msg[1:], ph)
 
             for h in self.tehbot.channel_handlers:
                 self.tehbot.queue.put((h, (connection, event, {"msg":msg})))
