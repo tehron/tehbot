@@ -6,7 +6,7 @@ import lxml.html
 import re
 
 profileurl = "https://www.wechall.net/profile/%s"
-url2 = "https://www.wechall.net/wechallchalls.php?username=%s"
+url2 = "https://www.wechall.net/wechallchalls.php?%s"
 challurl = "https://www.wechall.net/challs"
 rankurl = "https://www.wechall.net/site/ranking/for/1/WeChall/page-%d"
 solversurl = "https://www.wechall.net/challenge_solvers_for/%d/%s/page-%d"
@@ -19,14 +19,14 @@ class Site(BaseSite):
         return "https://www.wechall.net"
 
     def userstats(self, user):
-        page = urllib2.urlopen(url2 % plugins.to_utf8(user)).read()
+        page = urllib2.urlopen(url2 % urllib.urlencode({"username" : plugins.to_utf8(user)})).read()
 
         match = re.search(r'(\w+) solved (\d+) of (\d+) Challenges with (\d+) of (\d+) possible points \(\d\d\.\d\d%\). Rank for the site WeChall: (\d+)', page)
         if not match:
             return None
 
         # ugly wechall parsing, thx a lot gizmore! ;PP
-        tree = lxml.html.parse(urllib2.urlopen(profileurl % plugins.to_utf8(user)))
+        tree = lxml.html.parse(urllib2.urlopen(profileurl % urllib.quote_plus(plugins.to_utf8(user))))
         users_total = int(tree.xpath("//div[@id='wc_sidebar']//div[@class='wc_side_content']//div/a[@href='/users']")[0].text_content().split()[0])
 
         real_user, challs_solved, challs_total, score, scoremax, rank = match.groups()
