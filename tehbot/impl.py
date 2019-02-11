@@ -72,6 +72,7 @@ class TehbotImpl:
         self.dbconn = sqlite3.connect(self.dbfile)
         self.mainqueue = Queue()
         self.privusers = defaultdict(set)
+        self.authusers = defaultdict(set)
         self.privqueue = defaultdict(Queue)
         self.settings = Settings()
         self.settings.load(self.dbconn)
@@ -359,6 +360,8 @@ class Dispatcher:
                 self.tehbot.privusers[connection].add(nick)
                 break
 
+        self.tehbot.authusers[connection].add(nick)
+
     def on_endofwhois(self, connection, event):
         nick = event.arguments[0]
 
@@ -469,6 +472,11 @@ class Dispatcher:
         except:
             pass
 
+        try:
+            self.tehbot.authusers[connection].remove(event.source.nick)
+        except:
+            pass
+
     def on_quit(self, connection, event):
         plugins.myprint("%s: %s has quit (%s)" % (connection.name, event.source.nick, event.arguments[0]))
         botname = self.tehbot.settings.value("botname", connection)
@@ -486,6 +494,11 @@ class Dispatcher:
 
         try:
             self.tehbot.privusers[connection].remove(nick)
+        except:
+            pass
+
+        try:
+            self.tehbot.authusers[connection].remove(nick)
         except:
             pass
 
@@ -545,6 +558,10 @@ class Dispatcher:
         if msg:
             if msg[0] == cmdprefix:
                 self.react_to_command(connection, event, msg[1:])
+            else:
+                for ph in self.tehbot.prefix_handlers:
+                    if msg[0] == ph.command_prefix():
+                        self.react_to_command(connection, event, msg[1:], ph)
 
     def on_nick(self, connection, event):
         oldnick = event.source.nick
@@ -565,6 +582,11 @@ class Dispatcher:
 
         try:
             self.tehbot.privusers[connection].remove(event.source.nick)
+        except:
+            pass
+
+        try:
+            self.tehbot.authusers[connection].remove(event.source.nick)
         except:
             pass
 

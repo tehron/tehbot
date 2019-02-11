@@ -94,6 +94,9 @@ class Plugin:
     def privileged(self, connection, event):
         return event.source.nick in self.tehbot.privusers[connection]
 
+    def authed(self, connection, event):
+        return event.source.nick in self.tehbot.authusers[connection]
+
     def request_priv(self, extra):
         return [("nopriv",)] if extra.has_key("request_priv_called") else [("doauth",)]
 
