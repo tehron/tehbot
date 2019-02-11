@@ -31,6 +31,8 @@ sitemap = {
     "tbs" : "tbs",
     "st" : "st",
     "securitytraps" : "st",
+    "rankk" : "rankk",
+    "pyramid" : "rankk",
 }
 
 class BaseSite:
@@ -39,6 +41,12 @@ class BaseSite:
 
     def siteurl(self):
         return "https://www.google.com"
+
+    def str2nr(self, s):
+        return int(s)
+
+    def nr2str(self, nr):
+        return str(nr)
 
     def userstats(self, user):
         raise NotImplementedError
@@ -152,7 +160,7 @@ class SolversPlugin(StandardPlugin):
     def solvers(self, site, challname, challnr, user):
         try:
             user, nr, name, cnt, solvers, solved = site.solvers(challname, challnr, user)
-            pre = u"Challenge Nr. %d, %s, " % (nr, name) if nr is not None else u"Challenge '%s' " % name
+            pre = u"Challenge Nr. %s, %s, " % (site.nr2str(nr), name) if nr is not None else u"Challenge '%s' " % name
 
             if user is not None:
                 txt = pre + u"has%s been solved by %s." % ("" if solved else " \x02not\x02", user)
@@ -175,10 +183,6 @@ class SolversPlugin(StandardPlugin):
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
             challenge_name_or_nr = " ".join(pargs.challenge_name_or_nr)
-            if pargs.numeric:
-                challname, challnr = None, int(challenge_name_or_nr)
-            else:
-                challname, challnr = challenge_name_or_nr, None
             site = pargs.site.lower()
             user = pargs.user
         except Exception as e:
@@ -195,6 +199,14 @@ class SolversPlugin(StandardPlugin):
         except Exception as e:
             print e
             return u"SiteImportError: %s" % site
+
+        try:
+            if pargs.numeric:
+                challname, challnr = None, site.str2nr(challenge_name_or_nr)
+            else:
+                challname, challnr = challenge_name_or_nr, None
+        except Exception as e:
+            return u"Error: %s" % unicode(e)
 
         return self.solvers(site, challname, challnr, user)
 
