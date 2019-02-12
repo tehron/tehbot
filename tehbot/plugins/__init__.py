@@ -13,7 +13,7 @@ import shlex
 import datetime
 import json
 
-__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "PrivilegedPlugin", "PrivilegedCorePlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
+__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "PrivilegedPlugin", "PrivilegedCorePlugin", "AuthedPlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
     "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "register_prefix_handler",
     "from_utf8", "to_utf8", "green", "red", "bold", "exc2str"]
 
@@ -75,8 +75,11 @@ class Plugin:
             elif r[0] == "nopriv":
                 say(connection, target, u"%s is \x02not\x02 privileged" % event.source.nick, dbconn if self.logtodb else None)
                 break
+            elif r[0] == "noauth":
+                say(connection, target, u"%s is \x02not\x02 authorized with Services" % event.source.nick, dbconn if self.logtodb else None)
+                break
             elif r[0] == "doauth":
-                extra["request_priv_called"] = True
+                extra["auth_requested"] = True
 
                 params = self.tehbot.settings.connection_params(connection)
                 for t, s in params["operators"]:
@@ -98,7 +101,10 @@ class Plugin:
         return event.source.nick in self.tehbot.authusers[connection]
 
     def request_priv(self, extra):
-        return [("nopriv",)] if extra.has_key("request_priv_called") else [("doauth",)]
+        return [("nopriv",)] if extra.has_key("auth_requested") else [("doauth",)]
+
+    def request_auth(self, extra):
+        return [("noauth",)] if extra.has_key("auth_requested") else [("doauth",)]
 
     def priv_override(self, connection, event):
         self.tehbot.privusers[connection].add(event.source.nick)
@@ -181,6 +187,9 @@ class StandardPlugin(Plugin):
         if isinstance(self, PrivilegedPlugin) and not self.privileged(connection, event):
             return self.request_priv(extra)
 
+        if isinstance(self, AuthedPlugin) and not self.authed(connection, event):
+            return self.request_auth(extra)
+
         return self.command(connection, event, extra, dbconn)
 
 class PrivilegedPlugin(StandardPlugin):
@@ -190,6 +199,9 @@ class CorePlugin(StandardPlugin):
     pass
 
 class PrivilegedCorePlugin(CorePlugin, PrivilegedPlugin):
+    pass
+
+class AuthedPlugin(StandardPlugin):
     pass
 
 class PrefixHandler(StandardPlugin):
