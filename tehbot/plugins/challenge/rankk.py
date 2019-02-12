@@ -16,46 +16,42 @@ class Site(BaseSite):
         return "https://www.rankk.org"
 
     def userstats(self, user):
-        page = urllib2.urlopen(url2 % urllib.urlencode({"username" : plugins.to_utf8(user)})).read()
+        url = userurl % urllib.quote_plus(plugins.to_utf8(user))
+        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
 
-        match = re.search(r'(\w+) solved (\d+) of (\d+) Challenges with (\d+) of (\d+) possible points \(\d\d\.\d\d%\). Rank for the site WeChall: (\d+)', page)
-        if not match:
-            return None
+        content = tree.xpath("//div[@id='main']")
+        
+        if content and content[0].text_content().lower().strip() == "user not found":
+            raise NoSuchUserError
 
-        # ugly wechall parsing, thx a lot gizmore! ;PP
-        tree = lxml.html.parse(urllib2.urlopen(profileurl % urllib.quote_plus(plugins.to_utf8(user))))
-        users_total = int(tree.xpath("//div[@id='wc_sidebar']//div[@class='wc_side_content']//div/a[@href='/users']")[0].text_content().split()[0])
+        table = tree.xpath("//div[@id='user']/div[@class='profile']/table")
+        h1 = tree.xpath("//div[@id='main']/h1")
+        li = tree.xpath("//div[@id='page']/ul[@id='events']/li[@id='counted']")
+        etotal = tree.xpath("//div[@id='page']/div[@id='right']/div[@id='rankkometer']/ul/li[1]")
+        
+        if not table or not h1 or not li or not etotal:
+            raise UnknownReplyFormat
 
-        real_user, challs_solved, challs_total, score, scoremax, rank = match.groups()
-        return real_user, int(challs_solved), int(challs_total), str(int(rank)), int(users_total), int(score), int(scoremax), None
+        erank = table[0].xpath("tr[3]/td[2]")
+        epoints = table[0].xpath("tr[5]/td[2]")
+        esolved = table[0].xpath("tr[6]/td[2]")
+        mprofile = re.search(r"Profile of (.*)", h1[0].text_content())
+        mcounted = re.search(r"Counted:\s*(\d+)", li[0].text_content())
+        mtotal = re.search(r"Total:\s*(\d+)", etotal[0].text_content())
 
-    def rankstats(self, rank):
-        page = 1 + (rank - 1) / 50
+        if not erank or not epoints or not esolved or not mprofile or not mcounted or not mtotal:
+            raise UnknownReplyFormat
 
-        if page < 1:
-            return None
+        real_user = mprofile.group(1)
+        challs_total = int(mtotal.group(1))
+        user_count = int(mcounted.group(1))
 
-        tree = lxml.html.parse(urllib2.urlopen(rankurl % page))
-
-        for row in tree.xpath("//div[@id='page']/div[@class='gwf_table']/table//tr"):
-            r = row.xpath("td[1]")
-            n = row.xpath("td[3]")
-
-            if not r or not n:
-                continue
-
-            if int(r[0].text_content()) == rank:
-                res = self.userstats(n[0].text_content())
-                real_user, challs_solved, challs_total, rank, users_total, score, score_max, _ = res
-                return challs_solved, [real_user], challs_total
-
-        return None
+        return real_user, int(esolved[0].text_content()), challs_total, str(int(erank[0].text_content())), user_count, int(epoints[0].text_content()), None, None
 
     def str2nr(self, s):
-        try:
-            match = re.search(r'(\d+)/(\d+)', s)
-        except:
-            raise ValueError('Expected format: %s' % r'\d+/d+')
+        match = re.search(r'^(\d+)/(\d+)$', s)
+        if not match:
+            raise ValueError('invalid string for pattern %s: %s' % (r'^\d+/d+$', s))
 
         return (int(match.group(1)), int(match.group(2)))
 
@@ -114,6 +110,12 @@ class Site(BaseSite):
     def user_solved(user, challname):
         url = userurl % urllib.quote_plus(plugins.to_utf8(user))
         tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+
+        content = tree.xpath("//div[@id='main']")
+        
+        if content and content[0].text_content().lower().strip() == "user not found":
+            raise NoSuchUserError
+
         rows = tree.xpath("//div[@id='allsolved']/ul[@class='solved']/li")
 
         if not rows:

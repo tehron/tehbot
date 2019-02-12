@@ -90,7 +90,10 @@ class StatsPlugin(StandardPlugin):
                     txt = u"The requested user was not found. You can register at %s." % site.siteurl()
                 else:
                     user, solved, solvedmax, rank, usercount, score, scoremax, extra = res
-                    ranktext = u" and is on rank %s (of %d)" % (rank, usercount) if rank and usercount is not None else ""
+                    if rank is not None:
+                        ranktext = u" and is on rank %s (of %d)" % (rank, usercount) if usercount is not None else u" and is on rank %s" % rank
+                    else:
+                        ranktext = u""
                     if score is not None:
                         ranktext += u" scoring %d (of %d) points" % (score, scoremax) if scoremax is not None else u" scoring %d points" % (score)
                     txt = u"%s solved %d (of %d) challenges%s.%s"% (user, solved, solvedmax, ranktext, extra or "")
