@@ -1,5 +1,6 @@
 from tehbot.plugins import *
 import tehbot.plugins as plugins
+from tehbot.plugins.duckduckgo import ddgsearch
 import wolframalpha
 import re
 import pipes
@@ -24,9 +25,27 @@ class AiHandler(ChannelHandler):
         ChannelHandler.initialize(self, dbconn)
         try:
             self.client = wolframalpha.Client(self.settings["wolframalpha_app_id"])
-            self.ai_enabled = True
         except:
-            self.ai_enabled = False
+            self.client = None
+
+    def ddg_handler(self, what):
+        return ddgsearch(what)
+
+    def wolfram_handler(self, what):
+        if not self.client:
+            return
+
+        for p in self.client.query(what).pods:
+            if p.id == "Result" and p.text:
+                txt = " ".join(p.text.splitlines())
+                return plugins.shorten("%s: %s" % (event.source.nick, txt), 350)
+
+        for p in self.client.query(what).pods:
+            if p.id == "Misc" and p.text:
+                txt = " ".join(p.text.splitlines())
+                print txt
+
+        raise Exception("hm")
 
     def execute(self, connection, event, extra, dbconn):
         botname = self.tehbot.settings.value("botname", connection)
@@ -40,6 +59,9 @@ class AiHandler(ChannelHandler):
                 re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s\s*,?\s*has\s+(?P<who>\S+)\s+solved\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % botname, re.I),
                 re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s\s*,?\s*did\s+(?P<who>\S+)\s+solve\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % botname, re.I)
                 ]
+
+        backend = self.settings.get("backend", "ddg")
+        aihandler = getattr(self, "%s_handler" % backend)
 
         for r in solved_regex:
             match = r.search(extra["msg"])
@@ -57,9 +79,6 @@ class AiHandler(ChannelHandler):
                 plugin.handle(connection, event, {"args":args}, dbconn)
                 return
 
-        if not self.ai_enabled:
-            return
-
         for r in decide_regex:
             match = r.search(extra["msg"])
             if match is not None:
@@ -71,17 +90,7 @@ class AiHandler(ChannelHandler):
                 what = match.group(1)
 
                 try:
-                    for p in self.client.query(what).pods:
-                        if p.id == "Result" and p.text:
-                            txt = " ".join(p.text.splitlines())
-                            return plugins.shorten("%s: %s" % (event.source.nick, txt), 350)
-
-                    for p in self.client.query(what).pods:
-                        if p.id == "Misc" and p.text:
-                            txt = " ".join(p.text.splitlines())
-                            print txt
-
-                    raise Exception("hm")
+                    return aihandler(what)
                 except:
                     return [("me", "shrugs")]
 
