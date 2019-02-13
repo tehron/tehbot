@@ -176,9 +176,12 @@ class StandardPlugin(Plugin):
         self.parser = ThrowingArgumentParser(description=self.__doc__)
         self.mainthreadonly = False
 
+    def args_key(self):
+        return "args"
+
     def execute(self, connection, event, extra, dbconn):
         try:
-            self.pargs = self.parser.parse_args(extra["args"])
+            self.pargs = self.parser.parse_args(extra[self.args_key()])
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
