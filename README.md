@@ -14,7 +14,7 @@ A Python IRC Bot
 Tehbot has an active command line which accepts the following commands (commands have to be preceded with a slash `/`:
 * `reload` -- reloads all plugins and applies all changes made to tehbot's connections
 * `quit` -- quits tehbot (optional arguments are supplied as quit message)
-* `stats` -- shows some statistics about conneted networks' status and period command plugins
+* `stats` -- shows some statistics about connected networks' status and period command plugins
 * `config` -- edit or show tehbot's settings
 
 ## Configuration
@@ -28,6 +28,7 @@ Tehbot has an active command line which accepts the following commands (commands
   * `/config tehbot connections modify "IRC Network" set ssl "True"`
   * `/config tehbot connections modify "IRC Network" add channels "#channel1"`
   * `/config tehbot connections modify "IRC Network" add channels "#channel2"`
+  * `/config tehbot connections modify "IRC Network" add operators "your_nickserv_regged_nick"`
   
   Optionally:
   * `/config tehbot connections modify "IRC Network" set botname "tehnetworkbot"` -- set a network specific name tehbot should use
