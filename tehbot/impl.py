@@ -531,7 +531,7 @@ class Dispatcher:
 
         if plugin:
             q = self.tehbot.mainqueue if plugin.mainthreadonly else self.tehbot.queue
-            q.put((plugin, (connection, event, {"cmd":cmd, "args":args})))
+            q.put((plugin, (connection, event, {"msg":msg, "cmd":cmd, "args":args})))
 
     def on_pubmsg(self, connection, event):
         msg = event.arguments[0]
