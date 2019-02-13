@@ -188,9 +188,13 @@ class TehbotImpl:
         botname = self.settings.value("botname", connection)
         username = self.settings.value("username", connection)
         ircname = self.settings.value("ircname", connection)
-        connection.connect(params["host"], params["port"], botname, params.get("password", None), username, ircname, factory)
+        connection.connect(params["host"], params["port"], botname, None, username, ircname, factory)
         connection.set_rate_limit(2)
         connection.set_keepalive(60)
+        
+        nickservpw = params.get("password", None)
+        if nickservpw:
+            connection.privmsg("NickServ", "IDENTIFY %s" % password)
 
     def process_once(self, timeout):
         self.core.reactor.process_once(timeout)
