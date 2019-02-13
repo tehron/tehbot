@@ -300,6 +300,11 @@ class TehbotImpl:
                         self.settings["connections"][name][key].append(("nickserv", value))
                     else:
                         self.settings["connections"][name][key] = value
+
+                        if key == "botname":
+                            self.settings["connections"][name]["username"] = value
+                            self.settings["connections"][name]["ircname"] = value
+
                     self.settings.save(dbconn)
                     return "Okay"
                 elif arr[1] == "show":
