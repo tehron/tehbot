@@ -191,10 +191,6 @@ class TehbotImpl:
         connection.connect(params["host"], params["port"], botname, None, username, ircname, factory)
         connection.set_rate_limit(2)
         connection.set_keepalive(60)
-        
-        nickservpw = params.get("password", None)
-        if nickservpw:
-            connection.privmsg("NickServ", "IDENTIFY %s" % password)
 
     def process_once(self, timeout):
         self.core.reactor.process_once(timeout)
@@ -396,6 +392,12 @@ class Dispatcher:
 
     def on_welcome(self, connection, event):
         plugins.myprint("%s: connected to %s" % (connection.name, connection.server))
+
+        params = self.tehbot.settings.connection_params(connection)
+        nickservpw = params.get("password", None)
+        if nickservpw:
+            connection.privmsg("NickServ", "IDENTIFY %s" % nickservpw)
+
         self.tehbot.core.reactor.scheduler.execute_after(2, functools.partial(self.join_channels, connection))
 
     def join_channels(self, connection):
