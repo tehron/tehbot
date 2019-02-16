@@ -266,14 +266,27 @@ class DecidePlugin(StandardPlugin):
         self.parser.add_argument("-o", "--or", action="store_true")
 
     def command(self, connection, event, extra, dbconn):
+        choices = []
+
         if vars(self.pargs)["or"]:
-            return choice(self.pargs.choices)
+            choices = self.pargs.choices
+        else:
+            ch = []
+            for c in self.pargs.choices:
+                if c.lower() in ["or", "||"]:
+                    if ch:
+                        choices.append(" ".join(ch))
+                        ch = []
+                    else:
+                        choices = []
+                        break
+                else:
+                    ch.append(c)
 
-        word1 = self.pargs.choices[0].lower()
-        if word1 == "ban" or word1 == "kick":
-            return "Tempting..."
+            if not choices:
+                choices = ["Yes", "No"]
 
-        return choice(["Yes", "No"])
+        return choice(choices)
 
 register_plugin("decide", DecidePlugin())
 
