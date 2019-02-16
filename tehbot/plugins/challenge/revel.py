@@ -40,7 +40,7 @@ class Site(BaseSite):
         #except:
         #    pass
 
-        return user, int(solved), int(solvedmax), rank, int(usercount), None, None, None
+        return user, solved, int(solvedmax), rank, int(usercount), None, None, None
 
     @staticmethod
     def parsescores(page):

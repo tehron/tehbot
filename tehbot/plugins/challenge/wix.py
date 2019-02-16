@@ -48,7 +48,7 @@ class Site(BaseSite):
             return None
 
         score, score_total, users_total, challs_solved, challs_total, rank = map(int, match)
-        return user, challs_solved, challs_total, str(rank), users_total, score, score_total, None
+        return user, str(challs_solved), challs_total, str(rank), users_total, score, score_total, None
 
     @staticmethod
     def challenges():

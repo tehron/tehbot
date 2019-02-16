@@ -46,7 +46,7 @@ class Site(BaseSite):
         challs_total = int(mtotal.group(1))
         user_count = int(mcounted.group(1))
 
-        return real_user, int(esolved[0].text_content()), challs_total, str(int(erank[0].text_content())), user_count, int(epoints[0].text_content()), None, None
+        return real_user, str(int(esolved[0].text_content())), challs_total, str(int(erank[0].text_content())), user_count, int(epoints[0].text_content()), None, None
 
     def str2nr(self, s):
         match = re.search(r'^(\d+)/(\d+)$', s)

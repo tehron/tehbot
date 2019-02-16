@@ -22,4 +22,4 @@ class Site(BaseSite):
         if html == "0":
             return None
         rank, challs_solved, challs_total, users_total, score = html.split(":")
-        return user, int(challs_solved), int(challs_total), str(int(rank)), int(users_total), int(score), None, None
+        return user, str(int(challs_solved)), int(challs_total), str(int(rank)), int(users_total), int(score), None, None

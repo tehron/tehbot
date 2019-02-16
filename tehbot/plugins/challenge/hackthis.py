@@ -77,7 +77,7 @@ class Site(BaseSite):
         lvldata = json.load(self.opener.open(self.url3 % uid))
         challs_solved, challs_total = Site.count_lvldata(lvldata)
 
-        return real_user, challs_solved, challs_total, rank, users_total, score, None, None
+        return real_user, str(challs_solved), challs_total, rank, users_total, score, None, None
 
     def solvers(self, challname, challnr, user):
         if challname is None:

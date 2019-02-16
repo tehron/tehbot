@@ -21,7 +21,7 @@ class Site(BaseSite):
         if html == "Unknown User":
             return None
         real_user, rank, users_total, challs_solved, challs_total = html.split(":")
-        return real_user, int(challs_solved), int(challs_total), str(int(rank)), int(users_total), None, None, None
+        return real_user, str(int(challs_solved)), int(challs_total), str(int(rank)), int(users_total), None, None, None
 
     def userstats_html(self, user):
         url = "http://www.bright-shadows.net/ranking.php?perpage=1&showuser=%s"

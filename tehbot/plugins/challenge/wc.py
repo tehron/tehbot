@@ -30,7 +30,7 @@ class Site(BaseSite):
         users_total = int(tree.xpath("//div[@id='wc_sidebar']//div[@class='wc_side_content']//div/a[@href='/users']")[0].text_content().split()[0])
 
         real_user, challs_solved, challs_total, score, scoremax, rank = match.groups()
-        return real_user, int(challs_solved), int(challs_total), str(int(rank)), int(users_total), int(score), int(scoremax), None
+        return real_user, str(int(challs_solved)), int(challs_total), str(int(rank)), int(users_total), int(score), int(scoremax), None
 
     def rankstats(self, rank):
         page = 1 + (rank - 1) / 50

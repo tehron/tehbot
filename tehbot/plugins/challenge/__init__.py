@@ -96,7 +96,7 @@ class StatsPlugin(StandardPlugin):
                         ranktext = u""
                     if score is not None:
                         ranktext += u" scoring %d (of %d) points" % (score, scoremax) if scoremax is not None else u" scoring %d points" % (score)
-                    txt = u"%s solved %d (of %d) challenges%s.%s"% (user, solved, solvedmax, ranktext, extra or "")
+                    txt = u"%s solved %s (of %d) challenges%s.%s"% (user, solved, solvedmax, ranktext, extra or "")
             else:
                 res = site.rankstats(rank)
                 if res is None:

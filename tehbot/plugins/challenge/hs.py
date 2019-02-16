@@ -42,7 +42,7 @@ class Site(BaseSite):
         else:
             extra = None
 
-        return user, int(challs_solved), int(challs_total), rank, int(users_total), None, None, extra
+        return user, str(int(challs_solved)), int(challs_total), rank, int(users_total), None, None, extra
 
     @staticmethod
     def hs_rank_to_user(rank):
