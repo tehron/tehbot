@@ -5,21 +5,6 @@ from random import *
 import shlex
 import irc.client
 
-class DeadHourPlugin(PrivilegedPlugin):
-    def command(self, connection, event, extra, dbconn):
-        channel = event.target
-
-        if channel != "#wechall":
-            return
-
-        happy_users = [ "ChanServ", "giz|work", "giz|lazer", "giz|lazer|2", "gizmore", "dloser", "Lamb3", "tehbot" ]
-        dead_users = set(connection.tehbot_users[channel]).difference(happy_users)
-
-        for u in dead_users:
-            connection.mode(channel, "-o " + u)
-
-register_plugin("dead_hour", DeadHourPlugin())
-
 class BlamePlugin(StandardPlugin):
     def command(self, connection, event, extra, dbconn):
         two = connection.tehbot_users[event.target] if irc.client.is_channel(event.target) else [u"spaceone"]
@@ -273,26 +258,6 @@ class BOSPlugin(StandardPlugin):
 register_plugin("bos", BOSPlugin())
 
 
-#shotmap = {}
-#
-#def shots(connection, channel, nick, cmd, args):
-    #plugins.say_nick(connection, channel, nick, "|~|")
-    #plugins.say_nick(connection, channel, nick, "+-+  Cheers, %s!" % nick)
-    #if not shotmap.has_key(nick):
-        #shotmap[nick] = 0
-    #shotmap[nick] += 1
-#
-#def shoot(connection, channel, nick, cmd, args):
-    #if not shotmap.has_key(nick) or shotmap[nick] == 0:
-        #return plugins.say_nick(connection, channel, nick, "Your glass is empty!")
-#
-    #shotmap[nick] -= 1
-    #plugins.say_nick(connection, channel, nick, "| |  AH!")
-    #plugins.say_nick(connection, channel, nick, "+-+  Want another one, %s?" % nick)
-#
-#plugins.register_plugin("shots", shots)
-#plugins.register_plugin("shoot", shoot)
-
 import pipes
 class DecidePlugin(StandardPlugin):
     def __init__(self):
@@ -381,7 +346,7 @@ class DestinyHandler(ChannelJoinHandler):
 
         return ">> https://www.youtube.com/watch?v=fNmDgRwNFsI <<"
 
-#plugins.register_channel_join_handler(DestinyHandler())
+plugins.register_channel_join_handler(DestinyHandler())
 
 
 
@@ -391,7 +356,7 @@ class RouletteHandler(ChannelHandler):
         if msg.find("BANG") > -1 or msg.find("BOOM") > -1:
             return "!roulette"
 
-#plugins.register_channel_handler(RouletteHandler())
+plugins.register_channel_handler(RouletteHandler())
 
 
 
