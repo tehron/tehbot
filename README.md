@@ -11,7 +11,7 @@ A Python IRC Bot
 * `python -m tehbot`
 
 ## Interacting with tehbot
-Tehbot has an active command line which accepts the following commands (commands have to be preceded with a slash `/`:
+Tehbot has an active command line which accepts the following commands (commands have to be preceded with a slash `/`):
 * `reload` -- reloads all plugins and applies all changes made to tehbot's connections
 * `quit` -- quits tehbot (optional arguments are supplied as quit message)
 * `stats` -- shows some statistics about connected networks' status and period command plugins
