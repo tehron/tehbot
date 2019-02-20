@@ -291,7 +291,7 @@ class DecidePlugin(StandardPlugin):
         else:
             parts = DecidePlugin.partition(self.pargs.choices)
             if len(parts) > 1:
-                choices = map(lambda x: " ".join(x), parts)
+                choices = map(" ".join, parts)
             else:
                 choices = ["Yes", "No"]
 
