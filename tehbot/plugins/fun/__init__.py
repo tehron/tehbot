@@ -265,25 +265,34 @@ class DecidePlugin(StandardPlugin):
         self.parser.add_argument("choices", nargs="+")
         self.parser.add_argument("-o", "--or", action="store_true")
 
+    @staticmethod
+    def partition(args):
+        parts = []
+        arg = []
+        while args:
+            c = args.pop(0)
+            if c.lower() in ["or", "||"]:
+                if arg:
+                    parts.append(arg)
+                    arg = []
+            else:
+                arg.append(c)
+
+        if arg:
+            parts.append(arg)
+
+        return parts
+
     def command(self, connection, event, extra, dbconn):
         choices = []
 
         if vars(self.pargs)["or"]:
             choices = self.pargs.choices
         else:
-            ch = []
-            for c in self.pargs.choices:
-                if c.lower() in ["or", "||"]:
-                    if ch:
-                        choices.append(" ".join(ch))
-                        ch = []
-                    else:
-                        choices = []
-                        break
-                else:
-                    ch.append(c)
-
-            if not choices:
+            parts = DecidePlugin.partition(self.pargs.choices)
+            if len(parts) > 1:
+                choices = map(lambda x: " ".join(x), parts)
+            else:
                 choices = ["Yes", "No"]
 
         return choice(choices)
