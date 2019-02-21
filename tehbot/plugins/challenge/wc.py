@@ -21,7 +21,7 @@ class Site(BaseSite):
     def userstats(self, user):
         page = urllib2.urlopen(url2 % urllib.urlencode({"username" : plugins.to_utf8(user)})).read()
 
-        match = re.search(r'(\w+) solved (\d+) of (\d+) Challenges with (\d+) of (\d+) possible points \(\d\d\.\d\d%\). Rank for the site WeChall: (\d+)', page)
+        match = re.search(r'(\w+) solved (\d+) of (\d+) Challenges with (\d+) of (\d+) possible points \(\d+\.\d\d%\). Rank for the site WeChall: (\d+)', page)
         if not match:
             return None
 
