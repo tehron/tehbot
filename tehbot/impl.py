@@ -170,14 +170,15 @@ class TehbotImpl:
                 print "Connecting to %s" % name
                 conn = self.core.reactor.server()
                 conn.name = name
-                conn.channels = set()
-                conn.locks = dict()
-                conn.tehbot_users = dict()
                 self.reconnect(conn)
             else:
                 self.dispatcher.join_channels(conn)
 
     def reconnect(self, connection):
+        connection.channels = set()
+        connection.locks = dict()
+        connection.tehbot_users = dict()
+
         params = self.settings.connection_params(connection)
 
         if params["ssl"]:
