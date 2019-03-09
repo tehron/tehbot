@@ -13,7 +13,7 @@ import shlex
 import datetime
 import json
 
-__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "PrivilegedPlugin", "PrivilegedCorePlugin", "AuthedPlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
+__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "PrivilegedPlugin", "AuthedPlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
     "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "register_prefix_handler",
     "from_utf8", "to_utf8", "green", "red", "bold", "exc2str"]
 
@@ -48,6 +48,7 @@ class Plugin:
         self.logtodb = True
         self.pub_allowed = True
         self.priv_allowed = True
+        self.mainthreadonly = False
         self.initialize(self.tehbot.dbconn)
 
     def handle(self, connection, event, extra, dbconn):
@@ -63,7 +64,13 @@ class Plugin:
             if not self.priv_allowed:
                 return
 
-        res = self.execute(connection, event, extra, dbconn)
+        if isinstance(self, PrivilegedPlugin) and not self.privileged(connection, event):
+            res = self.request_priv(extra)
+        elif isinstance(self, AuthedPlugin) and not self.authed(connection, event):
+            res = self.request_auth(extra)
+        else:
+            res = self.execute(connection, event, extra, dbconn)
+
         if isinstance(res, basestring):
             res = [("say", res)]
         elif res is None:
@@ -129,6 +136,12 @@ class Plugin:
         if stored_settings != self.settings:
             self.save(dbconn)
 
+    def postinit(self, dbconn):
+        pass
+
+    def deinit(self, dbconn):
+        pass
+
     def finalize(self):
         pass
 
@@ -174,40 +187,27 @@ class StandardPlugin(Plugin):
     def __init__(self):
         Plugin.__init__(self)
         self.parser = ThrowingArgumentParser(description=self.__doc__)
-        self.mainthreadonly = False
-
-    def args_key(self):
-        return "args"
 
     def execute(self, connection, event, extra, dbconn):
         try:
-            self.pargs = self.parser.parse_args(extra[self.args_key()])
+            self.pargs = self.parser.parse_args(extra["args"])
             if self.parser.help_requested:
                 return self.parser.format_help().strip()
         except Exception as e:
             return u"Error: %s" % exc2str(e)
 
-        if isinstance(self, PrivilegedPlugin) and not self.privileged(connection, event):
-            return self.request_priv(extra)
-
-        if isinstance(self, AuthedPlugin) and not self.authed(connection, event):
-            return self.request_auth(extra)
-
         return self.command(connection, event, extra, dbconn)
-
-class PrivilegedPlugin(StandardPlugin):
-    pass
 
 class CorePlugin(StandardPlugin):
     pass
 
-class PrivilegedCorePlugin(CorePlugin, PrivilegedPlugin):
+class PrivilegedPlugin(Plugin):
     pass
 
-class AuthedPlugin(StandardPlugin):
+class AuthedPlugin(Plugin):
     pass
 
-class PrefixHandler(StandardPlugin):
+class PrefixHandler(Plugin):
     pass
 
 class Announcer(Plugin):
@@ -362,7 +362,10 @@ def me(connection, target, msg, dbconn):
 
 def register_plugin(cmd, plugin):
     cmds = cmd if isinstance(cmd, list) else [cmd]
-    plugin.parser.prog = cmds[0]
+
+    if isinstance(plugin, StandardPlugin):
+        plugin.parser.prog = cmds[0]
+
     for cmd in cmds:
         if cmd in _tehbot.cmd_handlers:
             myprint("Warning: Duplicate command \"%s\" defined!" % cmd)

@@ -1,8 +1,9 @@
 from tehbot.plugins import *
 from cowsay import cowsay
 
-class CowsayPlugin(PrivilegedPlugin):
+class CowsayPlugin(StandardPlugin, PrivilegedPlugin):
     def __init__(self):
+        StandardPlugin.__init__(self)
         PrivilegedPlugin.__init__(self)
         self.parser.add_argument("msg", nargs="+")
 

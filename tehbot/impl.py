@@ -101,12 +101,18 @@ class TehbotImpl:
                 except:
                     pass
 
+        for h in self.handlers:
+            h.deinit(self.dbconn)
+
         self.dbconn.close()
         self.quit_called = True
         self.restart_called = False
 
     def postinit(self):
         self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
+
+        for h in self.handlers:
+            h.postinit(self.dbconn)
 
         for p in self.pollers:
             p.schedule(20)

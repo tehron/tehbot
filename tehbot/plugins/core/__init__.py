@@ -20,9 +20,10 @@ class PrivPlugin(CorePlugin):
 
 register_plugin("priv", PrivPlugin())
 
-class ReloadPlugin(PrivilegedCorePlugin):
+class ReloadPlugin(StandardPlugin, PrivilegedPlugin):
     def __init__(self):
-        PrivilegedCorePlugin.__init__(self)
+        StandardPlugin.__init__(self)
+        PrivilegedPlugin.__init__(self)
         self.mainthreadonly = True
 
     def command(self, connection, event, extra, dbconn):
@@ -43,9 +44,10 @@ class ReloadPlugin(PrivilegedCorePlugin):
 
 register_plugin("reload", ReloadPlugin())
 
-class QuitPlugin(PrivilegedCorePlugin):
+class QuitPlugin(StandardPlugin, PrivilegedPlugin):
     def __init__(self):
-        PrivilegedCorePlugin.__init__(self)
+        StandardPlugin.__init__(self)
+        PrivilegedPlugin.__init__(self)
         self.parser.add_argument("msg", nargs="*")
         self.parser.add_argument("-r", "--restart", action="store_true")
 
@@ -58,9 +60,10 @@ class QuitPlugin(PrivilegedCorePlugin):
 
 register_plugin("quit", QuitPlugin())
 
-class RawPlugin(PrivilegedCorePlugin):
+class RawPlugin(StandardPlugin, PrivilegedPlugin):
     def __init__(self):
-        PrivilegedCorePlugin.__init__(self)
+        StandardPlugin.__init__(self)
+        PrivilegedPlugin.__init__(self)
         self.parser.add_argument("args", nargs="+")
 
     def command(self, connection, event, extra, dbconn):
@@ -88,9 +91,10 @@ class HelpPlugin(CorePlugin):
 
 register_plugin("help", HelpPlugin())
 
-class ConfigPlugin(PrivilegedCorePlugin):
+class ConfigPlugin(StandardPlugin, PrivilegedPlugin):
     def __init__(self):
-        PrivilegedCorePlugin.__init__(self)
+        StandardPlugin.__init__(self)
+        PrivilegedPlugin.__init__(self)
         self.parser.add_argument("args", nargs="*")
 
     def command(self, connection, event, extra, dbconn):
