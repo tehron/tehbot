@@ -76,6 +76,9 @@ while True:
         func(args)
     except KeyboardInterrupt:
         bot.quit()
+    except irc.client.ServerNotConnectedError:
+        bot.restart_called = True
+        break
     except:
         Tehbot.print_exc()
 
