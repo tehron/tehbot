@@ -33,6 +33,7 @@ Tehbot has an active command line which accepts the following commands (commands
   Optionally:
   * `/config tehbot connections modify "IRC Network" set botname "tehnetworkbot"` -- set a network specific name tehbot should use
   * `/config tehbot connections modify "IRC Network" set password "********"` -- set a NICKSERV password tehbot should use to authenticate
+  * `/config tehbot connections modify "IRC Network" set id "net"` -- set a unique id for a network
 
 ### Plugin Configuration
 ...
