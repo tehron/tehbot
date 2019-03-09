@@ -277,7 +277,8 @@ class TehbotImpl:
                             "port" : 6667,
                             "ssl" : False,
                             "channels" : [ ],
-                            "operators" : [ ]
+                            "operators" : [ ],
+                            "id" : None
                             }
                     self.settings.save(dbconn)
                     return "Okay"
@@ -306,6 +307,11 @@ class TehbotImpl:
                         if not self.settings["connections"][name].has_key(key):
                             self.settings["connections"][name][key] = []
                         self.settings["connections"][name][key].append(("nickserv", value))
+                    elif key == "id":
+                        for cname, conn in self.settings.connections().items():
+                            if cname != name and conn.has_key(key) and conn[key] == value:
+                                return "That id already exists in connection '%s'!" % cname
+                            self.settings["connections"][name][key] = value
                     else:
                         self.settings["connections"][name][key] = value
 
