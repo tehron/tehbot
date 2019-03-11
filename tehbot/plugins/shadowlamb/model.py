@@ -102,15 +102,6 @@ class Properties(db.Entity):
     max_mp = Required(float, default=0)
     max_weight = Required(float, default=0)
 
-class Knowledge(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    player = Optional("Player")
-    indian_culture = Required(float, default=0)
-    indian_language = Required(float, default=0)
-    math = Required(float, default=0)
-    crypto = Required(float, default=0)
-    stegano = Required(float, default=0)
-
 class Conditions(db.Entity):
     id = PrimaryKey(int, auto=True)
     frozen = Required(float, default=0)
@@ -140,55 +131,6 @@ class Item(db.Entity):
     duration = Required(float, default=0)
     microtime = Required(float)
 
-
-class Gender(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    name = Required(str, unique=True)
-    attributes = Required(Attributes)
-    player = Optional("Player")
-
-class Race(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    player = Optional("Player")
-    name = Required(str, unique=True)
-    is_npc = Required(bool, default=False)
-    base_hp = Required(float)
-    base_mp = Required(float)
-    height = Required(float)
-    age = Required(float)
-    weight = Required(float)
-    attributes = Required(Attributes)
-    skills = Required(Skills)
-    properties = Required(Properties)
-
-class Word(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    player = Optional("Player")
-    content = Required(str)
-
-class Spell(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    player = Optional("Player")
-    name = Required(str)
-
-class Party(db.Entity):
-    id = PrimaryKey(int, auto=True)
-    name = Optional(str)
-    members = Set("Player")
-    contact_eta = Required(float)
-    action = Required(PartyAction)
-    target = Optional(str)
-    eta = Required(int)
-    last_action = Required(PartyAction)
-    last_target = Optional(str)
-    last_eta = Required(int)
-    options = Required(int)
-    ban = Required(str)
-    distance = Required(str)
-    xp = Required(int)
-    xp_total = Required(int)
-    level = Required(int)
-
 class PlayerStats(db.Entity):
     id = PrimaryKey(int, auto=True)
     player = Optional("Player")
@@ -210,6 +152,64 @@ class PlayerStats(db.Entity):
     nr_kills_npc = Required(int, default=0)
     nr_kills_human = Required(int, default=0)
     nr_kills_runner = Required(int, default=0)
+
+
+class Gender(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    players = Set("Player")
+    name = Required(str, unique=True)
+    attributes = Required(Attributes)
+
+class Race(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    players = Set("Player")
+    name = Required(str, unique=True)
+    is_npc = Required(bool, default=False)
+    base_hp = Required(float)
+    base_mp = Required(float)
+    height = Required(float)
+    age = Required(float)
+    weight = Required(float)
+    attributes = Required(Attributes)
+    skills = Required(Skills)
+    properties = Required(Properties)
+
+class Knowledge(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    players = Set("Player")
+    indian_culture = Required(float, default=0)
+    indian_language = Required(float, default=0)
+    math = Required(float, default=0)
+    crypto = Required(float, default=0)
+    stegano = Required(float, default=0)
+
+class Word(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    players = Set("Player")
+    content = Required(str)
+
+class Spell(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    players = Set("Player")
+    name = Required(str)
+
+class Party(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    name = Optional(str)
+    members = Set("Player")
+    contact_eta = Required(float)
+    action = Required(PartyAction)
+    target = Optional(str)
+    eta = Required(int)
+    last_action = Required(PartyAction)
+    last_target = Optional(str)
+    last_eta = Required(int)
+    options = Required(int)
+    ban = Required(str)
+    distance = Required(str)
+    xp = Required(int)
+    xp_total = Required(int)
+    level = Required(int)
 
 class Player(db.Entity):
     id = PrimaryKey(int, auto=True)
