@@ -8,11 +8,12 @@ import tehbot.plugins.shadowlamb.model as model
 import threading
 import time
 from random import randint, random
-import gettext
 import os.path
 
-t = gettext.translation("Shadowlamb", os.path.dirname(__file__))
-_ = t.gettext
+#import gettext
+#t = gettext.translation("Shadowlamb", os.path.dirname(__file__) + "/i18n")
+#_ = t.gettext
+_ = lambda x: x
 
 class ShadowlambPlugin(StandardPlugin, PrivilegedPlugin):
     """What, you don't know what shadowlamb is??"""
@@ -93,7 +94,7 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
 
         with model.db_session:
             if model.Player.get(name=event.source.nick, network_id=self.tehbot.settings.network_id(connection)):
-                return "Player exists!"
+                return _("Player exists!")
 
             network_id = self.tehbot.settings.network_id(connection)
             r = model.Race.get(name=pargs.race)
