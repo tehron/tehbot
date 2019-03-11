@@ -77,7 +77,7 @@ class Plugin:
             res = [("none",)]
 
         for r in res:
-            if r[0] == "say" or r[0] == "me":
+            if r[0] == "say" or r[0] == "me" or r[0] == "notice":
                 globals()[r[0]](connection, target, r[1], dbconn if self.logtodb else None)
             elif r[0] == "nopriv":
                 say(connection, target, u"%s is \x02not\x02 privileged" % event.source.nick, dbconn if self.logtodb else None)
@@ -330,6 +330,20 @@ def say(connection, target, msg, dbconn):
             if m.strip():
                 logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), m, False, typ, dbconn)
                 connection.privmsg(target, m)
+
+def notice(connection, target, msg, dbconn):
+    if not target or not msg: return
+    if not connection.locks.has_key(target): connection.locks[target] = threading.Lock()
+    if irc.client.is_channel(target):
+        typ = _tehbot.settings.log_type(connection.name, target)
+    else:
+        typ = 1
+    with connection.locks[target]:
+        for m in msg.split("\n"):
+            m = m.replace("\r", "?");
+            if m.strip():
+                logmsg(sys_time.time(), connection.name, target, connection.get_nickname(), m, False, typ, dbconn)
+                connection.notice(target, m)
 
 def say_nick(connection, target, nick, msg, dbconn):
     if not target or not nick: return
