@@ -62,6 +62,10 @@ class Settings:
     def connection_params(self, connection):
         return self.values["connections"][connection.name]
 
+    def network_id(self, connection):
+        p = self.connection_params(connection)
+        return p["id"] if p.has_key("id") else connection.name
+
     def log_type(self, network, channel):
         where = self.values["logging"]["where"]
         wherenot = self.values["logging"]["wherenot"]
