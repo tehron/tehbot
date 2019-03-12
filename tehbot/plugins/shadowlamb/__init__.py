@@ -29,8 +29,8 @@ register_plugin("sl", ShadowlambPlugin())
 
 class ShadowlambHandler(PrefixHandler, AuthedPlugin):
     def command_prefix(self):
-        return u'\U0001f44d'
         #return "+"
+        return u'€';
 
     def __init__(self):
         PrefixHandler.__init__(self)
