@@ -169,7 +169,7 @@ class Race(db.Entity):
     base_mp = Required(float)
     height = Required(float)
     age = Required(float)
-    weight = Required(float)
+    own_weight = Required(float)
     attributes = Required(Attributes)
     skills = Required(Skills)
     properties = Required(Properties)
@@ -222,7 +222,7 @@ class Player(db.Entity):
     race = Required(Race)
     birthday = Required(float)
     height = Required(float)
-    weight = Required(float)
+    own_weight = Required(float)
     options = Required(Json)
     distance = Required(float)
 
@@ -261,28 +261,79 @@ class Player(db.Entity):
     def hp_per_body():
         return 3.0
 
+    @staticmethod
+    def mp_per_magic():
+        return 5.0
+
+    @staticmethod
+    def mp_per_casting():
+        return 5.0
+
+    @staticmethod
+    def weight_per_strength():
+        return 1.5
+
+    @staticmethod
+    def start_nuyen():
+        return 0.0
+
     def option(self, key, default=None):
         return self.options[key] if self.options.has_key(key) else default
+
+    def init_player(self):
+        self.nuyen = Player.start_nuyen()
+        self.attributes.essence += 6.0
+        sk = self.skills.to_dict(exclude=["id", "player", "race"])
+        for k in sk:
+            sk[k] = -1
+        self.skills.set(**sk)
+
+        self.hp = self.max_hp()
+        self.mp = self.max_mp()
 
     def effective_level(self):
         # TODO
         return self.level
 
-    def init_player(self):
-        self.attributes.essence += 6.0
-        self.hp = self.max_hp()
-
     def body(self):
         return self.race.attributes.body + self.gender.attributes.body + self.attributes.body
+
+    def magic(self):
+        return self.race.attributes.magic + self.gender.attributes.magic + self.attributes.magic
+
+    def strength(self):
+        return self.race.attributes.strength + self.gender.attributes.strength + self.attributes.strength
+
+    def casting(self):
+        return self.race.skills.casting + self.skills.casting
+
+    def weight(self):
+        #TODO
+        return 0.0
 
     def base_hp_type(self):
         return 1.0 if self.race.is_npc else 4.0
 
+    def base_mp_type(self):
+        return 0.0
+
     def base_hp(self):
         return self.race.base_hp + self.base_hp_type()
 
+    def base_mp(self):
+        return self.race.base_mp + self.base_mp_type()
+
+    def base_weight(self):
+        return 6.5
+
     def max_hp(self):
-        return self.body() * Player.hp_per_body() + self.base_hp()
+        return max(0, self.body() * Player.hp_per_body() + self.base_hp())
+
+    def max_mp(self):
+        return max(0, self.magic() * Player.mp_per_magic() + (self.casting() + 1) * Player.mp_per_casting() + self.base_mp())
+
+    def max_weight(self):
+        return max(0, self.strength() * Player.weight_per_strength() + self.base_weight())
 
 
 @db_session
@@ -302,72 +353,72 @@ def populate_database():
     w = Word(content="Seattle")
     w = Word(content="Delaware")
 
-    fairy = Race(name="fairy", base_hp=3, base_mp=6, height=1.20, age=20, weight=40,
+    fairy = Race(name="fairy", base_hp=3, base_mp=6, height=1.20, age=20, own_weight=40,
             attributes=Attributes(body=1, magic=1, strength=0, quickness=3, wisdom=1, intelligence=4, charisma=3, luck=1),
             properties=Properties(),
             skills=Skills())
-    elve = Race(name="elve", base_hp=4, base_mp=4, height=1.40, age=32, weight=50,
+    elve = Race(name="elve", base_hp=4, base_mp=4, height=1.40, age=32, own_weight=50,
             attributes=Attributes(body=1, magic=1, strength=0, quickness=3, wisdom=0, intelligence=2, charisma=1, luck=0),
             properties=Properties(),
             skills=Skills())
-    halfelve = Race(name="half-elve", base_hp=5, base_mp=2, height=1.60, age=28, weight=60,
+    halfelve = Race(name="half-elve", base_hp=5, base_mp=2, height=1.60, age=28, own_weight=60,
             attributes=Attributes(body=1, magic=-1, strength=1, quickness=2, wisdom=0, intelligence=1, charisma=1, luck=0),
             properties=Properties(),
             skills=Skills())
-    vampire = Race(name="vampire", base_hp=5, base_mp=3, height=1.85, age=140, weight=70,
+    vampire = Race(name="vampire", base_hp=5, base_mp=3, height=1.85, age=140, own_weight=70,
             attributes=Attributes(body=0, magic=1, strength=2, quickness=2, wisdom=0, intelligence=2, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
-    darkelve = Race(name="dark-elve", base_hp=5, base_mp=1, height=1.70, age=26, weight=70,
+    darkelve = Race(name="dark-elve", base_hp=5, base_mp=1, height=1.70, age=26, own_weight=70,
             attributes=Attributes(body=1, magic=-1, strength=2, quickness=2, wisdom=0, intelligence=1, charisma=1, luck=0),
             properties=Properties(),
             skills=Skills())
-    woodelve = Race(name="wood-elve", base_hp=5, base_mp=2, height=1.80, age=24, weight=75,
+    woodelve = Race(name="wood-elve", base_hp=5, base_mp=2, height=1.80, age=24, own_weight=75,
             attributes=Attributes(body=1, magic=-1, strength=1, quickness=2, wisdom=0, intelligence=1, charisma=1, luck=0),
             properties=Properties(),
             skills=Skills())
-    human = Race(name="human", base_hp=6, base_mp=0, height=1.85, age=30, weight=80,
+    human = Race(name="human", base_hp=6, base_mp=0, height=1.85, age=30, own_weight=80,
             attributes=Attributes(body=2, magic=-1, strength=1, quickness=1, wisdom=0, intelligence=0, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
-    gnome = Race(name="gnome", base_hp=6, base_mp=0, height=1.30, age=32, weight=55,
+    gnome = Race(name="gnome", base_hp=6, base_mp=0, height=1.30, age=32, own_weight=55,
             attributes=Attributes(body=2, magic=-1, strength=1, quickness=1, wisdom=0, intelligence=0, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
-    dwarf = Race(name="dwarf", base_hp=6, base_mp=0, height=1.45, age=34, weight=65,
+    dwarf = Race(name="dwarf", base_hp=6, base_mp=0, height=1.45, age=34, own_weight=65,
             attributes=Attributes(body=2, magic=-1, strength=1, quickness=1, wisdom=0, intelligence=0, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
-    halfork = Race(name="half-ork", base_hp=7, base_mp=-1, height=1.95, age=24, weight=80,
+    halfork = Race(name="half-ork", base_hp=7, base_mp=-1, height=1.95, age=24, own_weight=80,
             attributes=Attributes(body=2, magic=-1, strength=2, quickness=1, wisdom=0, intelligence=0, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
-    halftroll = Race(name="half-troll", base_hp=8, base_mp=-2, height=2.00, age=24, weight=90,
+    halftroll = Race(name="half-troll", base_hp=8, base_mp=-2, height=2.00, age=24, own_weight=90,
             attributes=Attributes(body=3, magic=-1, strength=2, quickness=0, wisdom=0, intelligence=0, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
-    ork = Race(name="ork", base_hp=9, base_mp=-3, height=2.05, age=22, weight=100,
+    ork = Race(name="ork", base_hp=9, base_mp=-3, height=2.05, age=22, own_weight=100,
             attributes=Attributes(body=3, magic=-2, strength=3, quickness=0, wisdom=0, intelligence=0, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
-    troll = Race(name="troll", base_hp=10, base_mp=-4, height=2.15, age=18, weight=110,
+    troll = Race(name="troll", base_hp=10, base_mp=-4, height=2.15, age=18, own_weight=110,
             attributes=Attributes(body=3, magic=-2, strength=3, quickness=0, wisdom=0, intelligence=0, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
-    gremlin = Race(name="gremlin", base_hp=11, base_mp=-6, height=0.50, age=1, weight=10,
+    gremlin = Race(name="gremlin", base_hp=11, base_mp=-6, height=0.50, age=1, own_weight=10,
             attributes=Attributes(body=1, magic=-3, strength=0, quickness=2, wisdom=0, intelligence=0, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
     # NPC races
-    animal = Race(name="animal", is_npc=True, base_hp=0, base_mp=0, height=1.60, age=2, weight=70,
+    animal = Race(name="animal", is_npc=True, base_hp=0, base_mp=0, height=1.60, age=2, own_weight=70,
             attributes=Attributes(body=0, magic=0, strength=0, quickness=0, wisdom=0, intelligence=0, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
-    droid = Race(name="droid", is_npc=True, base_hp=0, base_mp=0, height=1.60, age=2, weight=70,
+    droid = Race(name="droid", is_npc=True, base_hp=0, base_mp=0, height=1.60, age=2, own_weight=70,
             attributes=Attributes(body=0, magic=0, strength=0, quickness=0, wisdom=0, intelligence=0, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())
-    dragon = Race(name="dragon", is_npc=True, base_hp=0, base_mp=0, height=5.00, age=6000, weight=400,
+    dragon = Race(name="dragon", is_npc=True, base_hp=0, base_mp=0, height=5.00, age=6000, own_weight=400,
             attributes=Attributes(body=8, magic=8, strength=12, quickness=3, wisdom=12, intelligence=12, charisma=0, luck=0),
             properties=Properties(),
             skills=Skills())

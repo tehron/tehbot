@@ -59,6 +59,11 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
         with model.db_session:
             return model.Shadowlamb[1].time
 
+    def player_age(self, player):
+        d = self.sltime() - player.birthday
+        years = d / 60 / 60 / 24 / 365
+        return int(round(years))
+
     def timerfunc(self):
         return
         while not self.quit:
@@ -93,9 +98,6 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
             return val * rand
 
         with model.db_session:
-            if model.Player.get(name=event.source.nick, network_id=self.tehbot.settings.network_id(connection)):
-                return _("Player exists!")
-
             network_id = self.tehbot.settings.network_id(connection)
             r = model.Race.get(name=pargs.race)
             p = model.Player(
@@ -105,7 +107,7 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
                     race=r,
                     birthday = random_birthday(self.sltime() - random_value(r.age, 0.2) * 365 * 24 * 60 * 60),
                     height = random_value(r.height, 0.2),
-                    weight = random_value(r.weight, 0.2),
+                    own_weight = random_value(r.own_weight, 0.2),
                     options = {},
                     hp = 0,
                     mp = 0,
@@ -139,40 +141,40 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
                     )
             p.init_player()
 
-        return _("Player created!")
+        return _("Your character has been created with \x02Age\x02: %dyears, \x02Height\x02: %.2fm, \x02Weight\x02: %.2fkg.") % (self.player_age(p), p.height, p.own_weight)
 
-    def reset(self, connection, event, extra, dbconn):
+    def reset(self, args, player):
         parser = plugins.ThrowingArgumentParser(prog="reset")
         parser.add_argument("confirmation", nargs="?")
 
         try:
-            pargs = parser.parse_args(extra["args"])
+            pargs = parser.parse_args(args)
             if parser.help_requested:
                 return parser.format_help().strip()
         except Exception as e:
             return u"Error: %s" % exc2str(e)
 
-        with db_session:
-            p = model.Player.get(name=event.source.nick, network_id=self.tehbot.settings.network_id(connection))
-            if p is None:
-                return "You haven't started the game yet. Type \x02%sstart\x02 to begin playing." % self.command_prefix()
+        if not pargs.confirmation or "".join(pargs.confirmation) != "i_am_sure":
+            return "This will completely delete your character. Type %s to confirm." % self.cmd("reset i_am_sure")
 
-            if not pargs.confirmation or "".join(pargs.confirmation) != "i_am_sure":
-                return "This will completely delete your character. Type \x02%sreset i_am_sure\x02 to confirm." % self.command_prefix()
+        player.delete()
+        return "Your character has been deleted. You may issue %s again." % self.cmd("start")
 
-            p.delete()
-            return "Your character has been deleted. You may issue %s again." % self.cmd("start")
-
-    def status(self, connection, event, extra, dbconn):
-        with model.db_session:
-            p = model.Player.get(name=event.source.nick)
-
-            if p is None:
-                return u"Player not created yet. Try %sstart" % self.command_prefix()
-
-            # male troll L0(0). HP:35/35, Atk:22.8, Def:0.1, Dmg:1.8-7.5, Arm(M/F):0/0, XP:0, Karma:0, ¥:50, Weight:0g/18.5kg.
-            # female fairy L0(0). HP:10/10, MP:36/36, Atk:2.8, Def:1.5, Dmg:-0.2-2.5, Arm(M/F):0/0, XP:0, Karma:0, ¥:0, Weight:0g/3.5kg.
-            return u"%s %s L%d(%d): \x02HP\x02:%.1f/%.1f" % (p.gender.name, p.race.name, p.level, p.effective_level(), p.hp, p.max_hp())
+    def status(self, args, player):
+        # male troll L0(0). HP:35/35, Atk:22.8, Def:0.1, Dmg:1.8-7.5, Arm(M/F):0/0, XP:0, Karma:0, ¥:50, Weight:0g/18.5kg.
+        # female fairy L0(0). HP:10/10, MP:36/36, Atk:2.8, Def:1.5, Dmg:-0.2-2.5, Arm(M/F):0/0, XP:0, Karma:0, ¥:0, Weight:0g/3.5kg.
+        return u"%s %s L%d(%d): \x02HP\x02:%.2f/%.2f, \x02MP\x02:%.2f/%.2f, \x02Weight\x02:%.2f/%.2fkg" % (
+                player.gender.name,
+                player.race.name,
+                player.level,
+                player.effective_level(),
+                player.hp,
+                player.max_hp(),
+                player.mp,
+                player.max_mp(),
+                player.weight(),
+                player.max_weight(),
+                )
 
     def execute(self, connection, event, extra, dbconn):
         cmd = extra["cmd"].lower()
@@ -181,20 +183,25 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
         with db_session:
             p = model.Player.get(name=event.source.nick, network_id=self.tehbot.settings.network_id(connection))
 
-        if p is not None and not irc.client.is_channel(event.target):
-            msg_type = p.option("msg_type", msg_type)
+            if p is not None and not irc.client.is_channel(event.target):
+                msg_type = p.option("msg_type", msg_type)
 
-        if not self.cmd2action.has_key(cmd):
-            return [(msg_type, "The command is not available for your current action or location. Try %s to see all currently available commands." % self.cmd("commands [--long]"))]
+            if not self.cmd2action.has_key(cmd):
+                return [(msg_type, "The command is not available for your current action or location. Try %s to see all currently available commands." % self.cmd("commands [--long]"))]
 
-        if p is None and cmd != "start":
-            return [(msg_type, "You haven't started the game yet. Type %s to begin playing." % self.cmd("start"))]
+            if cmd == "start":
+                if p:
+                    return [(msg_type, "Your character has been created already. You can type %s to start over." % self.cmd("reset"))]
+                return [(msg_type, self.start(connection, event, extra, dbconn))]
 
-        try:
-            return [(msg_type, self.cmd2action[cmd](connection, event, extra, dbconn))]
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return [(msg_type, u"Error: %s" % exc2str(e))]
+            if p is None:
+                return [(msg_type, "You haven't started the game yet. Type %s to begin playing." % self.cmd("start"))]
+
+            try:
+                return [(msg_type, self.cmd2action[cmd](extra["args"], p))]
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return [(msg_type, u"Error: %s" % exc2str(e))]
 
 register_prefix_handler(ShadowlambHandler())
