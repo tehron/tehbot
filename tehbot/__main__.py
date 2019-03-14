@@ -1,6 +1,6 @@
-import readline
 import sys
 import os
+import select
 import psutil
 import threading
 import traceback
@@ -9,20 +9,32 @@ import irc.client
 from Queue import Queue, Empty
 
 def kbdinput():
+    def process_cmd():
+        while True:
+            r, _, _ = select.select([sys.stdin], [], [], 0.1)
+            if bot.quit_called:
+                return False
+
+            if r:
+                break
+
+        inp = sys.stdin.readline()
+
+        if inp[0] == "/": # command mode
+            tmp = inp[1:].split(None, 1)
+
+            if len(tmp) > 0:
+                cmd = tmp[0].lower()
+                args = tmp[1] if len(tmp) > 1 else None
+                queue.put(("kbd_" + cmd, args))
+
+        return True
+
     while True:
         try:
-            inp = raw_input().strip()
-            if inp == "":
-                continue
-            if inp[0] == "/": # command mode
-                tmp = inp[1:].split(None, 1)
-
-                if len(tmp) > 0:
-                    cmd = tmp[0].lower()
-                    args = tmp[1] if len(tmp) > 1 else None
-                    queue.put(("kbd_" + cmd, args))
-
-        except EOFError, SystemExit:
+            if not process_cmd():
+                break
+        except EOFError:
             break
         except:
             Tehbot.print_exc()
@@ -30,20 +42,27 @@ def kbdinput():
 
 queue = Queue()
 kbdthread = threading.Thread(target=kbdinput)
-kbdthread.daemon = True
-kbdthread.start()
-
 
 try:
     bot = Tehbot()
+except:
+    Tehbot.print_exc()
+    sys.exit(-1)
+
+if not bot.impl:
+    sys.exit(-1)
+
+try:
     bot.connect()
 except:
     Tehbot.print_exc()
     try:
         bot.quit()
     finally:
-        raise SystemExit
+        sys.exit(-1)
 
+
+kbdthread.start()
 
 #import plugins
 #if not plugins.is_windows():
@@ -81,6 +100,10 @@ while True:
         break
     except:
         Tehbot.print_exc()
+
+kbdthread.join()
+
+
 
 if bot.restart_called:
     try:
