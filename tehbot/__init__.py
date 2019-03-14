@@ -33,7 +33,11 @@ class Tehbot:
             frm = inspect.trace()[-1]
             mod = inspect.getmodule(frm[0])
             lineno = frm[0].f_lineno
-            return (mod.__name__, lineno, e)
+            try:
+                modname = mod.__name__
+            except:
+                modname = "<unknown module>"
+            return (modname, lineno, e)
 
     def finalize(self):
         if self.newimpl is None:
