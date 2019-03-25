@@ -79,6 +79,8 @@ class Plugin:
         for r in res:
             if r[0] == "say" or r[0] == "me" or r[0] == "notice":
                 globals()[r[0]](connection, target, r[1], dbconn if self.logtodb else None)
+            elif r[0] == "say_nick":
+                globals()[r[0]](connection, target, event.source.nick, r[1], dbconn if self.logtodb else None)
             elif r[0] == "nopriv":
                 say(connection, target, u"%s is \x02not\x02 privileged" % event.source.nick, dbconn if self.logtodb else None)
                 break
