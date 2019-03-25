@@ -43,6 +43,8 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
                 "attributes" : self.attributes,
                 "kw" : self.known_words,
                 "known_words" : self.known_words,
+                "kp" : self.known_places,
+                "known_places" : self.known_places,
                 "time" : self.show_time,
                 }
 
@@ -68,14 +70,22 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
         years = d / 60 / 60 / 24 / 365
         return max(1, int(round(years)))
 
+    def give_item(self, player, item):
+        pi = model.PlayerItem(base=item, player=player)
+        player.inventory += pi
+        return [_("You received 1x%s" % item.name)]
+
     def give_word(self, player, word):
         if word in player.known_words:
             return []
         player.known_words += word
-        return [_("You know a new Word: \x02%s\x02" % word.content)]
+        return [_("You know a new Word: \x02%s\x02" % word.name)]
 
     def give_place(self, player, place):
-        return [_("You know a new Place: \x02%s\x02" % place)]
+        if place in player.known_places:
+            return []
+        player.known_places += place
+        return [_("You know a new Place: \x02%s\x02" % place.name)]
 
     def party_push_action(self, party, action, target=None, eta=None):
         with_events = action is not model.PartyAction.delete
@@ -167,9 +177,10 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
                 _("Use %s to see all available commands. Check %s to browse the Shadowlamb help files. Use %s to see the help for a command or subject." % (self.cmd("commands"), self.cmd("help"), self.cmd("help <word>")))
                 ]
 
-        res += self.give_word(p, model.Word.get(content="Shadowrun"))
-        res += self.give_word(p, model.Word.get(content="Renraku"))
-        res += self.give_place(p, "Redmond_Hotel")
+        res += self.give_item(p, model.Item.get(name="Pen"))
+        res += self.give_word(p, model.Word.get(name="Shadowrun"))
+        res += self.give_word(p, model.Word.get(name="Renraku"))
+        res += self.give_place(p, model.Place.get(name="Redmond_Hotel"))
         self.party_push_action(party, model.PartyAction.inside, "Redmond_Hotel")
 
         return res
@@ -244,8 +255,14 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
     def known_words(self, args, player):
         words = []
         for w in player.known_words:
-            words.append((w.id, "\x02%d\x02-%s" % (w.id, w.content)))
+            words.append((w.id, "\x02%d\x02-%s" % (w.id, w.name)))
         return "Known Words: %s." % ", ".join(w[1] for w in sorted(words))
+
+    def known_places(self, args, player):
+        places = []
+        for p in player.known_places:
+            places.append((p.id, "\x02%d\x02-%s" % (p.id, p.name)))
+        return "Known Places: %s." % ", ".join(p[1] for p in sorted(places))
 
     def show_time(self, args, player):
         now = time.gmtime(self.sltime())

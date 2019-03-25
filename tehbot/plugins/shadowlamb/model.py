@@ -106,6 +106,7 @@ class Properties(db.Entity):
 class Modifiers(db.Entity):
     id = PrimaryKey(int, auto=True)
     weapon = Optional("Weapon")
+    player_item = Optional("PlayerItem")
     attributes = Optional(Attributes)
     skills = Optional(Skills)
     properties = Optional(Properties)
@@ -212,8 +213,15 @@ class Equipment(db.Entity):
 
 
 
+class PlayerItem(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    player = Required("Player")
+    base = Required("Item")
+    modifiers = Optional(Modifiers)
+
 class Item(db.Entity):
     id = PrimaryKey(int, auto=True)
+    player_item = Optional("PlayerItem")
     name = Required(str, unique=True)
     description = Optional(str)
     level = Required(int, default=-1)
@@ -336,12 +344,17 @@ class Knowledge(db.Entity):
 class Word(db.Entity):
     id = PrimaryKey(int, auto=True)
     players = Set("Player")
-    content = Required(str, unique=True)
+    name = Required(str, unique=True)
+
+class Place(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    players = Set("Player")
+    name = Required(str, unique=True)
 
 class Spell(db.Entity):
     id = PrimaryKey(int, auto=True)
     players = Set("Player")
-    name = Required(str)
+    name = Required(str, unique=True)
 
 class Party(db.Entity):
     id = PrimaryKey(int, auto=True)
@@ -385,12 +398,12 @@ class Player(db.Entity):
     bad_karma = Required(float)
     nuyen = Required(float)
     known_words = Set(Word)
+    known_places = Set(Place)
+    known_spells = Set(Spell)
 
     bounty = Required(int)
     bounty_done = Required(int)
     quests_done = Required(int)
-    known_spells = Set(Spell)
-    known_places = Optional(str)
     bank_nuyen = Required(float)
     bank_items = Optional(str)
     stats = Required(PlayerStats)
@@ -405,6 +418,7 @@ class Player(db.Entity):
     equipment = Required(Equipment)
     knowledge = Required(Knowledge)
 
+    inventory = Set(PlayerItem)
     lock = Required(int)
     transport = Required(int)
 
@@ -533,20 +547,23 @@ class Player(db.Entity):
 
 @db_session
 def populate_database():
+    Word(name="Renraku")
+    Word(name="Hello")
+    Word(name="Yes")
+    Word(name="No")
+    Word(name="Shadowrun")
+    Word(name="Hire")
+    Word(name="Blackmarket")
+    Word(name="Cyberware")
+    Word(name="Magic")
+    Word(name="Redmond")
+    Word(name="Seattle")
+    Word(name="Delaware")
+
+    Place(name="Redmond_Hotel")
+
     male = Gender(name="male", attributes=Attributes(strength=1, wisdom=1))
     female = Gender(name="female", attributes=Attributes(charisma=2, intelligence=1))
-    w = Word(content="Renraku")
-    w = Word(content="Hello")
-    w = Word(content="Yes")
-    w = Word(content="No")
-    w = Word(content="Shadowrun")
-    w = Word(content="Hire")
-    w = Word(content="Blackmarket")
-    w = Word(content="Cyberware")
-    w = Word(content="Magic")
-    w = Word(content="Redmond")
-    w = Word(content="Seattle")
-    w = Word(content="Delaware")
 
     fairy = Race(name="fairy", base_hp=3, base_mp=6, height=1.20, age=20, own_weight=40,
             base_attributes=Attributes(essence=6, body=1, magic=1, strength=0, quickness=3, wisdom=1, intelligence=4, charisma=3, luck=1),
@@ -652,6 +669,8 @@ def populate_database():
             skills=Skills(),
             properties=Properties(attack=15))
 
+    Item(name="Pen", description="A pen from the Renraku office.",
+            weight=0.050, price=0)
     NinjaWeapon(name="Fists", description="Your fists. You got two of them.",
             weight=0, price=0,
             attack_time=35, range=1,
