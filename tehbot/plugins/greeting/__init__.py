@@ -23,6 +23,18 @@ class GreetingHandler(ChannelJoinHandler):
                 (10, "Hola %s"),
             ])
 
+    def config(self, args, dbconn):
+        if args[0] == "modify":
+            if args[1] == "add" and args[2] == "no_greet":
+                who = args[3]
+                if not self.settings.has_key("no_greet"):
+                    self.settings["no_greet"] = []
+                self.settings["no_greet"].append(who)
+                self.save(dbconn)
+                return "Okay"
+
+        return ChannelJoinHandler.config(self, args, dbconn)
+
     def execute(self, connection, event, extra, dbconn):
         for network, channels in self.settings["where"].items():
             if connection.name != network or (event.target not in channels and channels != "__all__"):
