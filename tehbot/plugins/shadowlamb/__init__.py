@@ -40,7 +40,10 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
                 "s" : self.status,
                 "status" : self.status,
                 "a" : self.attributes,
-                "attributes" : self.attributes
+                "attributes" : self.attributes,
+                "kw" : self.known_words,
+                "known_words" : self.known_words,
+                "time" : self.show_time,
                 }
 
     def postinit(self, dbconn):
@@ -65,26 +68,38 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
         years = d / 60 / 60 / 24 / 365
         return max(1, int(round(years)))
 
-    def timerfunc(self):
-        return
-        while not self.quit:
-            print "SL Timer"
+    def give_word(self, player, word):
+        if word in player.known_words:
+            return []
+        player.known_words += word
+        return [_("You know a new Word: \x02%s\x02" % word.content)]
 
+    def give_place(self, player, place):
+        return [_("You know a new Place: \x02%s\x02" % place)]
+
+    def party_push_action(self, party, action, target=None, eta=None):
+        with_events = action is not model.PartyAction.delete
+
+    def timerfunc(self):
+        while not self.quit:
             nxt = time.time() + 1
             while time.time() < nxt:
                 time.sleep(0.1)
 
+            with model.db_session:
+                model.Shadowlamb[1].time += 1
+
     def start(self, connection, event, extra, dbconn):
         with model.db_session:
-            genders = [g.name for g in model.Gender.select()]
-            races = [r.name for r in model.Race.select(lambda x: not x.is_npc)]
+            genders = [to_utf8(g.name) for g in model.Gender.select()]
+            races = [to_utf8(r.name) for r in model.Race.select(lambda x: not x.is_npc)]
 
         parser = plugins.ThrowingArgumentParser(prog="start", description=self.__doc__)
-        parser.add_argument("gender", metavar="gender", choices=genders, help="gender: %s" % ", ".join(genders))
-        parser.add_argument("race", metavar="race", choices=races, help="race: %s" % ", ".join(races))
+        parser.add_argument("gender", metavar="gender", choices=genders, help=", ".join(genders))
+        parser.add_argument("race", metavar="race", choices=races, help=", ".join(races))
 
         try:
-            pargs = parser.parse_args(extra["args"])
+            pargs = parser.parse_args(extra["args"], decode=False)
             if parser.help_requested:
                 return parser.format_help().strip()
         except Exception as e:
@@ -141,8 +156,23 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
                     equipment = model.Equipment(),
                     )
             p.init_player()
+            party = model.Party(options={})
+            p.party = party
 
-        return _("Your character has been created with \x02Age\x02: %dyears, \x02Height\x02: %.2fm, \x02Weight\x02: %.2fkg.") % (self.player_age(p), p.height, p.own_weight)
+        res = [
+                _("Your character has been created with \x02Age\x02: %dyears, \x02Height\x02: %.2fm, \x02Weight\x02: %.2fkg.") % (self.player_age(p), p.height, p.own_weight),
+                _("You wake up in a bright room... It seems like it is past noon...looks like you are in a hotel room."),
+                _("What happened... You can`t remember anything.... Gosh, you even forgot your name."),
+                _("You check your %s and find a pen from 'Renraku Inc.'. You leave your room and walk to the counter. Use %s to talk with the hotelier." % (self.cmd("inventory"), self.cmd("talk"))),
+                _("Use %s to see all available commands. Check %s to browse the Shadowlamb help files. Use %s to see the help for a command or subject." % (self.cmd("commands"), self.cmd("help"), self.cmd("help <word>")))
+                ]
+
+        res += self.give_word(p, model.Word.get(content="Shadowrun"))
+        res += self.give_word(p, model.Word.get(content="Renraku"))
+        res += self.give_place(p, "Redmond_Hotel")
+        self.party_push_action(party, model.PartyAction.inside, "Redmond_Hotel")
+
+        return res
 
     def reset(self, args, player):
         parser = plugins.ThrowingArgumentParser(prog="reset")
@@ -155,8 +185,16 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
         except Exception as e:
             return u"Error: %s" % exc2str(e)
 
-        if not pargs.confirmation or "".join(pargs.confirmation) != "i_am_sure":
+        if not pargs.confirmation:
+            player.set_option("deletion_started", True)
             return "This will completely delete your character. Type %s to confirm." % self.cmd("reset i_am_sure")
+
+        if not player.option("deletion_started"):
+            return "Deletion not started yet. Type %s to start deletion." % self.cmd("reset")
+
+        if "".join(pargs.confirmation) != "i_am_sure":
+            player.set_option("deletion_started", False)
+            return "Deletion aborted. Type %s to start deletion again." % self.cmd("reset")
 
         player.delete()
         return "Your character has been deleted. You may issue %s again." % self.cmd("start")
@@ -203,9 +241,19 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
 
         return "Your attributes: %s." % ", ".join(lst)
 
+    def known_words(self, args, player):
+        words = []
+        for w in player.known_words:
+            words.append((w.id, "\x02%d\x02-%s" % (w.id, w.content)))
+        return "Known Words: %s." % ", ".join(w[1] for w in sorted(words))
+
+    def show_time(self, args, player):
+        now = time.gmtime(self.sltime())
+        return time.strftime("It is %H:%M:%S, %Y-%m-%d", now)
+
     def execute(self, connection, event, extra, dbconn):
         cmd = extra["cmd"].lower()
-        msg_type = "say" if irc.client.is_channel(event.target) else "notice"
+        msg_type = "say_nick" if irc.client.is_channel(event.target) else "notice"
 
         with model.db_session:
             p = model.Player.get(name=event.source.nick, network_id=self.tehbot.settings.network_id(connection))
@@ -216,19 +264,25 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
             if not self.cmd2action.has_key(cmd):
                 return [(msg_type, "The command is not available for your current action or location. Try %s to see all currently available commands." % self.cmd("commands [--long]"))]
 
-            if cmd == "start":
-                if p:
-                    return [(msg_type, "Your character has been created already. You can type %s to start over." % self.cmd("reset"))]
-                return [(msg_type, self.start(connection, event, extra, dbconn))]
+            if cmd == "start" and p:
+                return [(msg_type, "Your character has been created already. You can type %s to start over." % self.cmd("reset"))]
 
-            if p is None:
+            if cmd != "start" and not p:
                 return [(msg_type, "You haven't started the game yet. Type %s to begin playing." % self.cmd("start"))]
 
             try:
-                return [(msg_type, self.cmd2action[cmd](extra["args"], p))]
+                if cmd == "start":
+                    res = self.start(connection, event, extra, dbconn)
+                else:
+                    res = self.cmd2action[cmd](extra["args"], p)
             except Exception as e:
                 import traceback
                 traceback.print_exc()
                 return [(msg_type, u"Error: %s" % exc2str(e))]
+
+            if isinstance(res, list):
+                return [(msg_type, m) for m in res]
+            if isinstance(res, basestring):
+                return [(msg_type, res)]
 
 register_prefix_handler(ShadowlambHandler())

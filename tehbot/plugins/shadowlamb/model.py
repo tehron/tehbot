@@ -6,17 +6,17 @@ import time
 import datetime
 
 class EnumConverter(StrConverter):
-    def validate(self, val):
+    def validate(converter, val, obj=None):
         if not isinstance(val, Enum):
             raise ValueError('Must be an Enum.  Got {}'.format(type(val)))
         return val
 
-    def py2sql(self, val):
+    def py2sql(converter, val):
         return val.name
 
-    def sql2py(self, value):
+    def sql2py(converter, value):
         # Any enum type can be used, so py_type ensures the correct one is used to create the enum instance
-        return self.py_type[value]
+        return converter.py_type[value]
 
 db = Database("sqlite", "sldb.sqlite", create_db=True)
 db.provider.converter_classes.append((Enum, EnumConverter))
@@ -336,7 +336,7 @@ class Knowledge(db.Entity):
 class Word(db.Entity):
     id = PrimaryKey(int, auto=True)
     players = Set("Player")
-    content = Required(str)
+    content = Required(str, unique=True)
 
 class Spell(db.Entity):
     id = PrimaryKey(int, auto=True)
@@ -347,19 +347,19 @@ class Party(db.Entity):
     id = PrimaryKey(int, auto=True)
     name = Optional(str)
     members = Set("Player")
-    contact_eta = Required(float)
-    action = Required(PartyAction)
+    contact_eta = Required(float, default=0)
+    action = Required(PartyAction, default=PartyAction.delete)
     target = Optional(str)
-    eta = Required(int)
-    last_action = Required(PartyAction)
+    eta = Required(int, default=0)
+    last_action = Required(PartyAction, default=PartyAction.delete)
     last_target = Optional(str)
-    last_eta = Required(int)
-    options = Required(int)
-    ban = Required(str)
-    distance = Required(str)
-    xp = Required(int)
-    xp_total = Required(int)
-    level = Required(int)
+    last_eta = Required(int, default=0)
+    options = Required(Json)
+    ban = Optional(str)
+    distance = Optional(str)
+    xp = Required(int, default=0)
+    xp_total = Required(int, default=0)
+    level = Required(int, default=0)
 
 class Player(db.Entity):
     id = PrimaryKey(int, auto=True)
@@ -430,6 +430,9 @@ class Player(db.Entity):
 
     def option(self, key, default=None):
         return self.options[key] if self.options.has_key(key) else default
+
+    def set_option(self, key, value):
+        self.options[key] = value
 
     def init_player(self):
         self.nuyen = Player.base_nuyen()
