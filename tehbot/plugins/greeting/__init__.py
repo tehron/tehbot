@@ -25,11 +25,21 @@ class GreetingHandler(ChannelJoinHandler):
 
     def config(self, args, dbconn):
         if args[0] == "modify":
-            if args[1] == "add" and args[2] == "no_greet":
+            if args[1] in ["add", "rm"] and args[2] == "no_greet":
                 who = args[3]
                 if not self.settings.has_key("no_greet"):
                     self.settings["no_greet"] = []
-                self.settings["no_greet"].append(who)
+                no_greet = set(self.settings["no_greet"])
+
+                if args[1] == "add":
+                    if who in no_greet:
+                        return "%s already is in no_greet" % who
+                    no_greet.add(who)
+                elif args[1] == "rm":
+                    if who not in no_greet:
+                        return "%s is not in no_greet" % who
+                    no_greet.remove(who)
+                self.settings["no_greet"] = list(no_greet)
                 self.save(dbconn)
                 return "Okay"
 
