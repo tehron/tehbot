@@ -29,7 +29,7 @@ register_plugin("sl", ShadowlambPlugin())
 class ShadowlambHandler(PrefixHandler, AuthedPlugin):
     def command_prefix(self):
         #return "+"
-        return u'€';
+        return u'\u00a5';
 
     def __init__(self):
         PrefixHandler.__init__(self)
@@ -46,6 +46,8 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
                 "kp" : self.known_places,
                 "known_places" : self.known_places,
                 "time" : self.show_time,
+                "p" : self.party_status,
+                "party" : self.party_status,
                 }
 
     def postinit(self, dbconn):
@@ -64,6 +66,17 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
     def sltime(self):
         with model.db_session:
             return model.Shadowlamb[1].time
+
+    def announce(self, msg, dbconn):
+        where = {"WeChall IRC" : ["#net-force"]}
+
+        for network in where:
+            for conn in self.tehbot.core.reactor.connections:
+                if conn.name != network:
+                    continue
+                for ch in where[network]:
+                    if ch in conn.channels:
+                        plugins.say(conn, ch, msg, dbconn)
 
     def player_age(self, player):
         d = self.sltime() - player.birthday
@@ -90,6 +103,18 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
     def party_push_action(self, party, action, target=None, eta=None):
         with_events = action is not model.PartyAction.delete
 
+        party.last_action = party.action
+        party.last_target = party.target
+        party.last_eta = party.eta
+
+        party.action = action
+        if target is not None:
+            party.target = target
+        party.eta = self.sltime() + (eta or 0)
+
+        #if with_events:
+            #self.announce_party(party
+
     def timerfunc(self):
         while not self.quit:
             nxt = time.time() + 1
@@ -99,7 +124,7 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
             with model.db_session:
                 model.Shadowlamb[1].time += 1
 
-    def start(self, connection, event, extra, dbconn):
+    def start(self, connection, event, extra, dbconn, msg_type):
         with model.db_session:
             genders = [to_utf8(g.name) for g in model.Gender.select()]
             races = [to_utf8(r.name) for r in model.Race.select(lambda x: not x.is_npc)]
@@ -128,6 +153,7 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
             r = model.Race.get(name=pargs.race)
             p = model.Player(
                     network_id=network_id,
+                    nick=event.source.nick,
                     name=event.source.nick,
                     gender=model.Gender.get(name=pargs.gender),
                     race=r,
@@ -169,21 +195,38 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
             party = model.Party(options={})
             p.party = party
 
-        res = [
+        msgs = [
                 _("Your character has been created with \x02Age\x02: %dyears, \x02Height\x02: %.2fm, \x02Weight\x02: %.2fkg.") % (self.player_age(p), p.height, p.own_weight),
+                ]
+
+        notices = [
                 _("You wake up in a bright room... It seems like it is past noon...looks like you are in a hotel room."),
                 _("What happened... You can`t remember anything.... Gosh, you even forgot your name."),
                 _("You check your %s and find a pen from 'Renraku Inc.'. You leave your room and walk to the counter. Use %s to talk with the hotelier." % (self.cmd("inventory"), self.cmd("talk"))),
                 _("Use %s to see all available commands. Check %s to browse the Shadowlamb help files. Use %s to see the help for a command or subject." % (self.cmd("commands"), self.cmd("help"), self.cmd("help <word>")))
                 ]
 
-        res += self.give_item(p, model.Item.get(name="Pen"))
-        res += self.give_word(p, model.Word.get(name="Shadowrun"))
-        res += self.give_word(p, model.Word.get(name="Renraku"))
-        res += self.give_place(p, model.Place.get(name="Redmond_Hotel"))
+        notices += self.give_item(p, model.Item.get(name="Pen"))
+        notices += self.give_word(p, model.Word.get(name="Shadowrun"))
+        notices += self.give_word(p, model.Word.get(name="Renraku"))
+        notices += self.give_place(p, model.Place.get(name="Redmond_Hotel"))
         self.party_push_action(party, model.PartyAction.inside, "Redmond_Hotel")
 
-        return res
+        if msg_type == "notice":
+            notices = msgs + notices
+            msgs = []
+        else:
+            for m in msgs:
+                if irc.client.is_channel(event.target):
+                    plugins.say_nick(connection, event.target, event.source.nick, m, dbconn)
+                else:
+                    plugins.say(connection, event.source.nick, m, dbconn)
+
+        for m in notices:
+            plugins.notice(connection, event.source.nick, m, dbconn)
+
+        self.announce("Welcome a new player: %s the %s %s." % (p.fullname(), p.gender.name, p.race.name), dbconn)
+        return None
 
     def reset(self, args, player):
         parser = plugins.ThrowingArgumentParser(prog="reset")
@@ -266,7 +309,13 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
 
     def show_time(self, args, player):
         now = time.gmtime(self.sltime())
-        return time.strftime("It is %H:%M:%S, %Y-%m-%d", now)
+        return time.strftime("It is %H:%M:%S, %Y-%m-%d in Shadowland", now)
+
+    def party_status(self, args, player):
+        if player.party.action == model.PartyAction.inside:
+            return "You are \x02inside\x02 %s." % player.party.target
+
+        return "hu!? should never get here"
 
     def execute(self, connection, event, extra, dbconn):
         cmd = extra["cmd"].lower()
@@ -289,7 +338,7 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
 
             try:
                 if cmd == "start":
-                    res = self.start(connection, event, extra, dbconn)
+                    res = self.start(connection, event, extra, dbconn, msg_type)
                 else:
                     res = self.cmd2action[cmd](extra["args"], p)
             except Exception as e:

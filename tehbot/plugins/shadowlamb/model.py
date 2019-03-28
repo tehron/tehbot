@@ -221,7 +221,7 @@ class PlayerItem(db.Entity):
 
 class Item(db.Entity):
     id = PrimaryKey(int, auto=True)
-    player_item = Optional("PlayerItem")
+    player_item = Set(PlayerItem)
     name = Required(str, unique=True)
     description = Optional(str)
     level = Required(int, default=-1)
@@ -363,10 +363,10 @@ class Party(db.Entity):
     contact_eta = Required(float, default=0)
     action = Required(PartyAction, default=PartyAction.delete)
     target = Optional(str)
-    eta = Required(int, default=0)
+    eta = Required(float, default=0)
     last_action = Required(PartyAction, default=PartyAction.delete)
     last_target = Optional(str)
-    last_eta = Required(int, default=0)
+    last_eta = Required(float, default=0)
     options = Required(Json)
     ban = Optional(str)
     distance = Optional(str)
@@ -376,10 +376,11 @@ class Party(db.Entity):
 
 class Player(db.Entity):
     id = PrimaryKey(int, auto=True)
+    nick = Required(str)
     network_id = Required(str)
     party = Optional(Party)
+    name = Required(str)
     classname = Optional(str)
-    name = Optional(str)
     title = Optional(str)
     gender = Required(Gender)
     race = Required(Race)
@@ -442,6 +443,8 @@ class Player(db.Entity):
     def base_nuyen():
         return 0.0
 
+    def fullname(self):
+        return "%s{%s}" % (self.name, self.network_id)
     def option(self, key, default=None):
         return self.options[key] if self.options.has_key(key) else default
 
