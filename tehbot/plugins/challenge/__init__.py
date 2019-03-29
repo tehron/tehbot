@@ -282,7 +282,7 @@ class RevelSolvedPoller(Poller):
                 pass
 
         msgs = []
-        for tssolve, user, chall, solvers in sorted(entries):
+        for tssolve, username, challname, solvercount in sorted(entries):
             ts = tssolve
 
             msg = "%s has just solved %s." % (plugins.bold(username), plugins.bold(challname))
