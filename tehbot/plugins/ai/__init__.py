@@ -53,7 +53,7 @@ class AiHandler(ChannelHandler):
                 re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s\s*,?\s*(?:is|are|can|has|was|were|should|do|does)\s+\S[\s\S]*\?''' % botname, re.I),
                 ]
         regex = [
-                re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s\s*,?\s*(?P<what>.*?)\s*\??$''' % botname, re.I),
+                re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s\s*,\s*(?P<what>.+?)\s*\??$''' % botname, re.I),
                 ]
         solved_regex = [
                 re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s\s*,?\s*has\s+(?P<who>\S+)\s+solved\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % botname, re.I),
@@ -87,7 +87,9 @@ class AiHandler(ChannelHandler):
         for r in regex:
             match = r.search(extra["msg"])
             if match is not None:
-                what = match.group(1)
+                what = match.group(1).strip()
+                if not what:
+                    return
 
                 try:
                     return aihandler(what)
