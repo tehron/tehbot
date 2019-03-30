@@ -63,7 +63,7 @@ def ddgsearch(query, prefix=""):
             collect_topics(v, "RelatedTopics", topics)
             result = u"Did you mean %s" % orstr(sorted(topics))
             result = plugins.shorten(prefix + result, 350) + u"?"
-        elif typ == "A":
+        elif typ == "A" or typ == "E":
             result = v["AbstractText"]
             result = plugins.shorten(prefix + result, 350)
         else:
