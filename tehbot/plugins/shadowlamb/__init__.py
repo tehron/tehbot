@@ -116,7 +116,7 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
             #self.announce_party(party
 
     def timerfunc(self):
-        while not self.quit:
+        while not self.quit and not self.tehbot.quit_called:
             nxt = time.time() + 1
             while time.time() < nxt:
                 time.sleep(0.1)
