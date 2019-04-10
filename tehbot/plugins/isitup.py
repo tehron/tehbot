@@ -5,13 +5,16 @@ import urllib2
 from struct import unpack
 from socket import AF_INET, inet_pton, getaddrinfo
 
-class IsitupPlugin(StandardPlugin):
+class IsitupPlugin(StandardCommand):
     """Checks if a web server is up."""
 
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("host", nargs="?", default="google.com")
         self.parser.add_argument("--no-follow", action="store_true")
+
+    def commands(self):
+        return "isitup"
 
     @staticmethod
     def _check(host):
@@ -65,8 +68,7 @@ class IsitupPlugin(StandardPlugin):
             print e
         return False
 
-
-    def command(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra, dbconn):
         parts = urlparse(self.pargs.host)
         no_follow = self.pargs.no_follow
 
@@ -87,5 +89,3 @@ class IsitupPlugin(StandardPlugin):
         prefix = "\x0303[Isitup]\x03 "
         msg = u"%s is \x0303up \U0001f44d\x03." if res else u"%s seems to be \x0304down \U0001f44e\x03."
         return prefix + msg % (prot + "://" + host)
-
-register_plugin("isitup", IsitupPlugin())

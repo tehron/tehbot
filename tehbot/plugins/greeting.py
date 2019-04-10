@@ -62,28 +62,22 @@ class GreetingHandler(ChannelJoinHandler):
         if res is not None:
             return res[0] % (event.source.nick)
 
-register_channel_join_handler(GreetingHandler())
-
-class GreetPlugin(StandardPlugin):
+class GreetPlugin(StandardCommand):
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         group = self.parser.add_mutually_exclusive_group(required=True)
         group.add_argument("who", nargs="?")
         group.add_argument("-a", "--add", metavar="greeting")
 
-    def execute(self, connection, event, extra, dbconn):
-        try:
-            pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
-        except Exception as e:
-            return u"Error: %s" % str(e)
+    def commands(self):
+        return "greet"
 
-        if pargs.add:
+    def execute_parsed(self, connection, event, extra, dbconn):
+        if self.pargs.add:
             if not self.privileged(connection, event):
                 return self.request_priv(extra)
 
-            greeting = pargs.add
+            greeting = self.pargs.add
             if greeting.find("%s") < 0:
                 return "Error: You forgot to add %s."
 
@@ -99,6 +93,4 @@ class GreetPlugin(StandardPlugin):
             res = c.fetchone()
 
             if res is not None:
-                return res[0] % (pargs.who)
-
-register_plugin("greet", GreetPlugin())
+                return res[0] % (self.pargs.who)

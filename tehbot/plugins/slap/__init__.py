@@ -3,9 +3,9 @@ import tehbot.plugins as plugins
 import random
 import os.path
 
-class SlapPlugin(StandardPlugin):
+class SlapPlugin(StandardCommand):
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("victim")
 
         self.slaps = [
@@ -18,7 +18,10 @@ class SlapPlugin(StandardPlugin):
         ]
         self.slapitems = open("%s/slaps.txt" % os.path.dirname(__file__)).read().splitlines()
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "slap"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         if random.randint(0, len(self.slapitems)) == len(self.slapitems):
             slap = self.slaps[0]
         else:
@@ -31,16 +34,15 @@ class SlapPlugin(StandardPlugin):
 
         return res
 
-register_plugin("slap", SlapPlugin())
-
-class LivinSlapPlugin(StandardPlugin):
+class LivinSlapPlugin(StandardCommand):
     def slap2(self, victim):
         return [
                 ("me", "slaps %s around a bit with a Piece of bacon" % victim),
                 ("say", "Hey, %s, eat some pork!" % victim)
                 ]
 
-    def command(self, connection, event, extra, dbconn):
-        return self.slap2("livinskull")
+    def commands(self):
+        return "livinslap"
 
-register_plugin("livinslap", LivinSlapPlugin())
+    def execute_parsed(self, connection, event, extra, dbconn):
+        return self.slap2("livinskull")

@@ -70,17 +70,19 @@ class UnknownReplyFormat(Exception):
     pass
 
 
-class StatsPlugin(StandardPlugin):
+class StatsPlugin(StandardCommand):
     """Shows current stats for a user on a challenge site."""
 
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("user_or_rank", nargs="?")
         self.parser.add_argument("-n", "--numeric", action="store_true")
         group = self.parser.add_mutually_exclusive_group()
         group.add_argument("-s", "--site", choices=sorted(set(sitemap.keys())))
         group.add_argument("-g", "--global", action="store_true")
 
+    def commands(self):
+        return "stats"
 
     def stats(self, site, user, rank):
         try:
@@ -148,17 +150,18 @@ class StatsPlugin(StandardPlugin):
 
         return self.stats(site, user, rank)
 
-register_plugin("stats", StatsPlugin())
-
-class SolversPlugin(StandardPlugin):
+class SolversPlugin(StandardCommand):
     """Shows how many solved a challenge."""
 
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("challenge_name_or_nr", nargs="+")
         self.parser.add_argument("-n", "--numeric", action="store_true")
         self.parser.add_argument("-s", "--site", choices=sorted(set(sitemap.keys())))
         self.parser.add_argument("-u", "--user")
+
+    def commands(self):
+        return "solvers"
 
     def solvers(self, site, challname, challnr, user):
         try:
@@ -212,8 +215,6 @@ class SolversPlugin(StandardPlugin):
             return u"Error: %s" % unicode(e)
 
         return self.solvers(site, challname, challnr, user)
-
-register_plugin("solvers", SolversPlugin())
 
 
 class RevelSolvedPoller(Poller):
@@ -297,5 +298,3 @@ class RevelSolvedPoller(Poller):
         self.save(dbconn)
 
         return u"\n".join(msgs)
-
-register_poller(RevelSolvedPoller())

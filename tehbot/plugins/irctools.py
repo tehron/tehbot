@@ -5,15 +5,18 @@ import time
 import irc.client
 import threading
 
-class SeenPlugin(StandardPlugin):
+class SeenPlugin(StandardCommand):
     """Shows when a user was last seen."""
 
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.logtodb = False
         self.parser.add_argument("user", nargs=1)
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return ["seen", "last"]
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         user = self.pargs.user[0]
         requser = event.source.nick
         c = dbconn.cursor()
@@ -28,23 +31,6 @@ class SeenPlugin(StandardPlugin):
 
         _, ts, server, channel, nick, _, message = res
         return u"I saw %s on %s in %s at %s saying '%s'." % (user, server, channel, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)), message)
-
-register_plugin(["seen", "last"], SeenPlugin())
-
-class PingPlugin(CorePlugin):
-    def __init__(self):
-        CorePlugin.__init__(self)
-        self.parser.add_argument("-v", "--verbose", action="store_true")
-
-    def command(self, connection, event, extra, dbconn):
-        verbose = vars(self.pargs)["verbose"]
-
-        if verbose:
-            return u"pong from Thread %s at %f" % (threading.current_thread().name, time.time())
-
-        return "pong!"
-
-register_plugin("ping", PingPlugin())
 
 class OpHandler(ChannelJoinHandler):
     def execute(self, connection, event, extra, dbconn):
@@ -76,5 +62,3 @@ class OpHandler(ChannelJoinHandler):
                     print self.settings
                     self.save(dbconn)
                     return "Okay"
-
-register_channel_join_handler(OpHandler())

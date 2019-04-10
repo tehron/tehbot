@@ -13,14 +13,17 @@ def get_text(tree, xpath):
 def wikify(title):
     return urllib.quote(to_utf8(title.replace(" ", "_")))
 
-class WikipediaPlugin(StandardPlugin):
+class WikipediaPlugin(StandardCommand):
     """Looks up a search term on Wikipedia"""
 
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("term", nargs="+")
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "wiki"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         data = {
             "action" : "query",
             "list" : "search",
@@ -53,5 +56,3 @@ class WikipediaPlugin(StandardPlugin):
 
         txt = "%s (%s)\n%s" % (title, pageurl, plugins.shorten(content, 300))
         return prefix + txt
-
-register_plugin("wiki", WikipediaPlugin())

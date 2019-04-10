@@ -1,15 +1,18 @@
 from tehbot.plugins import *
 import random
 
-class WwddPlugin(StandardPlugin):
+class WwddPlugin(StandardCommand):
     """What would dloser do?"""
 
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("-a", "--add", metavar="what")
 
+    def commands(self):
+        return "wwdd"
+
     def initialize(self, dbconn):
-        StandardPlugin.initialize(self, dbconn)
+        StandardCommand.initialize(self, dbconn)
         with dbconn:
             dbconn.execute("create table if not exists WwddPlugin(id integer primary key, text varchar)")
             dbconn.executemany("insert or ignore into WwddPlugin values(?, ?)", [
@@ -22,7 +25,7 @@ class WwddPlugin(StandardPlugin):
                 (7, "%s says: so helpful"),
             ])
 
-    def command(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra, dbconn):
         if self.pargs.add is None:
             c = dbconn.execute("select text from WwddPlugin order by random() limit 1")
             what = c.fetchone()
@@ -47,5 +50,3 @@ class WwddPlugin(StandardPlugin):
                 return "Error: Query failed. :("
 
         return "Okay"
-
-register_plugin("wwdd", WwddPlugin())

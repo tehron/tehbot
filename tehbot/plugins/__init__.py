@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+#from __future__ import absolute_import
 import os, os.path
 import traceback as sys_traceback
 import time as sys_time
@@ -12,13 +12,11 @@ import sqlite3
 import shlex
 import datetime
 import json
+import importlib
+import inspect
 
-__all__ = ["Plugin", "StandardPlugin", "CorePlugin", "PrivilegedPlugin", "AuthedPlugin", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
-    "register_plugin", "register_channel_handler", "register_channel_join_handler", "register_poller", "register_announcer", "register_prefix_handler",
+__all__ = ["Plugin", "PrivilegedPlugin", "AuthedPlugin", "Command", "StandardCommand", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
     "from_utf8", "to_utf8", "green", "red", "bold", "exc2str"]
-
-_tehbot = None
-_modules = []
 
 class ArgumentParserError(Exception):
     pass
@@ -41,15 +39,11 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
             pass
 
 class Plugin:
-    """This is where the help text goes."""
-
     def __init__(self):
-        self.tehbot = _tehbot
         self.logtodb = True
         self.pub_allowed = True
         self.priv_allowed = True
         self.mainthreadonly = False
-        self.initialize(self.tehbot.dbconn)
 
     def handle(self, connection, event, extra, dbconn):
         if not self.settings["enabled"]:
@@ -123,7 +117,7 @@ class Plugin:
 
     def initialize(self, dbconn):
         self.settings = {
-                "enabled" : isinstance(self, CorePlugin)
+                "enabled" : inspect.getmodule(self).__name__ == "tehbot.plugins.core"
                 }
         self.settings.update(self.default_settings())
 
@@ -179,15 +173,18 @@ class Plugin:
         plugin.handle(self.connection, self.target, self.nick, "help", cmd, self.dbconn)
     """
 
-class ChannelHandler(Plugin):
+class PrivilegedPlugin(Plugin):
     pass
 
-class ChannelJoinHandler(Plugin):
+class AuthedPlugin(Plugin):
     pass
 
-class StandardPlugin(Plugin):
+class Command(Plugin):
+    """This is where the help text goes."""
+
+class StandardCommand(Command):
     def __init__(self):
-        Plugin.__init__(self)
+        Command.__init__(self)
         self.parser = ThrowingArgumentParser(description=self.__doc__)
 
     def execute(self, connection, event, extra, dbconn):
@@ -198,15 +195,12 @@ class StandardPlugin(Plugin):
         except Exception as e:
             return u"Error: %s" % exc2str(e)
 
-        return self.command(connection, event, extra, dbconn)
+        return self.execute_parsed(connection, event, extra, dbconn)
 
-class CorePlugin(StandardPlugin):
+class ChannelHandler(Plugin):
     pass
 
-class PrivilegedPlugin(Plugin):
-    pass
-
-class AuthedPlugin(Plugin):
+class ChannelJoinHandler(Plugin):
     pass
 
 class PrefixHandler(Plugin):
@@ -376,39 +370,6 @@ def me(connection, target, msg, dbconn):
         #connection.action(target, msg)
         connection.privmsg(target, "\001ACTION " + msg + "\001")
 
-def register_plugin(cmd, plugin):
-    cmds = cmd if isinstance(cmd, list) else [cmd]
-
-    if isinstance(plugin, StandardPlugin):
-        plugin.parser.prog = cmds[0]
-
-    for cmd in cmds:
-        if cmd in _tehbot.cmd_handlers:
-            myprint("Warning: Duplicate command \"%s\" defined!" % cmd)
-        else:
-            _tehbot.cmd_handlers[cmd] = plugin
-            _tehbot.handlers.append(plugin)
-
-def register_channel_handler(plugin):
-    _tehbot.channel_handlers.append(plugin)
-    _tehbot.handlers.append(plugin)
-
-def register_channel_join_handler(plugin):
-    _tehbot.channel_join_handlers.append(plugin)
-    _tehbot.handlers.append(plugin)
-
-def register_poller(plugin):
-    _tehbot.pollers.append(plugin)
-    _tehbot.handlers.append(plugin)
-
-def register_announcer(plugin):
-    _tehbot.announcers.append(plugin)
-    _tehbot.handlers.append(plugin)
-
-def register_prefix_handler(plugin):
-    _tehbot.prefix_handlers.append(plugin);
-    _tehbot.handlers.append(plugin)
-
 def split(s, mx=450):
     if len(s) <= mx:
         return s
@@ -448,9 +409,19 @@ def exc2str(ex):
     return u"%s: %s" % (cls, msg) if msg else cls
 
 def collect():
-    _path = os.path.dirname(__file__)
-    _plugins = sorted(plugin for plugin in os.listdir(_path) if os.path.isdir("%s/%s" % (_path, plugin)))
-    #print "plugins:", _plugins
+    path = os.path.dirname(__file__)
+    plugins = []
 
-    _modules = [__import__("%s.%s" % (__name__, p), fromlist=["*"], level=0) for p in _plugins]
-    #print "modules:", _modules
+    for n in sorted(os.listdir(path)):
+        if os.path.isdir("%s/%s" % (path, n)):
+            m = n
+        else:
+            base, ext = os.path.splitext(n)
+            if ext != ".py" or base == "__init__":
+                continue
+            m = base
+
+        p = importlib.import_module("tehbot.plugins.%s" % m)
+        plugins.append(p)
+
+    return plugins

@@ -5,16 +5,19 @@ import lxml.html
 import lxml.etree
 import json
 
-class UnicodePlugin(StandardPlugin):
+class UnicodePlugin(StandardCommand):
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("search_term", nargs="+")
 
     @staticmethod
     def prefix():
         return "[UnicodePlugin]"
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "uc"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         url = "https://emojipedia.org/search/?%s" % urllib.urlencode(
                 { "q" : to_utf8(" ".join(self.pargs.search_term)) }
                 )
@@ -38,5 +41,3 @@ class UnicodePlugin(StandardPlugin):
                 return u"%s %s" % (red(UnicodePlugin.prefix()), "Unknown Format in Reply")
 
         return u"%s %s" % (green(UnicodePlugin.prefix()), sign)
-
-register_plugin("uc", UnicodePlugin())

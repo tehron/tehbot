@@ -6,15 +6,18 @@ import lxml.html
 import json
 import re
 
-class UrbanDictionaryPlugin(StandardPlugin):
+class UrbanDictionaryPlugin(StandardCommand):
     """Looks up definitions in Urban Dictionary"""
 
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("search_term", nargs="+")
         self.parser.add_argument("-n", "--nr", type=int, help="request definition number NR")
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return ["wtf", "define"]
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         url = "http://api.urbandictionary.com/v0/define?%s"
 
         index = (self.pargs.nr or 1) - 1
@@ -51,5 +54,3 @@ class UrbanDictionaryPlugin(StandardPlugin):
             return prefix + "Definition not available."
 
         return prefix + txt
-
-register_plugin(["wtf", "define"], UrbanDictionaryPlugin())

@@ -14,17 +14,17 @@ import os.path
 #_ = t.gettext
 _ = lambda x: x
 
-class ShadowlambPlugin(StandardPlugin, PrivilegedPlugin):
+class ShadowlambPlugin(StandardCommand, PrivilegedPlugin):
     """What, you don't know what shadowlamb is??"""
 
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "sl"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         return "Shadowlamb is teh greatest!"
-
-register_plugin("sl", ShadowlambPlugin())
-
 
 class ShadowlambHandler(PrefixHandler, AuthedPlugin):
     def command_prefix(self):
@@ -116,7 +116,7 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
             #self.announce_party(party
 
     def timerfunc(self):
-        while not self.quit and not self.tehbot.quit_called:
+        while not self.quit:
             nxt = time.time() + 1
             while time.time() < nxt:
                 time.sleep(0.1)
@@ -350,5 +350,3 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
                 return [(msg_type, m) for m in res]
             if isinstance(res, basestring):
                 return [(msg_type, res)]
-
-register_prefix_handler(ShadowlambHandler())

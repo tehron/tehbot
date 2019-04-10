@@ -95,5 +95,3 @@ class AiHandler(ChannelHandler):
                     return aihandler(what)
                 except:
                     return [("me", "shrugs")]
-
-register_channel_handler(AiHandler())

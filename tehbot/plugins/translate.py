@@ -5,14 +5,17 @@ import urllib2
 import json
 import shlex
 
-class TranslatePlugin(StandardPlugin):
+class TranslatePlugin(StandardCommand):
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("words", metavar='W', nargs="+")
         self.parser.add_argument("-f", "--from-lang", default="auto")
         self.parser.add_argument("-t", "--to-lang", default="en")
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return ["translate", "tr"]
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         prefix = "[Translate]"
 
         if not self.pargs.words:
@@ -38,5 +41,3 @@ class TranslatePlugin(StandardPlugin):
             answer = u"%s %s" % (plugins.red(prefix), unicode(e))
 
         return answer
-
-register_plugin(["translate", "tr"], TranslatePlugin())

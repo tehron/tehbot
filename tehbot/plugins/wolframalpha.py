@@ -3,13 +3,16 @@ import tehbot.plugins as plugins
 import wolframalpha
 import prettytable
 
-class WolframAlphaPlugin(StandardPlugin):
+class WolframAlphaPlugin(StandardCommand):
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("query", nargs="+")
 
+    def commands(self):
+        return ["wolframalpha", "wa"]
+
     def initialize(self, dbconn):
-        StandardPlugin.initialize(self, dbconn)
+        StandardCommand.initialize(self, dbconn)
         try:
             self.client = wolframalpha.Client(self.settings["wolframalpha_app_id"])
         except:
@@ -48,7 +51,7 @@ class WolframAlphaPlugin(StandardPlugin):
         s = pt.get_string()
         return s
 
-    def command(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra, dbconn):
         txt = "\x0303[Wolfram|Alpha]\x03 "
 
         try:
@@ -76,5 +79,3 @@ class WolframAlphaPlugin(StandardPlugin):
             txt = "Error: %s" % e
 
         return plugins.shorten(txt, 450)
-
-register_plugin(["wolframalpha", "wa"], WolframAlphaPlugin())

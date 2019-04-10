@@ -17,12 +17,15 @@ def toXPathStringLiteral(s):
     if '"' not in s: return '"%s"' % s
     return "concat('%s')" % s.replace("'", "',\"'\",'")
 
-class XkcdPlugin(StandardPlugin):
+class XkcdPlugin(StandardCommand):
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("search_term", nargs="?")
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "xkcd"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         txt = "\x0303[xkcd]\x03 "
 
         try:
@@ -39,5 +42,3 @@ class XkcdPlugin(StandardPlugin):
             txt += "%s - %s" % (url % p, info["safe_title"])
 
         return txt
-
-register_plugin("xkcd", XkcdPlugin())

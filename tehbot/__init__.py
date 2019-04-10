@@ -1,11 +1,11 @@
-import irc.client
-import plugins
-import impl
 import sys
 import traceback
 import inspect
 import time
-import settings
+import irc.client
+import tehbot.plugins as plugins
+import tehbot.impl as impl
+import tehbot.settings as settings
 
 class Tehbot:
     def __init__(self):

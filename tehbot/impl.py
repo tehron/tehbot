@@ -1,5 +1,3 @@
-import plugins
-from settings import Settings
 import irc.client
 from Queue import Queue, Empty
 import traceback
@@ -10,6 +8,7 @@ import functools
 import threading
 import sqlite3
 from collections import *
+import inspect
 
 import os.path
 from types import ModuleType
@@ -17,6 +16,9 @@ from types import ModuleType
 import ctypes
 import shlex
 import argparse
+
+import tehbot.plugins as plugins
+from tehbot.settings import Settings
 
 def _terminate_thread(thread):
     """Terminates a python thread from another thread.
@@ -53,6 +55,11 @@ def _gather(module, modules):
                 _gather(attribute, modules)
 
 
+class ImplementationError(Exception):
+    def __init__(self, clazz, what, pyfile):
+        msg = "%s has no attribute '%s' in %s" % (clazz.__name__, what, pyfile)
+        Exception.__init__(self, msg)
+
 class TehbotImpl:
     def __init__(self, tehbot):
         self.core = tehbot
@@ -76,9 +83,44 @@ class TehbotImpl:
         self.privqueue = defaultdict(Queue)
         self.settings = Settings()
         self.settings.load(self.dbconn)
+        self.plugins = []
 
     def collect_plugins(self):
-        plugins.collect()
+        self.plugins = plugins.collect()
+
+        for p in self.plugins:
+            for name, clazz in inspect.getmembers(p, lambda x: inspect.isclass(x) and issubclass(x, plugins.Plugin) and x.__module__ == p.__name__):
+                o = clazz()
+                o.initialize(self.dbconn)
+
+                if isinstance(o, plugins.Command):
+                    try:
+                        cmds = o.commands()
+                    except AttributeError as e:
+                        raise ImplementationError(clazz, "commands", p.__file__)
+
+                    if isinstance(cmds, basestring):
+                        cmds = [cmds]
+                    for cmd in cmds:
+                        if cmd in self.cmd_handlers:
+                            plugins.myprint('Warning: Duplicate command "%s" defined (class %s)!' % (cmd, name))
+                        else:
+                            self.cmd_handlers[cmd] = o
+                elif isinstance(o, plugins.ChannelHandler):
+                    self.channel_handlers.append(o)
+                elif isinstance(o, plugins.ChannelJoinHandler):
+                    self.channel_join_handlers.append(o)
+                elif isinstance(o, plugins.Poller):
+                    self.pollers.append(o)
+                elif isinstance(o, plugins.Announcer):
+                    self.announcers.append(o)
+                elif isinstance(o, plugins.PrefixHandler):
+                    self.prefix_handlers.append(o)
+                else:
+                    continue
+
+                self.handlers.append(o)
+
         print " command handlers:", sorted(self.cmd_handlers)
         print " channel handlers:", sorted(h.__class__.__name__ for h in self.channel_handlers)
         print "chn join handlers:", sorted(h.__class__.__name__ for h in self.channel_join_handlers)
@@ -106,7 +148,6 @@ class TehbotImpl:
 
         self.dbconn.close()
         self.quit_called = True
-        self.restart_called = False
 
     def postinit(self):
         self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
@@ -212,12 +253,12 @@ class TehbotImpl:
 
     def quit(self, msg=None):
         print "quit called"
-        self.quit_called = True
+        self.deinit()
         self.core.reactor.disconnect_all(msg or "bye-bye")
 
     def restart(self, msg=None):
         print "restart called"
-        self.quit_called = True
+        self.deinit()
         self.restart_called = True
         self.core.reactor.disconnect_all(msg or "I'll be back!")
 

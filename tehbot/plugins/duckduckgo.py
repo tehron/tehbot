@@ -78,17 +78,19 @@ def ddgsearch(query, prefix=""):
 
     return result
 
-class DuckDuckGoPlugin(StandardPlugin):
+class DuckDuckGoPlugin(StandardCommand):
     """DuckDuckGo web search"""
+
     def __init__(self):
-        StandardPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("query", nargs="+")
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return ["duckduckgo", "ddg", "search"]
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         query = " ".join(self.pargs.query)
 
         txt = u"\x0303[DuckDuckGo]\x03 "
 
         return ddgsearch(query, txt)
-
-register_plugin(["duckduckgo", "ddg", "search"], DuckDuckGoPlugin())

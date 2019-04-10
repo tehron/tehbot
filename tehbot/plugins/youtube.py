@@ -64,5 +64,3 @@ class YoutubeHandler(plugins.ChannelHandler):
             info_cache[vid] = txt
 
         return txt
-
-plugins.register_channel_handler(YoutubeHandler())

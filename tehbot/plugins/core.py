@@ -2,12 +2,15 @@ from tehbot.plugins import *
 import threading
 import time
 
-class PrivPlugin(CorePlugin):
+class PrivPlugin(StandardCommand):
     def __init__(self):
-        CorePlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("-p", "--password", nargs=1)
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "priv"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         pw = vars(self.pargs)["password"]
 
         if pw is not None and pw[0] == self.tehbot.settings["privpassword"]:
@@ -18,15 +21,15 @@ class PrivPlugin(CorePlugin):
 
         return "%s is privileged" % (event.source.nick)
 
-register_plugin("priv", PrivPlugin())
-
-class ReloadPlugin(StandardPlugin, PrivilegedPlugin):
+class ReloadPlugin(StandardCommand, PrivilegedPlugin):
     def __init__(self):
-        StandardPlugin.__init__(self)
-        PrivilegedPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.mainthreadonly = True
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "reload"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         self.res = self.tehbot.reload()
 
         if self.res is None:
@@ -42,43 +45,44 @@ class ReloadPlugin(StandardPlugin, PrivilegedPlugin):
         except:
             pass
 
-register_plugin("reload", ReloadPlugin())
-
-class QuitPlugin(StandardPlugin, PrivilegedPlugin):
+class QuitPlugin(StandardCommand, PrivilegedPlugin):
     def __init__(self):
-        StandardPlugin.__init__(self)
-        PrivilegedPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("msg", nargs="*")
         self.parser.add_argument("-r", "--restart", action="store_true")
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "quit"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         msg = " ".join(self.pargs.msg)
         if self.pargs.restart:
             self.tehbot.restart(msg)
         else:
             self.tehbot.quit(msg)
 
-register_plugin("quit", QuitPlugin())
-
-class RawPlugin(StandardPlugin, PrivilegedPlugin):
+class RawPlugin(StandardCommand, PrivilegedPlugin):
     def __init__(self):
-        StandardPlugin.__init__(self)
-        PrivilegedPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("args", nargs="+")
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "raw"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         args = self.pargs.args
         if args:
             connection.send_raw(u" ".join(args))
 
-register_plugin("raw", RawPlugin())
-
-class HelpPlugin(CorePlugin):
+class HelpPlugin(StandardCommand):
     def __init__(self):
-        CorePlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("command", nargs="?")
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "help"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         cmd = self.pargs.command
 
         try:
@@ -89,19 +93,33 @@ class HelpPlugin(CorePlugin):
 
         return txt
 
-register_plugin("help", HelpPlugin())
-
-class ConfigPlugin(StandardPlugin, PrivilegedPlugin):
+class ConfigPlugin(StandardCommand, PrivilegedPlugin):
     def __init__(self):
-        StandardPlugin.__init__(self)
-        PrivilegedPlugin.__init__(self)
+        StandardCommand.__init__(self)
         self.parser.add_argument("args", nargs="*")
 
-    def command(self, connection, event, extra, dbconn):
+    def commands(self):
+        return "config"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
         args = self.pargs.args
         if not args:
             return "This should be the help :P"
 
         return self.tehbot.config(args[0], args[1:], dbconn)
 
-register_plugin("config", ConfigPlugin())
+class PingPlugin(StandardCommand):
+    def __init__(self):
+        StandardCommand.__init__(self)
+        self.parser.add_argument("-v", "--verbose", action="store_true")
+
+    def commands(self):
+        return "ping"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
+        verbose = vars(self.pargs)["verbose"]
+
+        if verbose:
+            return u"pong from Thread %s at %f" % (threading.current_thread().name, time.time())
+
+        return "pong!"

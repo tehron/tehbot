@@ -3,8 +3,11 @@ import psutil
 import os
 import time
 
-class BotStatsPlugin(StandardPlugin):
+class BotStatsPlugin(StandardCommand):
     """Shows various information about tehbot"""
+
+    def commands(self):
+        return "botstats"
 
     @staticmethod
     def format_time(ts):
@@ -36,7 +39,7 @@ class BotStatsPlugin(StandardPlugin):
         out, err = Popen(["git", "log", "-n", "1"], stdout=PIPE).communicate()
         return re.search(r'([0-9A-Fa-f]{40})', out).group(0)
 
-    def command(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra, dbconn):
         txt = "\x0303[tehbot]\x03 "
 
         stats = []
@@ -51,5 +54,3 @@ class BotStatsPlugin(StandardPlugin):
         stats.append("Nr. of Threads: %d" % (proc.num_threads()))
 
         return txt + ", ".join(stats)
-
-register_plugin("botstats", BotStatsPlugin())
