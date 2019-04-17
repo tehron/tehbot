@@ -19,6 +19,8 @@ import argparse
 
 import tehbot.plugins as plugins
 from tehbot.settings import Settings
+import locale
+encoding = locale.getdefaultlocale()[1] or "ascii"
 
 def _terminate_thread(thread):
     """Terminates a python thread from another thread.
@@ -73,17 +75,81 @@ class TehbotImpl:
         self.prefix_handlers = []
         self.queue = Queue(maxsize=0)
         self.workers = []
+        self.restart_workers = False
         self.quit_called = False
         self.restart_called = False
         self.dbfile = os.path.join(os.path.dirname(__file__), "../data/tehbot.sqlite")
         self.dbconn = sqlite3.connect(self.dbfile)
-        self.mainqueue = Queue()
+        self.dbconn.execute("create table if not exists Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, type integer, message varchar)")
+        self.actionqueue = Queue()
         self.privusers = defaultdict(set)
         self.authusers = defaultdict(set)
         self.privqueue = defaultdict(Queue)
         self.settings = Settings()
         self.settings.load(self.dbconn)
         self.plugins = []
+        pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
+        self.regex = re.compile(pattern, re.UNICODE)
+
+    def postinit(self):
+        self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
+
+        for p in self.pollers:
+            p.schedule(20)
+
+        for a in self.announcers:
+            today = datetime.date.today()
+            at = int(today.strftime("%s")) + a.at()
+            if at < time.time():
+                at += int(datetime.timedelta(days=1).total_seconds())
+            print "Scheduling %s at %d" % (a.__class__.__name__, at)
+            a.schedule(at)
+
+        self.start_workers()
+
+    def deinit(self):
+        self.core.reactor.remove_global_handler("all_events", self.dispatcher.dispatch)
+
+        for h in self.pollers + self.announcers:
+            h.quit = True
+
+        with self.core.reactor.mutex:
+            for cmd in self.core.reactor.scheduler.queue[:]:
+                try:
+                    if cmd.target.im_func.func_name == "callme":
+                        print "removing", cmd.target
+                        self.core.reactor.scheduler.queue.remove(cmd)
+                except:
+                    pass
+
+        for h in self.handlers:
+            h.deinit(self.dbconn)
+
+        self.dbconn.close()
+
+    def myprint(self, s):
+        s = self.regex.sub("", s)
+        print time.strftime("%H:%M:%S"), s.encode(encoding, "backslashreplace")
+
+    def logmsg(self, when, network, target, nick, msg, is_action, typ):
+        msg = self.regex.sub("", msg)
+        if nick is None:
+            s = msg
+        else:
+            if is_action:
+                s = "*%s %s" % (nick, msg)
+            else:
+                s = "%s: %s" % (nick, msg)
+
+        ts = time.strftime("%H:%M:%S", time.localtime(when))
+        if target is None:
+            s = "%s %s: %s" % (ts, network, s)
+        else:
+            s = "%s %s: %s: %s" % (ts, network, target, s)
+        print s.encode(encoding, "backslashreplace")
+
+        with self.dbconn:
+            self.dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?, ?)", (when, network, target, nick, typ, msg))
 
     def collect_plugins(self):
         self.plugins = plugins.collect()
@@ -103,7 +169,7 @@ class TehbotImpl:
                         cmds = [cmds]
                     for cmd in cmds:
                         if cmd in self.cmd_handlers:
-                            plugins.myprint('Warning: Duplicate command "%s" defined (class %s)!' % (cmd, name))
+                            self.myprint('Warning: Duplicate command "%s" defined (class %s)!' % (cmd, name))
                         else:
                             self.cmd_handlers[cmd] = o
                 elif isinstance(o, plugins.ChannelHandler):
@@ -128,51 +194,46 @@ class TehbotImpl:
         print "       announcers:", sorted(h.__class__.__name__ for h in self.announcers)
         print "   prefix handlers", sorted(h.__class__.__name__ for h in self.prefix_handlers)
 
-    def deinit(self):
-        self.core.reactor.remove_global_handler("all_events", self.dispatcher.dispatch)
-
-        for h in self.pollers + self.announcers:
-            h.quit = True
-
-        with self.core.reactor.mutex:
-            for cmd in self.core.reactor.scheduler.queue[:]:
-                try:
-                    if cmd.target.im_func.func_name == "callme":
-                        print "removing", cmd.target
-                        self.core.reactor.scheduler.queue.remove(cmd)
-                except:
-                    pass
-
-        for h in self.handlers:
-            h.deinit(self.dbconn)
-
-        self.dbconn.close()
-        self.quit_called = True
-
-    def postinit(self):
-        self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
-
-        for h in self.handlers:
-            h.postinit(self.dbconn)
-
-        for p in self.pollers:
-            p.schedule(20)
-
-        for a in self.announcers:
-            today = datetime.date.today()
-            at = int(today.strftime("%s")) + a.at()
-            if at < time.time():
-                at += int(datetime.timedelta(days=1).total_seconds())
-            print "Scheduling %s at %d" % (a.__class__.__name__, at)
-            a.schedule(at)
-
-        self.start_workers()
-
     def gather_modules(self):
         modules = set()
         _gather(plugins, modules)
         modules.remove(plugins)
         return modules
+
+    def exec_plugin(self, plugin, connection, event, extra, dbconn):
+        if not plugin.is_enabled():
+            return
+
+        if irc.client.is_channel(event.target):
+            if not plugin.pub_allowed:
+                return
+        else:
+            if not plugin.priv_allowed:
+                return
+
+        if isinstance(plugin, plugins.PrivilegedPlugin) and not self.privileged(connection, event):
+            res = self.request_priv(extra)
+        elif isinstance(plugin, plugins.AuthedPlugin) and not self.authed(connection, event):
+            res = self.request_auth(extra)
+        else:
+            res = plugin.execute(connection, event, extra, dbconn)
+
+        return res
+
+    def privileged(self, connection, event):
+        return event.source.nick in self.privusers[connection]
+
+    def authed(self, connection, event):
+        return event.source.nick in self.authusers[connection]
+
+    def request_priv(self, extra):
+        return [("nopriv", None)] if extra.has_key("auth_requested") else [("doauth", None)]
+
+    def request_auth(self, extra):
+        return [("noauth", None)] if extra.has_key("auth_requested") else [("doauth", None)]
+
+    def priv_override(self, connection, event):
+        self.privusers[connection].add(event.source.nick)
 
     def _process(self):
         dbconn = sqlite3.connect(self.dbfile)
@@ -180,7 +241,9 @@ class TehbotImpl:
         while True:
             try:
                 plugin, args = self.queue.get(timeout=1)
-                plugin.handle(*args, dbconn=dbconn)
+                connection, event, extra = args
+                res = self.exec_plugin(plugin, connection, event, extra, dbconn)
+                self.actionqueue.put((res, plugin, connection, event, extra))
                 self.queue.task_done()
             except Empty:
                 pass
@@ -189,7 +252,7 @@ class TehbotImpl:
             except:
                 traceback.print_exc()
 
-            if self.quit_called:
+            if self.quit_called or self.restart_workers:
                 break
 
         dbconn.close()
@@ -241,28 +304,147 @@ class TehbotImpl:
         connection.set_rate_limit(2)
         connection.set_keepalive(60)
 
+    def say(self, connection, target, typ, msg):
+        self.ircsend(connection.privmsg, connection, target, typ, None, msg)
+
+    def notice(self, connection, target, typ, msg):
+        self.ircsend(connection.notice, connection, target, typ, None, msg)
+
+    def say_nick(self, connection, target, typ, nick, msg):
+        self.ircsend(connection.privmsg, connection, target, typ, nick, msg)
+
+    def me(self, connection, target, typ, msg):
+        msg = msg.replace("\r", "?").replace("\n", "?")
+        self.ircsend(connection.action, connection, target, typ, None, msg)
+
+    def ircsend(self, func, connection, target, typ, nick, msg):
+        if not target or not msg:
+            return
+
+        for m in msg.split("\n"):
+            m = m.replace("\r", "?");
+            if not m.strip():
+                continue
+            m2 = "%s: %s" % (nick, m) if nick else m
+            for msplit in plugins.Plugin.split(m2).split("\n"):
+                func(target, msplit)
+                self.logmsg(time.time(), connection.name, target, connection.get_nickname(), msplit, False, typ)
+
     def process_once(self, timeout):
         self.core.reactor.process_once(timeout)
 
         try:
-            plugin, args = self.mainqueue.get(False)
-            plugin.handle(*args, dbconn=self.dbconn)
-            self.mainqueue.task_done()
+            actions, plugin, connection, event, extra = self.actionqueue.get(False)
         except Empty:
-            pass
+            return
+
+        try:
+            if irc.client.is_channel(event.target):
+                target = event.target
+                typ = 0
+            else:
+                target = event.source.nick
+                typ = 1
+
+            if isinstance(actions, basestring):
+                actions = [("say", actions)]
+            elif actions is None:
+                actions = [("none", None)]
+
+            for action, args in actions:
+                if action == "say" or action == "me" or action == "notice":
+                    msg = args
+                    getattr(self, action)(connection, target, typ, msg)
+                elif action == "say_nolog":
+                    msg = args
+                    getattr(self, action)(connection, target, 2, msg)
+                elif action == "say_nick":
+                    msg = args
+                    getattr(self, action)(connection, target, event.source.nick, typ, msg)
+                elif action == "nopriv":
+                    self.say(connection, target, typ, u"%s is \x02not\x02 privileged" % event.source.nick)
+                    break
+                elif action == "noauth":
+                    self.say(connection, target, typ, u"%s is \x02not\x02 authorized with Services" % event.source.nick)
+                    break
+                elif action == "doauth":
+                    extra["auth_requested"] = True
+
+                    params = self.settings.connection_params(connection)
+                    for t, s in params["operators"]:
+                        if t == "host" and s == event.source.host:
+                            self.privusers[connection].add(event.source.nick)
+                            self.queue.put((plugin, (connection, event, extra)))
+                            return
+
+                    self.privqueue[connection, event.source.nick].put((plugin, (connection, event, extra)))
+                    connection.whois(event.source.nick)
+                elif action == "quit":
+                    self.quit(args)
+                elif action == "restart":
+                    self.restart(args)
+                elif action == "help":
+                    cmd, list_all = args
+                    if cmd is None:
+                        def cmd(p):
+                            c = p.commands()
+                            return c if isinstance(c, basestring) else "%s (%s)" % (c[0], ", ".join(c[1:]))
+                        enabled_cmds = sorted(cmd(p) for p in self.handlers if isinstance(p, plugins.Command) and list_all or p.is_enabled())
+                        msg = "Available commands: %s" % ", ".join(enabled_cmds)
+                    else:
+                        if self.cmd_handlers.has_key(cmd):
+                            msg = self.cmd_handlers[cmd].parser.format_help().strip()
+                        else:
+                            msg = "Unknown command: %s" % cmd
+                    self.say(connection, target, typ, msg)
+                elif action == "reload":
+                    res = self.reload()
+
+                    if res is None:
+                        msg = "Okay"
+                    else:
+                        mod, lineno, exc = res
+                        msg = u"Error in %s(%d): %s" % (mod, lineno, plugins.Plugin.exc2str(exc))
+                    self.say(connection, target, typ, msg)
+
+                    if res is None:
+                        self.finalize()
+                elif action == "config":
+                    if not args:
+                        msg = "That won't work"
+                    else:
+                        handler = args[0]
+                        args = args[1:]
+                        msg = self.config(handler, args, self.dbconn)
+                    self.say(connection, target, typ, msg)
+                elif action == "reqpriv":
+                    pw = args
+                    if pw is not None and pw[0] == self.settings["privpassword"]:
+                        self.priv_override(connection, event)
+                    elif not extra.has_key("auth_requested"):
+                        self.actionqueue.put(([("doauth", None)], plugin, connection, event, extra))
+                        return
+
+                    priv = "" if self.privileged(connection, event) else " \x02not\x02"
+                    self.say(connection, target, typ, "%s is%s privileged" % (event.source.nick, priv))
+        finally:
+            self.actionqueue.task_done()
 
     def quit(self, msg=None):
         print "quit called"
         self.deinit()
+        self.quit_called = True
         self.core.reactor.disconnect_all(msg or "bye-bye")
 
     def restart(self, msg=None):
         print "restart called"
         self.deinit()
+        self.quit_called = True
         self.restart_called = True
         self.core.reactor.disconnect_all(msg or "I'll be back!")
 
     def reload(self):
+        self.restart_workers = True
         return self.core.reload()
 
     def finalize(self):
@@ -429,7 +611,7 @@ class Dispatcher:
         while True:
             try:
                 plugin, args = pq.get(False)
-                q = self.tehbot.mainqueue if plugin.mainthreadonly else self.tehbot.queue
+                q = self.tehbot.queue
                 q.put((plugin, args))
                 pq.task_done()
             except Empty:
@@ -446,7 +628,7 @@ class Dispatcher:
         connection.nick(newnick)
 
     def on_welcome(self, connection, event):
-        plugins.myprint("%s: connected to %s" % (connection.name, connection.server))
+        self.tehbot.logmsg(time.time(), connection.name, None, None, "connected to %s" % connection.server, False, 0)
 
         params = self.tehbot.settings.connection_params(connection)
         nickservpw = params.get("password", None)
@@ -470,12 +652,12 @@ class Dispatcher:
 
         if channels_to_join:
             mchans = ",".join(channels_to_join)
-            plugins.myprint("%s: joining %s" % (connection.name, mchans))
+            self.tehbot.myprint("%s: joining %s" % (connection.name, mchans))
             connection.send_raw("JOIN %s" % mchans)
 
         if channels_to_part:
             mchans = ",".join(channels_to_part)
-            plugins.myprint("%s: parting %s" % (connection.name, mchans))
+            self.tehbot.myprint("%s: parting %s" % (connection.name, mchans))
             connection.part(channels_to_part)
 
     def on_disconnect(self, connection, event):
@@ -483,8 +665,8 @@ class Dispatcher:
             return
 
         delay = 120
-        plugins.myprint("%s: lost connection" % (connection.name))
-        plugins.myprint("%s: reconnecting in %d seconds" % (connection.name, delay))
+        self.tehbot.logmsg(time.time(), connection.name, None, None, "lost connection", False, 0)
+        self.tehbot.myprint("%s: reconnecting in %d seconds" % (connection.name, delay))
 
         with self.tehbot.core.reactor.mutex:
             for cmd in self.tehbot.core.reactor.scheduler.queue[:]:
@@ -495,7 +677,7 @@ class Dispatcher:
         self.tehbot.core.reactor.scheduler.execute_after(delay, functools.partial(self.tehbot.reconnect, connection))
 
     def on_join(self, connection, event):
-        plugins.myprint("%s: %s: %s joined" % (connection.name, event.target, event.source.nick))
+        self.tehbot.logmsg(time.time(), connection.name, None, None, "%s: %s joined" % (event.target, event.source.nick), False, 0)
         nick = event.source.nick
         channel = event.target
         botname = self.tehbot.settings.value("botname", connection)
@@ -519,7 +701,7 @@ class Dispatcher:
             self.tehbot.queue.put((h, (connection, event, {})))
 
     def on_part(self, connection, event):
-        plugins.myprint("%s: %s: %s left" % (connection.name, event.target, event.source.nick))
+        self.tehbot.logmsg(time.time(), connection.name, event.target, None, "%s left" % event.source.nick, False, 0)
         nick = event.source.nick
         channel = event.target
         botname = self.tehbot.settings.value("botname", connection)
@@ -544,7 +726,7 @@ class Dispatcher:
             pass
 
     def on_quit(self, connection, event):
-        plugins.myprint("%s: %s has quit (%s)" % (connection.name, event.source.nick, event.arguments[0]))
+        self.tehbot.logmsg(time.time(), connection.name, None, None, "%s has quit (%s)" % (event.source.nick, event.arguments[0]), False, 0)
         botname = self.tehbot.settings.value("botname", connection)
         nick = event.source.nick
 
@@ -583,7 +765,7 @@ class Dispatcher:
         else:
             target = nick
 
-        plugins.myprint("%s: %s: *%s %s" % (connection.name, target, nick, msg))
+        self.tehbot.logmsg(time.time(), connection.name, target, nick, msg, True, 0)
 
     def react_to_command(self, connection, event, msg, plugin=None):
         if not msg:
@@ -596,13 +778,12 @@ class Dispatcher:
             plugin = self.tehbot.cmd_handlers[cmd]
 
         if plugin:
-            q = self.tehbot.mainqueue if plugin.mainthreadonly else self.tehbot.queue
-            q.put((plugin, (connection, event, {"msg":msg, "cmd":cmd, "args":args})))
+            self.tehbot.queue.put((plugin, (connection, event, {"msg":msg, "cmd":cmd, "args":args})))
 
     def on_pubmsg(self, connection, event):
         msg = event.arguments[0]
         typ = self.tehbot.settings.log_type(connection.name, event.target)
-        plugins.logmsg(time.time(), connection.name, event.target, event.source.nick, msg, False, typ, self.tehbot.dbconn)
+        self.tehbot.logmsg(time.time(), connection.name, event.target, event.source.nick, msg, False, typ)
         cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
@@ -618,7 +799,7 @@ class Dispatcher:
 
     def on_privmsg(self, connection, event):
         msg = event.arguments[0]
-        plugins.logmsg(time.time(), connection.name, event.source.nick, event.source.nick, msg, False, 1, self.tehbot.dbconn)
+        self.tehbot.logmsg(time.time(), connection.name, event.source.nick, event.source.nick, msg, False, 1)
         cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
@@ -632,7 +813,7 @@ class Dispatcher:
     def on_nick(self, connection, event):
         oldnick = event.source.nick
         newnick = event.target
-        plugins.myprint("%s: %s is now known as %s" % (connection.name, oldnick, newnick))
+        self.tehbot.logmsg(time.time(), connection.name, None, None, "%s is now known as %s" % (oldnick, newnick), False, 0)
         botname = self.tehbot.settings.value("botname", connection)
 
         for channel in connection.tehbot_users.keys():

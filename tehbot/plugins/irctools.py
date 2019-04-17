@@ -10,7 +10,6 @@ class SeenPlugin(StandardCommand):
 
     def __init__(self):
         StandardCommand.__init__(self)
-        self.logtodb = False
         self.parser.add_argument("user", nargs=1)
 
     def commands(self):
@@ -30,7 +29,8 @@ class SeenPlugin(StandardCommand):
             res = c.fetchone()
 
         _, ts, server, channel, nick, _, message = res
-        return u"I saw %s on %s in %s at %s saying '%s'." % (user, server, channel, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)), message)
+        msg =  u"I saw %s on %s in %s at %s saying '%s'." % (user, server, channel, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)), message)
+        return [("say_nolog", msg)]
 
 class OpHandler(ChannelJoinHandler):
     def execute(self, connection, event, extra, dbconn):
