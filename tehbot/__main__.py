@@ -56,10 +56,6 @@ try:
     bot.connect()
 except:
     Tehbot.print_exc()
-    try:
-        bot.quit()
-    finally:
-        sys.exit(-1)
 
 
 kbdthread.start()
@@ -77,7 +73,7 @@ while True:
         break
 
     try:
-        bot.process_once(0.2)
+        bot.process_once(0.05)
 
         try:
             cmd, args = queue.get(False)
