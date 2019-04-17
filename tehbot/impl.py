@@ -421,7 +421,7 @@ class TehbotImpl:
                     pw = args
                     if pw is not None and pw[0] == self.settings["privpassword"]:
                         self.priv_override(connection, event)
-                    elif not extra.has_key("auth_requested"):
+                    elif not self.privileged(connection, event) and not extra.has_key("auth_requested"):
                         self.actionqueue.put(([("doauth", None)], plugin, connection, event, extra))
                         return
 
