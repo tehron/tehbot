@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 from tehbot.plugins import *
-from tehbot.plugins import say, me
-import tehbot.plugins as plugins
 import irc.client
 import model
 import threading
@@ -50,7 +48,8 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
                 "party" : self.party_status,
                 }
 
-    def postinit(self, dbconn):
+    def initialize(self, dbconn):
+        PrefixHandler.initialize(self, dbconn)
         model.init()
         self.quit = False
         self.thread = threading.Thread(target=self.timerfunc)
