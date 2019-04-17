@@ -240,7 +240,7 @@ class TehbotImpl:
 
         while True:
             try:
-                plugin, args = self.queue.get(timeout=1)
+                plugin, args = self.queue.get(timeout=0.1)
                 connection, event, extra = args
                 res = self.exec_plugin(plugin, connection, event, extra, dbconn)
                 self.actionqueue.put((res, plugin, connection, event, extra))
@@ -279,8 +279,12 @@ class TehbotImpl:
             if conn is None:
                 print "Connecting to %s" % name
                 conn = self.core.reactor.server()
-                conn.name = name
-                self.reconnect(conn)
+                try:
+                    conn.name = name
+                    self.reconnect(conn)
+                except:
+                    self.core.print_exc()
+                    conn.close()
             else:
                 self.dispatcher.join_channels(conn)
 
