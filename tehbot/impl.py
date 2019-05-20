@@ -409,10 +409,9 @@ class TehbotImpl:
                     else:
                         mod, lineno, exc = res
                         msg = u"Error in %s(%d): %s" % (mod, lineno, plugins.Plugin.exc2str(exc))
-                    self.say(connection, target, typ, msg)
 
-                    if res is None:
-                        self.finalize()
+                    self.say(connection, target, typ, msg)
+                    self.finalize()
                 elif action == "config":
                     if not args:
                         msg = "That won't work"
