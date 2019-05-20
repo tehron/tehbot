@@ -15,6 +15,19 @@ regex = re.compile("(?:https?:\/\/)?(?:www\.)?youtu\.?be(?:\.com)?\/?.*(?:watch|
 info_cache = {}
 
 class YoutubeHandler(plugins.ChannelHandler):
+    def default_settings(self):
+        return { "key" : None, "referer" : None }
+
+    def config(self, args, dbconn):
+        if args[0] == "modify":
+            if args[1] == "set":
+                if args[2] in ["key", "referer"]:
+                    self.settings[args[2]] = args[3]
+                    self.save(dbconn)
+                    return "Okay"
+
+        return plugins.ChannelHandler.config(self, args, dbconn)
+
     def execute(self, connection, event, extra, dbconn):
         match = None
         try:
@@ -30,8 +43,8 @@ class YoutubeHandler(plugins.ChannelHandler):
         if vid in info_cache:
             txt = info_cache[vid] + " (cached)"
         else:
-            req = urllib2.Request(searchurl % (self.settings["youtube_api_key"], vid))
-            req.add_header("Referer", self.settings["youtube_referer"])
+            req = urllib2.Request(searchurl % (self.settings["key"], vid))
+            req.add_header("Referer", self.settings["referer"])
             resp = urllib2.urlopen(req).read()
             resp = json.loads(resp)
             entry = resp["items"][0]
