@@ -393,7 +393,7 @@ class TehbotImpl:
                         def cmd(p):
                             c = p.commands()
                             return c if isinstance(c, basestring) else "%s (%s)" % (c[0], ", ".join(c[1:]))
-                        enabled_cmds = sorted(cmd(p) for p in self.handlers if isinstance(p, plugins.Command) and list_all or p.is_enabled())
+                        enabled_cmds = sorted(cmd(p) for p in self.handlers if isinstance(p, plugins.Command) and (list_all or p.is_enabled()))
                         msg = "Available commands: %s" % ", ".join(enabled_cmds)
                     else:
                         if self.cmd_handlers.has_key(cmd):
