@@ -34,7 +34,6 @@ class QuitPlugin(StandardCommand, PrivilegedPlugin):
         return "quit"
 
     def execute_parsed(self, connection, event, extra, dbconn):
-        print "here QuitPlugin"
         msg = " ".join(self.pargs.msg)
         if self.pargs.restart:
             return [("restart", msg)]
@@ -66,6 +65,18 @@ class HelpPlugin(StandardCommand):
         cmd = self.pargs.command
         return [("help", (cmd, self.pargs.list_all))]
 
+class PluginsPlugin(StandardCommand):
+    def __init__(self):
+        StandardCommand.__init__(self)
+        self.parser.add_argument("-a", "--list-all", action='store_true')
+
+    def commands(self):
+        return "plugins"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
+        list_all = self.pargs.list_all
+        return [("plugins", (list_all,))]
+
 class ConfigPlugin(StandardCommand, PrivilegedPlugin):
     def __init__(self):
         StandardCommand.__init__(self)
@@ -87,9 +98,11 @@ class PingPlugin(StandardCommand):
         return "ping"
 
     def execute_parsed(self, connection, event, extra, dbconn):
+        now = time.time()
+        ts = extra["ts"]
         verbose = vars(self.pargs)["verbose"]
 
         if verbose:
-            return u"pong from Thread %s at %f" % (threading.current_thread().name, time.time())
+            return u"pong from Thread %s at %f (%.2fms)" % (threading.current_thread().name, now, (now - ts) * 1000.0)
 
         return "pong!"

@@ -1,5 +1,4 @@
 from tehbot.plugins import *
-import tehbot.plugins as plugins
 import shlex
 import importlib
 import urllib
@@ -8,7 +7,7 @@ import re
 import irc.client
 import time
 
-__all__ = [ "BaseSite", "NoSuchChallengeError", "NoSuchUserError", "ChallengesNotNumberedError", "UnknownReplyFormat", "plugins" ]
+__all__ = [ "BaseSite", "NoSuchChallengeError", "NoSuchUserError", "ChallengesNotNumberedError", "UnknownReplyFormat", "Plugin" ]
 
 path = __name__
 
@@ -104,12 +103,12 @@ class StatsPlugin(StandardCommand):
                 if res is None:
                     txt = u"No user is at rank %d." % rank
                 else:
-                    score, who, maxscore = res
-                    txt = ", ".join(who) + (" is" if len(who) == 1 else " are") + " at rank %d with %d (of %d) challenge%s solved." % (rank, score, maxscore, "s" if score else "")
+                    solved, who, solvedmax = res
+                    txt = ", ".join(who) + (" is" if len(who) == 1 else " are") + " at rank %d with %s (of %d) challenge%s solved." % (rank, solved, solvedmax, "s" if solved else "")
         except Exception as e:
-            return u"%s %s" % (plugins.red(site.prefix()), plugins.exc2str(e))
+            return u"%s %s" % (Plugin.red(site.prefix()), Plugin.exc2str(e))
 
-        return u"%s %s" % (plugins.green(site.prefix()), txt)
+        return u"%s %s" % (Plugin.green(site.prefix()), txt)
 
     def execute(self, connection, event, extra, dbconn):
         self.parser.set_defaults(user_or_rank=event.source.nick)
@@ -132,7 +131,7 @@ class StatsPlugin(StandardCommand):
         if glob:
             wcurl = "https://www.wechall.net/wechall.php?%s"
             username = str(rank) if rank else user
-            query = urllib.urlencode({"username" : plugins.to_utf8(username)})
+            query = urllib.urlencode({"username" : Plugin.to_utf8(username)})
             res = plugins.from_utf8(urllib2.urlopen(wcurl % query).read())
             return "\x0303[WeChall Global]\x03 " + res
 
@@ -163,7 +162,27 @@ class SolversPlugin(StandardCommand):
     def commands(self):
         return "solvers"
 
-    def solvers(self, site, challname, challnr, user):
+    def solvers(self, sitename, challenge_name_or_nr, numeric, user):
+        if not sitemap.has_key(sitename):
+            return u"Unknown site: %s" % sitename
+
+        try:
+            module = importlib.import_module("tehbot.plugins.challenge.%s" % sitemap[sitename])
+            globals()[module.__name__] = module
+            site = module.Site()
+            site.settings = self.settings
+        except Exception as e:
+            print e
+            return u"SiteImportError: %s" % sitename
+
+        try:
+            if numeric:
+                challname, challnr = None, site.str2nr(challenge_name_or_nr)
+            else:
+                challname, challnr = challenge_name_or_nr, None
+        except Exception as e:
+            return u"Error: %s" % unicode(e)
+
         try:
             user, nr, name, cnt, solvers, solved = site.solvers(challname, challnr, user)
             pre = u"Challenge Nr. %s, %s, " % (site.nr2str(nr), name) if nr is not None else u"Challenge '%s' " % name
@@ -177,9 +196,9 @@ class SolversPlugin(StandardCommand):
                 if solvers:
                     txt += u" Last by %s." % u", ".join(solvers[:5])
         except Exception as e:
-            return u"%s %s" % (plugins.red(site.prefix()), plugins.exc2str(e))
+            return u"%s %s" % (Plugin.red(site.prefix()), Plugin.exc2str(e))
 
-        return u"%s %s" % (plugins.green(site.prefix()), txt)
+        return u"%s %s" % (Plugin.green(site.prefix()), txt)
 
     def execute(self, connection, event, extra, dbconn):
         self.parser.set_defaults(site=event.target[1:] if irc.client.is_channel(event.target) else event.target)
@@ -191,30 +210,11 @@ class SolversPlugin(StandardCommand):
             challenge_name_or_nr = " ".join(pargs.challenge_name_or_nr)
             site = pargs.site.lower()
             user = pargs.user
+            numeric = pargs.numeric
         except Exception as e:
             return u"Error: %s" % unicode(e)
 
-        if not sitemap.has_key(site):
-            return u"Unknown site: %s" % site
-
-        try:
-            module = importlib.import_module("." + sitemap[site], path)
-            globals()[module.__name__] = module
-            site = module.Site()
-            site.settings = self.settings
-        except Exception as e:
-            print e
-            return u"SiteImportError: %s" % site
-
-        try:
-            if pargs.numeric:
-                challname, challnr = None, site.str2nr(challenge_name_or_nr)
-            else:
-                challname, challnr = challenge_name_or_nr, None
-        except Exception as e:
-            return u"Error: %s" % unicode(e)
-
-        return self.solvers(site, challname, challnr, user)
+        return self.solvers(site, challenge_name_or_nr, numeric, user)
 
 
 class RevelSolvedPoller(Poller):
@@ -292,7 +292,7 @@ class RevelSolvedPoller(Poller):
             else:
                 msg += " This challenge has been solved %d time%s before." % (solvercount, "" if solvercount == 1 else "s")
 
-            msgs.append(u"%s %s" % (plugins.green(self.prefix()), msg))
+            msgs.append(u"%s %s" % (Plugin.green(self.prefix()), msg))
 
         self.settings["ts"] = ts
         self.save(dbconn)

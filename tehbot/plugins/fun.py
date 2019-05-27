@@ -4,6 +4,7 @@ import urllib
 from random import *
 import shlex
 import irc.client
+import re
 
 class BlamePlugin(StandardCommand):
     def commands(self):
@@ -114,6 +115,14 @@ class BeerPlugin(StandardCommand):
     def commands(self):
         return "beer"
 
+    def initialize(self, dbconn):
+        StandardCommand.initialize(self, dbconn)
+        with dbconn:
+            dbconn.execute("CREATE TABLE if not exists BeerPlugin(id integer primary key, key varchar unique, value varchar)")
+            dbconn.executemany("insert or ignore into BeerPlugin values(?, ?, ?)", [
+                (1, "beers", 10),
+            ])
+
     def beers(self, dbconn):
         c = dbconn.execute("select value from BeerPlugin where key='beers'")
         res = c.fetchone()
@@ -179,6 +188,26 @@ class BeerPlugin(StandardCommand):
             else:
                 msg = u"and %s pass 1 of %d bottles of cold beer around to %s." % (event.source.nick, beers, pargs.recipient)
         return [("me", msg)]
+
+class BeerGrabber(ChannelHandler):
+    def execute(self, connection, event, extra, dbconn):
+        match = re.search(r'and (\w+) pass (\d+) of \d+ bottles of cold beer around to (\w+)\.', extra["msg"])
+        if match is None:
+            return
+
+        donor = match.group(1)
+        cnt = int(match.group(2))
+        who = match.group(3)
+
+        if cnt > 0 and who == connection.get_nickname():
+            with dbconn:
+                dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(cnt), ))
+
+            c = dbconn.execute("select value from BeerPlugin where key='beers'")
+            res = c.fetchone()
+            beers = int(res[0])
+
+            return u"Thanks, %s, I put it into my store! Beer count is %d now." % (donor, beers)
 
 from socket import *
 import string
@@ -373,23 +402,3 @@ class WixxerdPlugin(Command, PrivilegedPlugin):
                                      |        `.__,
                                      \_________.-"""
 
-import re
-class BeerGrabber(ChannelHandler):
-    def execute(self, connection, event, extra, dbconn):
-        match = re.search(r'and (\w+) pass (\d+) of \d+ bottles of cold beer around to (\w+)\.', extra["msg"])
-        if match is None:
-            return
-
-        donor = match.group(1)
-        cnt = int(match.group(2))
-        who = match.group(3)
-
-        if cnt > 0 and who == connection.get_nickname():
-            with dbconn:
-                dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(cnt), ))
-
-            c = dbconn.execute("select value from BeerPlugin where key='beers'")
-            res = c.fetchone()
-            beers = int(res[0])
-
-            return u"Thanks, %s, I put it into my store! Beer count is %d now." % (donor, beers)

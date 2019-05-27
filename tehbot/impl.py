@@ -16,6 +16,7 @@ from types import ModuleType
 import ctypes
 import shlex
 import argparse
+import pipes
 
 import tehbot.plugins as plugins
 from tehbot.settings import Settings
@@ -66,7 +67,7 @@ class TehbotImpl:
     def __init__(self, tehbot):
         self.core = tehbot
         self.dispatcher = Dispatcher(self)
-        self.handlers = []
+        self.plugins = []
         self.cmd_handlers = {}
         self.channel_handlers = []
         self.channel_join_handlers = []
@@ -75,7 +76,7 @@ class TehbotImpl:
         self.prefix_handlers = []
         self.queue = Queue(maxsize=0)
         self.workers = []
-        self.restart_workers = False
+        self.stop_workers = False
         self.quit_called = False
         self.restart_called = False
         self.dbfile = os.path.join(os.path.dirname(__file__), "../data/tehbot.sqlite")
@@ -87,7 +88,7 @@ class TehbotImpl:
         self.privqueue = defaultdict(Queue)
         self.settings = Settings()
         self.settings.load(self.dbconn)
-        self.plugins = []
+        self.modules = []
         pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
         self.regex = re.compile(pattern, re.UNICODE)
 
@@ -122,10 +123,11 @@ class TehbotImpl:
                 except:
                     pass
 
-        for h in self.handlers:
+        for h in self.plugins:
             h.deinit(self.dbconn)
 
         self.dbconn.close()
+        self.stop_workers = True
 
     def myprint(self, s):
         s = self.regex.sub("", s)
@@ -152,9 +154,9 @@ class TehbotImpl:
             self.dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?, ?)", (when, network, target, nick, typ, msg))
 
     def collect_plugins(self):
-        self.plugins = plugins.collect()
+        self.modules = plugins.collect()
 
-        for p in self.plugins:
+        for p in self.modules:
             for name, clazz in inspect.getmembers(p, lambda x: inspect.isclass(x) and issubclass(x, plugins.Plugin) and x.__module__ == p.__name__):
                 o = clazz()
                 o.initialize(self.dbconn)
@@ -185,7 +187,7 @@ class TehbotImpl:
                 else:
                     continue
 
-                self.handlers.append(o)
+                self.plugins.append(o)
 
         print " command handlers:", sorted(self.cmd_handlers)
         print " channel handlers:", sorted(h.__class__.__name__ for h in self.channel_handlers)
@@ -252,7 +254,7 @@ class TehbotImpl:
             except:
                 traceback.print_exc()
 
-            if self.quit_called or self.restart_workers:
+            if self.stop_workers:
                 break
 
         dbconn.close()
@@ -271,6 +273,14 @@ class TehbotImpl:
         for c in self.core.reactor.connections:
             if c.name == name:
                 return c
+        return None
+
+    def _get_plugin(self, pname):
+        for p in self.plugins:
+            name = p.__class__.__name__
+            if name.endswith(pname):
+                return p
+
         return None
 
     def connect(self):
@@ -393,7 +403,7 @@ class TehbotImpl:
                         def cmd(p):
                             c = p.commands()
                             return c if isinstance(c, basestring) else "%s (%s)" % (c[0], ", ".join(c[1:]))
-                        enabled_cmds = sorted(cmd(p) for p in self.handlers if isinstance(p, plugins.Command) and (list_all or p.is_enabled()))
+                        enabled_cmds = sorted(cmd(p) for p in self.plugins if isinstance(p, plugins.Command) and (list_all or p.is_enabled()))
                         msg = "Available commands: %s" % ", ".join(enabled_cmds)
                     else:
                         if self.cmd_handlers.has_key(cmd):
@@ -430,6 +440,31 @@ class TehbotImpl:
 
                     priv = "" if self.privileged(connection, event) else " \x02not\x02"
                     self.say(connection, target, typ, "%s is%s privileged" % (event.source.nick, priv))
+                elif action == "solvers":
+                    site, chall, numeric, user = args
+
+                    p = self._get_plugin("SolversPlugin")
+                    if p is None:
+                        return
+
+                    cmd = "solvers"
+                    newargs = ""
+                    newargs = '-u %s %s' % (user, pipes.quote(chall))
+                    if site is not None:
+                        newargs = newargs + " -s %s" % pipes.quote(site)
+                    self.queue.put((p, (connection, event, {"msg":"", "cmd":cmd, "args":newargs})))
+                elif action == "plugins":
+                    list_all, = args
+                    pre = "Loaded Plugins" if list_all else "Enabled Plugins"
+                    pl = []
+                    for p in self.plugins:
+                        name = p.__class__.__name__
+                        if list_all:
+                            pl.append(name + ("[x]" if p.is_enabled() else "[ ]"))
+                        elif p.is_enabled():
+                            pl.append(name)
+                    msg = "%s: %s" % (pre, ", ".join(sorted(pl)))
+                    self.say(connection, target, typ, msg)
         finally:
             self.actionqueue.task_done()
 
@@ -447,10 +482,11 @@ class TehbotImpl:
         self.core.reactor.disconnect_all(msg or "I'll be back!")
 
     def reload(self):
-        self.restart_workers = True
+        #TODO deinit plugins
         return self.core.reload()
 
     def finalize(self):
+        #TODO init plugins
         self.core.finalize()
         self.connect()
 
@@ -575,7 +611,7 @@ class TehbotImpl:
                     self.settings.save(dbconn)
                     return "Okay"
         else:
-            for h in self.handlers:
+            for h in self.plugins:
                 if h.__class__.__name__ == handler:
                     return h.config(arr, dbconn)
 
@@ -770,7 +806,7 @@ class Dispatcher:
 
         self.tehbot.logmsg(time.time(), connection.name, target, nick, msg, True, 0)
 
-    def react_to_command(self, connection, event, msg, plugin=None):
+    def react_to_command(self, connection, event, msg, ts, plugin=None):
         if not msg:
             return
 
@@ -781,9 +817,10 @@ class Dispatcher:
             plugin = self.tehbot.cmd_handlers[cmd]
 
         if plugin:
-            self.tehbot.queue.put((plugin, (connection, event, {"msg":msg, "cmd":cmd, "args":args})))
+            self.tehbot.queue.put((plugin, (connection, event, {"msg":msg, "cmd":cmd, "args":args, "ts":ts})))
 
     def on_pubmsg(self, connection, event):
+        now = time.time()
         msg = event.arguments[0]
         typ = self.tehbot.settings.log_type(connection.name, event.target)
         self.tehbot.logmsg(time.time(), connection.name, event.target, event.source.nick, msg, False, typ)
@@ -791,27 +828,28 @@ class Dispatcher:
 
         if msg:
             if msg[0] == cmdprefix:
-                self.react_to_command(connection, event, msg[1:])
+                self.react_to_command(connection, event, msg[1:], now)
             else:
                 for ph in self.tehbot.prefix_handlers:
                     if msg[0] == ph.command_prefix():
-                        self.react_to_command(connection, event, msg[1:], ph)
+                        self.react_to_command(connection, event, msg[1:], now, ph)
 
             for h in self.tehbot.channel_handlers:
                 self.tehbot.queue.put((h, (connection, event, {"msg":msg})))
 
     def on_privmsg(self, connection, event):
+        now = time.time()
         msg = event.arguments[0]
         self.tehbot.logmsg(time.time(), connection.name, event.source.nick, event.source.nick, msg, False, 1)
         cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
             if msg[0] == cmdprefix:
-                self.react_to_command(connection, event, msg[1:])
+                self.react_to_command(connection, event, msg[1:], now)
             else:
                 for ph in self.tehbot.prefix_handlers:
                     if msg[0] == ph.command_prefix():
-                        self.react_to_command(connection, event, msg[1:], ph)
+                        self.react_to_command(connection, event, msg[1:], now, ph)
 
     def on_nick(self, connection, event):
         oldnick = event.source.nick

@@ -1,5 +1,4 @@
 from tehbot.plugins import *
-import tehbot.plugins as plugins
 import urllib
 import urllib2
 import json
@@ -16,18 +15,16 @@ class TranslatePlugin(StandardCommand):
         return ["translate", "tr"]
 
     def execute_parsed(self, connection, event, extra, dbconn):
-        prefix = "[Translate]"
-
         if not self.pargs.words:
             return
 
         headers = { 'User-Agent' : 'Mozilla/5.0 (X11; Linux x86_64; rv:14.0) Gecko/20100101 Firefox/14.0.1' }
         data = {
                 'client' : 'gtx',
-                'sl' : to_utf8(self.pargs.from_lang),
-                'tl' : to_utf8(self.pargs.to_lang),
+                'sl' : Plugin.to_utf8(self.pargs.from_lang),
+                'tl' : Plugin.to_utf8(self.pargs.to_lang),
                 'dt' : 't',
-                'q' : ' '.join(map(to_utf8, self.pargs.words))
+                'q' : ' '.join(map(Plugin.to_utf8, self.pargs.words))
         }
 
         try:
@@ -36,8 +33,9 @@ class TranslatePlugin(StandardCommand):
             req = urllib2.Request(url, headers=headers)
             reply = json.load(urllib2.urlopen(req, timeout=5))
             txt = reply[0][0][0]
-            answer = u"%s %s" % (plugins.green(prefix), txt)
+            prefix = "[Translation %s->%s]" % (reply[2], self.pargs.to_lang)
+            answer = u"%s %s" % (Plugin.green(prefix), txt)
         except Exception as e:
-            answer = u"%s %s" % (plugins.red(prefix), unicode(e))
+            answer = u"%s %s" % (Plugin.red("[Translation]"), unicode(e))
 
         return answer
