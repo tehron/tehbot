@@ -63,9 +63,6 @@ class Plugin:
     def deinit(self, dbconn):
         pass
 
-    def finalize(self):
-        pass
-
     def is_enabled(self):
         return self.settings["enabled"]
 
@@ -263,7 +260,7 @@ class Poller(Announcer):
 
 def collect():
     path = os.path.dirname(__file__)
-    plugins = []
+    modules = []
 
     for n in sorted(os.listdir(path)):
         if os.path.isdir("%s/%s" % (path, n)):
@@ -275,6 +272,6 @@ def collect():
             m = base
 
         p = importlib.import_module("tehbot.plugins.%s" % m)
-        plugins.append(p)
+        modules.append(p)
 
-    return plugins
+    return modules

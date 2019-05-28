@@ -88,7 +88,6 @@ class TehbotImpl:
         self.privqueue = defaultdict(Queue)
         self.settings = Settings()
         self.settings.load(self.dbconn)
-        self.modules = []
         pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
         self.regex = re.compile(pattern, re.UNICODE)
 
@@ -153,10 +152,8 @@ class TehbotImpl:
         with self.dbconn:
             self.dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?, ?)", (when, network, target, nick, typ, msg))
 
-    def collect_plugins(self):
-        self.modules = plugins.collect()
-
-        for p in self.modules:
+    def load_plugins(self, modules):
+        for p in modules:
             for name, clazz in inspect.getmembers(p, lambda x: inspect.isclass(x) and issubclass(x, plugins.Plugin) and x.__module__ == p.__name__):
                 o = clazz()
                 o.initialize(self.dbconn)
@@ -197,7 +194,7 @@ class TehbotImpl:
         print "   prefix handlers", sorted(h.__class__.__name__ for h in self.prefix_handlers)
 
     def gather_modules(self):
-        modules = set()
+        modules = set(plugins.collect())
         _gather(plugins, modules)
         modules.remove(plugins)
         return modules
@@ -482,11 +479,9 @@ class TehbotImpl:
         self.core.reactor.disconnect_all(msg or "I'll be back!")
 
     def reload(self):
-        #TODO deinit plugins
         return self.core.reload()
 
     def finalize(self):
-        #TODO init plugins
         self.core.finalize()
         self.connect()
 

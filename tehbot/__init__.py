@@ -23,10 +23,9 @@ class Tehbot:
             reload(impl)
             reload(plugins)
             self.newimpl = impl.TehbotImpl(self)
-            plugins._tehbot = self.newimpl
             modules = self.newimpl.gather_modules()
             map(reload, modules)
-            self.newimpl.collect_plugins()
+            self.newimpl.load_plugins(modules)
         except Exception as e:
             Tehbot.print_exc()
             self.newimpl = None
@@ -54,7 +53,7 @@ class Tehbot:
             Tehbot.print_exc()
 
         self.impl = self.newimpl
-        self.newimpl = None
+        del self.newimpl
 
     @staticmethod
     def print_exc():
