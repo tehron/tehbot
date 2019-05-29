@@ -212,7 +212,6 @@ class BeerGrabber(ChannelHandler):
 from socket import *
 import string
 import time
-import tehbot.plugins as plugins
 class BOSPlugin(StandardCommand):
     """Can you solve The BrownOS? [WeChall]"""
     def __init__(self):
@@ -254,7 +253,7 @@ class BOSPlugin(StandardCommand):
         finally:
             sock.close()
 
-        return plugins.shorten(ret, 450)
+        return Plugin.shorten(ret, 450)
 
 class DecidePlugin(StandardCommand):
     def __init__(self):
