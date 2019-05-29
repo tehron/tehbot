@@ -92,6 +92,11 @@ class TehbotImpl:
         self.regex = re.compile(pattern, re.UNICODE)
 
     def postinit(self):
+        with self.dbconn:
+            self.dbconn.execute("create table if not exists Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, type integer, message varchar)")
+            self.dbconn.execute("create index if not exists idx_Messages_nick on Messages(nick)")
+            self.dbconn.execute("create index if not exists idx_Messages_ts on Messages(ts)")
+
         self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
 
         for p in self.pollers:
@@ -368,10 +373,10 @@ class TehbotImpl:
                     getattr(self, action)(connection, target, typ, msg)
                 elif action == "say_nolog":
                     msg = args
-                    getattr(self, action)(connection, target, 2, msg)
+                    self.say(connection, target, 2, msg)
                 elif action == "say_nick":
                     msg = args
-                    getattr(self, action)(connection, target, event.source.nick, typ, msg)
+                    self.say_nick(connection, target, event.source.nick, typ, msg)
                 elif action == "nopriv":
                     self.say(connection, target, typ, u"%s is \x02not\x02 privileged" % event.source.nick)
                     break
