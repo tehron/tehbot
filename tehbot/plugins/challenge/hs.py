@@ -16,7 +16,7 @@ class Site(BaseSite):
         return u"http://www.happy-security.de"
 
     def userstats(self, user):
-        page = urllib2.urlopen(url1 % plugins.to_latin1(user), timeout=5).read()
+        page = urllib2.urlopen(url1 % Plugin.to_latin1(user), timeout=5).read()
         page = page.decode("latin1")
 
         match = page.split(":")
@@ -30,7 +30,7 @@ class Site(BaseSite):
             if int(rank) > 1:
                 try:
                     user2 = Site.hs_rank_to_user(int(rank) - 1)
-                    result = urllib2.urlopen(url1 % plugins.to_latin1(user2), timeout=5).read().decode("latin1").split(":")
+                    result = urllib2.urlopen(url1 % Plugin.to_latin1(user2), timeout=5).read().decode("latin1").split(":")
                     if len(result) == 6:
                         rank2, challs_solved2, challs_total2, users_total2, challs_contributed2, user2 = result
                         count = int(challs_solved2) - int(challs_solved)
@@ -84,7 +84,7 @@ class Site(BaseSite):
 
     @staticmethod
     def solved(user, challenge_name):
-        tree = lxml.html.parse(url3 % plugins.to_latin1(user))
+        tree = lxml.html.parse(url3 % Plugin.to_latin1(user))
         for cat in tree.xpath("//td[@class='middle']//table[@class='mtable']"):
             for row in cat.xpath("tr"):
                 chall_link = row.xpath("td[2]//a[1]")

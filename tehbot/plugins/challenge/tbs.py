@@ -17,7 +17,7 @@ class Site(BaseSite):
 
     def userstats_api(self, user):
         url = "http://www.bright-shadows.net/userdata.php?username=%s"
-        html = urllib2.urlopen(url % plugins.to_utf8(user), timeout=5).read()
+        html = urllib2.urlopen(url % Plugin.to_utf8(user), timeout=5).read()
         if html == "Unknown User":
             return None
         real_user, rank, users_total, challs_solved, challs_total = html.split(":")
@@ -25,7 +25,7 @@ class Site(BaseSite):
 
     def userstats_html(self, user):
         url = "http://www.bright-shadows.net/ranking.php?perpage=1&showuser=%s"
-        tree = lxml.html.parse(urllib2.urlopen(url % (plugins.to_utf8(user))))
+        tree = lxml.html.parse(urllib2.urlopen(url % (Plugin.to_utf8(user))))
         rank = int(float(tree.xpath("//td[@class='rank_rank']")[0].text_content()))
         real_user = tree.xpath("//td[@class='rank_user']")[0].text_content()
         challs = int(tree.xpath("//td[@class='rank_solved']")[0].text_content())

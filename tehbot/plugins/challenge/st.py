@@ -18,8 +18,8 @@ class Site(BaseSite):
     def userstats_api(self, user):
         url = "https://www.securitytraps.pl/wcscore.php?uname=%s&key=%s"
         authkey = self.settings["securitytraps_api_key"]
-        html = urllib2.urlopen(url % (plugins.to_utf8(user), authkey), timeout=5).read()
+        html = urllib2.urlopen(url % (Plugin.to_utf8(user), authkey), timeout=5).read()
         if html == "0":
             return None
-        rank, challs_solved, challs_total, users_total, score = html.split(":")
-        return user, str(int(challs_solved)), int(challs_total), str(int(rank)), int(users_total), int(score), None, None
+        rank, challs_solved, challs_total, users_total, scoremax = html.split(":")
+        return user, str(int(challs_solved)), int(challs_total), str(int(rank)), int(users_total), None, int(scoremax), None

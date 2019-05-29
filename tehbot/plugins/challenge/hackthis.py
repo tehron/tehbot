@@ -67,7 +67,7 @@ class Site(BaseSite):
         return (tree, data)
 
     def userstats(self, user):
-        tree, data = self.helper(urllib.quote(plugins.to_utf8(user).replace("/", "")))
+        tree, data = self.helper(urllib.quote(Plugin.to_utf8(user).replace("/", "")))
 
         if data is None:
             return None

@@ -22,7 +22,7 @@ class Site(BaseSite):
 
     def userstats(self, user):
         url = "https://www.revolutionelite.co.uk/w3ch4ll/userscore.php?username=%s"
-        page = urllib2.urlopen(url % (plugins.to_utf8(user)), timeout=5).read()
+        page = urllib2.urlopen(url % (Plugin.to_utf8(user)), timeout=5).read()
 
         if page == "0":
             return None
@@ -115,7 +115,7 @@ class Site(BaseSite):
 
     def solvers(self, challname, challnr, user):
         if user:
-            url = Site.profileurl() % plugins.to_utf8(user)
+            url = Site.profileurl() % Plugin.to_utf8(user)
             xp = "//div[@class='content']/center[2]/table/tr"
             xpnr = "td[1]"
             xpname = "td[2]"

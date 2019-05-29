@@ -9,8 +9,6 @@ import time
 
 __all__ = [ "BaseSite", "NoSuchChallengeError", "NoSuchUserError", "ChallengesNotNumberedError", "UnknownReplyFormat", "Plugin" ]
 
-path = __name__
-
 sitemap = {
     "rev" : "revel",
     "revel" : "revel",
@@ -132,15 +130,15 @@ class StatsPlugin(StandardCommand):
             wcurl = "https://www.wechall.net/wechall.php?%s"
             username = str(rank) if rank else user
             query = urllib.urlencode({"username" : Plugin.to_utf8(username)})
-            res = plugins.from_utf8(urllib2.urlopen(wcurl % query).read())
+            res = Plugin.from_utf8(urllib2.urlopen(wcurl % query).read())
             return "\x0303[WeChall Global]\x03 " + res
 
         if not sitemap.has_key(site):
             return u"Unknown site: %s" % site
 
         try:
-            module = importlib.import_module("." + sitemap[site], path)
-            globals()[module.__name__] = module
+            module = importlib.import_module("tehbot.plugins.challenge.%s" % sitemap[site])
+            reload(module)
             site = module.Site()
             site.settings = self.settings
         except Exception as e:
@@ -168,7 +166,7 @@ class SolversPlugin(StandardCommand):
 
         try:
             module = importlib.import_module("tehbot.plugins.challenge.%s" % sitemap[sitename])
-            globals()[module.__name__] = module
+            reload(module)
             site = module.Site()
             site.settings = self.settings
         except Exception as e:
@@ -286,7 +284,7 @@ class RevelSolvedPoller(Poller):
         for tssolve, username, challname, solvercount in sorted(entries):
             ts = tssolve
 
-            msg = "%s has just solved %s." % (plugins.bold(username), plugins.bold(challname))
+            msg = "%s has just solved %s." % (Plugin.bold(username), Plugin.bold(challname))
             if solvercount <= 0:
                 msg += " This challenge has never been solved before!"
             else:

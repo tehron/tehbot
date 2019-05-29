@@ -16,7 +16,7 @@ class Site(BaseSite):
         return "https://www.rankk.org"
 
     def userstats(self, user):
-        url = userurl % urllib.quote_plus(plugins.to_utf8(user))
+        url = userurl % urllib.quote_plus(Plugin.to_utf8(user))
         tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
 
         content = tree.xpath("//div[@id='main']")
@@ -108,7 +108,7 @@ class Site(BaseSite):
 
     @staticmethod
     def user_solved(user, challname):
-        url = userurl % urllib.quote_plus(plugins.to_utf8(user))
+        url = userurl % urllib.quote_plus(Plugin.to_utf8(user))
         tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
 
         content = tree.xpath("//div[@id='main']")
