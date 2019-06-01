@@ -13,7 +13,7 @@ import json
 import importlib
 import inspect
 
-__all__ = ["Plugin", "PrivilegedPlugin", "AuthedPlugin", "Command", "StandardCommand", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler"]
+__all__ = ["Plugin", "Command", "StandardCommand", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler"]
 
 class ArgumentParserError(Exception):
     pass
@@ -65,6 +65,18 @@ class Plugin:
 
     def is_enabled(self):
         return self.settings["enabled"]
+
+    def is_privileged(self, extra):
+        return extra["priv"]
+
+    def is_authed(self, extra):
+        return extra["auth"]
+
+    def request_priv(self, extra):
+        return [("nopriv", None)] if extra.has_key("auth_requested") else [("doauth", None)]
+
+    def request_auth(self, extra):
+        return [("noauth", None)] if extra.has_key("auth_requested") else [("doauth", None)]
 
     def config(self, args, dbconn):
         if args[0] == "modify":
@@ -161,14 +173,30 @@ class Plugin:
         msg = unicode(ex)
         return u"%s: %s" % (cls, msg) if msg else cls
 
-class PrivilegedPlugin(Plugin):
-    pass
+    @staticmethod
+    def collect():
+        path = os.path.dirname(__file__)
+        modules = []
 
-class AuthedPlugin(Plugin):
-    pass
+        for n in sorted(os.listdir(path)):
+            if os.path.isdir("%s/%s" % (path, n)):
+                m = n
+            else:
+                base, ext = os.path.splitext(n)
+                if ext != ".py" or base == "__init__":
+                    continue
+                m = base
+
+            p = importlib.import_module("tehbot.plugins.%s" % m)
+            modules.append(p)
+
+        return modules
 
 class Command(Plugin):
     """This is where the help text goes."""
+
+    def commands(self):
+        return None
 
 class StandardCommand(Command):
     def __init__(self):
@@ -201,77 +229,29 @@ class Announcer(Plugin):
         Plugin.__init__(self)
         self.quit = False
 
-    def callme(self):
-        #myprint("%s called" % self.__class__.__name__)
-        tgts = []
-        if "__all__" in self.where():
-            for name, params in settings.connections().items():
-                tgts.append((name, params["channels"]))
-        else:
-            tgts = self.where()
+    def default_settings(self):
+        return { "at" : 0, "where" : [] }
 
-        for network, channels in tgts.items():
-            conn = self.tehbot._get_connection(network)
-            if conn is None:
-                continue
+    def at(self):
+        return self.settings["at"]
 
-            self.tehbot.core.queue.put((self, (conn, None, {"channels":channels})))
+    def where(self):
+        return self.settings["where"]
 
-    def schedule(self, at):
-        if self.quit or not self.settings["enabled"]:
-            return
-
-        self.tehbot.core.reactor.scheduler.execute_at(at, self.callme)
-
-    def handle(self, connection, event, extra, dbconn):
-        if not self.settings["enabled"]:
-            return
-
-        try:
-            msg = self.execute(connection, event, extra, dbconn)
-
-            for t in extra["channels"]:
-                say(connection, t, msg, dbconn)
-        finally:
-            tomorrow = datetime.date.today() + datetime.timedelta(days=1)
-            at = int(tomorrow.strftime("%s")) + self.at()
-            myprint("%s scheduled at %d" % (self.__class__.__name__, at))
-            self.schedule(at)
+    def next_at(self):
+        today = datetime.date.today()
+        at = int(today.strftime("%s")) + self.at()
+        if at < time.time():
+            at += int(datetime.timedelta(days=1).total_seconds())
+        return at
 
 class Poller(Announcer):
-    def schedule(self, timeout):
-        if self.quit or not self.settings["enabled"]:
-            return
+    def default_settings(self):
+        return { "timeout" : 10, "where" : {} }
 
-        self.tehbot.core.reactor.scheduler.execute_after(timeout, self.callme)
+    def timeout(self):
+        return self.settings["timeout"]
 
-    def handle(self, connection, event, extra, dbconn):
-        if not self.settings["enabled"]:
-            return
-
-        try:
-            msg = self.execute(connection, event, extra, dbconn)
-
-            for t in extra["channels"]:
-                say(connection, t, msg, dbconn)
-        finally:
-            self.schedule(self.timeout())
-
-
-def collect():
-    path = os.path.dirname(__file__)
-    modules = []
-
-    for n in sorted(os.listdir(path)):
-        if os.path.isdir("%s/%s" % (path, n)):
-            m = n
-        else:
-            base, ext = os.path.splitext(n)
-            if ext != ".py" or base == "__init__":
-                continue
-            m = base
-
-        p = importlib.import_module("tehbot.plugins.%s" % m)
-        modules.append(p)
-
-    return modules
+    def next_at(self):
+        at = time.time() + self.timeout()
+        return at

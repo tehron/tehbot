@@ -18,7 +18,8 @@ import shlex
 import argparse
 import pipes
 
-import tehbot.plugins as plugins
+import tehbot.plugins
+from tehbot.plugins import *
 from tehbot.settings import Settings
 import locale
 encoding = locale.getdefaultlocale()[1] or "ascii"
@@ -99,18 +100,18 @@ class TehbotImpl:
 
         self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
 
-        for p in self.pollers:
-            p.schedule(20)
-
-        for a in self.announcers:
-            today = datetime.date.today()
-            at = int(today.strftime("%s")) + a.at()
-            if at < time.time():
-                at += int(datetime.timedelta(days=1).total_seconds())
-            print "Scheduling %s at %d" % (a.__class__.__name__, at)
-            a.schedule(at)
+        for p in self.pollers + self.announcers:
+            self.schedule(p)
 
         self.start_workers()
+
+    def schedule(self, p):
+        def callme():
+            self.queue.put((p, (None, None, None)))
+
+        at = p.next_at()
+        self.myprint("Scheduling %s at %s" % (p.__class__.__name__, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(at))))
+        self.core.reactor.scheduler.execute_at(at, callme)
 
     def deinit(self):
         self.core.reactor.remove_global_handler("all_events", self.dispatcher.dispatch)
@@ -159,11 +160,11 @@ class TehbotImpl:
 
     def load_plugins(self, modules):
         for p in modules:
-            for name, clazz in inspect.getmembers(p, lambda x: inspect.isclass(x) and issubclass(x, plugins.Plugin) and x.__module__ == p.__name__):
+            for name, clazz in inspect.getmembers(p, lambda x: inspect.isclass(x) and issubclass(x, tehbot.plugins.Plugin) and x.__module__ == p.__name__):
                 o = clazz()
                 o.initialize(self.dbconn)
 
-                if isinstance(o, plugins.Command):
+                if isinstance(o, tehbot.plugins.Command):
                     try:
                         cmds = o.commands()
                     except AttributeError as e:
@@ -176,15 +177,15 @@ class TehbotImpl:
                             self.myprint('Warning: Duplicate command "%s" defined (class %s)!' % (cmd, name))
                         else:
                             self.cmd_handlers[cmd] = o
-                elif isinstance(o, plugins.ChannelHandler):
+                elif isinstance(o, tehbot.plugins.ChannelHandler):
                     self.channel_handlers.append(o)
-                elif isinstance(o, plugins.ChannelJoinHandler):
+                elif isinstance(o, tehbot.plugins.ChannelJoinHandler):
                     self.channel_join_handlers.append(o)
-                elif isinstance(o, plugins.Poller):
+                elif isinstance(o, tehbot.plugins.Poller):
                     self.pollers.append(o)
-                elif isinstance(o, plugins.Announcer):
+                elif isinstance(o, tehbot.plugins.Announcer):
                     self.announcers.append(o)
-                elif isinstance(o, plugins.PrefixHandler):
+                elif isinstance(o, tehbot.plugins.PrefixHandler):
                     self.prefix_handlers.append(o)
                 else:
                     continue
@@ -199,45 +200,34 @@ class TehbotImpl:
         print "   prefix handlers", sorted(h.__class__.__name__ for h in self.prefix_handlers)
 
     def gather_modules(self):
-        modules = set(plugins.collect())
-        _gather(plugins, modules)
-        modules.remove(plugins)
+        modules = set(tehbot.plugins.Plugin.collect())
+        _gather(tehbot.plugins, modules)
+        modules.remove(tehbot.plugins)
         return modules
 
     def exec_plugin(self, plugin, connection, event, extra, dbconn):
         if not plugin.is_enabled():
             return
 
-        if irc.client.is_channel(event.target):
-            if not plugin.pub_allowed:
-                return
-        else:
-            if not plugin.priv_allowed:
-                return
+        if event:
+            if irc.client.is_channel(event.target):
+                if not plugin.pub_allowed:
+                    return
+            else:
+                if not plugin.priv_allowed:
+                    return
 
-        if isinstance(plugin, plugins.PrivilegedPlugin) and not self.privileged(connection, event):
-            res = self.request_priv(extra)
-        elif isinstance(plugin, plugins.AuthedPlugin) and not self.authed(connection, event):
-            res = self.request_auth(extra)
-        else:
-            res = plugin.execute(connection, event, extra, dbconn)
+            extra["priv"] = event.source.nick in self.privusers[connection]
+            extra["auth"] = event.source.nick in self.authusers[connection]
 
+        res = plugin.execute(connection, event, extra, dbconn)
         return res
-
-    def privileged(self, connection, event):
-        return event.source.nick in self.privusers[connection]
-
-    def authed(self, connection, event):
-        return event.source.nick in self.authusers[connection]
-
-    def request_priv(self, extra):
-        return [("nopriv", None)] if extra.has_key("auth_requested") else [("doauth", None)]
-
-    def request_auth(self, extra):
-        return [("noauth", None)] if extra.has_key("auth_requested") else [("doauth", None)]
 
     def priv_override(self, connection, event):
         self.privusers[connection].add(event.source.nick)
+
+    def privileged(self, connection, event):
+        return event.source.nick in self.privusers[connection]
 
     def _process(self):
         dbconn = sqlite3.connect(self.dbfile)
@@ -254,7 +244,7 @@ class TehbotImpl:
             except SystemExit:
                 raise
             except:
-                traceback.print_exc()
+                self.core.print_exc()
 
             if self.stop_workers:
                 break
@@ -342,7 +332,7 @@ class TehbotImpl:
             if not m.strip():
                 continue
             m2 = "%s: %s" % (nick, m) if nick else m
-            for msplit in plugins.Plugin.split(m2).split("\n"):
+            for msplit in tehbot.plugins.Plugin.split(m2).split("\n"):
                 func(target, msplit)
                 self.logmsg(time.time(), connection.name, target, connection.get_nickname(), msplit, False, typ)
 
@@ -355,19 +345,34 @@ class TehbotImpl:
             return
 
         try:
-            if irc.client.is_channel(event.target):
-                target = event.target
-                typ = 0
-            else:
-                target = event.source.nick
-                typ = 1
+            self.process_actions(actions, plugin, connection, event, extra)
+        finally:
+            try:
+                if isinstance(plugin, tehbot.plugins.Announcer):
+                    self.schedule(plugin)
+            except:
+                self.core.print_exc()
 
-            if isinstance(actions, basestring):
-                actions = [("say", actions)]
-            elif actions is None:
-                actions = [("none", None)]
+            self.actionqueue.task_done()
 
-            for action, args in actions:
+    def process_actions(self, actions, plugin, connection, event, extra):
+        if event is None:
+            target = None
+            typ = 0
+        elif irc.client.is_channel(event.target):
+            target = event.target
+            typ = 0
+        else:
+            target = event.source.nick
+            typ = 1
+
+        if isinstance(actions, basestring):
+            actions = [("say", actions)]
+        elif actions is None:
+            actions = [("none", None)]
+
+        for action, args in actions:
+            try:
                 if action == "say" or action == "me" or action == "notice":
                     msg = args
                     getattr(self, action)(connection, target, typ, msg)
@@ -405,7 +410,7 @@ class TehbotImpl:
                         def cmd(p):
                             c = p.commands()
                             return c if isinstance(c, basestring) else "%s (%s)" % (c[0], ", ".join(c[1:]))
-                        enabled_cmds = sorted(cmd(p) for p in self.plugins if isinstance(p, plugins.Command) and (list_all or p.is_enabled()))
+                        enabled_cmds = sorted(cmd(p) for p in self.plugins if isinstance(p, tehbot.plugins.Command) and (list_all or p.is_enabled()))
                         msg = "Available commands: %s" % ", ".join(enabled_cmds)
                     else:
                         if self.cmd_handlers.has_key(cmd):
@@ -414,16 +419,18 @@ class TehbotImpl:
                             msg = "Unknown command: %s" % cmd
                     self.say(connection, target, typ, msg)
                 elif action == "reload":
-                    res = self.reload()
+                    try:
+                        res = self.reload()
 
-                    if res is None:
-                        msg = "Okay"
-                    else:
-                        mod, lineno, exc = res
-                        msg = u"Error in %s(%d): %s" % (mod, lineno, plugins.Plugin.exc2str(exc))
+                        if res is None:
+                            msg = "Okay"
+                        else:
+                            mod, lineno, exc = res
+                            msg = u"Error in %s(%d): %s" % (mod, lineno, tehbot.plugins.Plugin.exc2str(exc))
 
-                    self.say(connection, target, typ, msg)
-                    self.finalize()
+                        self.say(connection, target, typ, msg)
+                    finally:
+                        self.finalize()
                 elif action == "config":
                     if not args:
                         msg = "That won't work"
@@ -467,8 +474,32 @@ class TehbotImpl:
                             pl.append(name)
                     msg = "%s: %s" % (pre, ", ".join(sorted(pl)))
                     self.say(connection, target, typ, msg)
-        finally:
-            self.actionqueue.task_done()
+                elif action == "announce":
+                    where, msg = args
+                    print where, msg
+
+                    tgts = []
+                    if "__all__" in where:
+                        for conn in self.core.reactor.connections:
+                            for ch in conn.channels:
+                                tgts.append((conn, ch))
+                    else:
+                        for network in where:
+                            conn = self._get_connection(network)
+                            if conn is None:
+                                continue
+                            if "__all__" in where[network]:
+                                for ch in conn.channels:
+                                    tgts.append((conn, ch))
+                            else:
+                                for ch in where[network]:
+                                    if ch in conn.channels:
+                                        tgts.append((conn, ch))
+
+                    for conn, channel in tgts:
+                        self.say(conn, channel, typ, msg)
+            except:
+                self.core.print_exc()
 
     def quit(self, msg=None):
         print "quit called"

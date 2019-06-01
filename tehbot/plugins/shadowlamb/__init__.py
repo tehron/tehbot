@@ -12,7 +12,7 @@ import os.path
 #_ = t.gettext
 _ = lambda x: x
 
-class ShadowlambPlugin(StandardCommand, PrivilegedPlugin):
+class ShadowlambPlugin(StandardCommand):
     """What, you don't know what shadowlamb is??"""
 
     def __init__(self):
@@ -22,16 +22,18 @@ class ShadowlambPlugin(StandardCommand, PrivilegedPlugin):
         return "sl"
 
     def execute_parsed(self, connection, event, extra, dbconn):
+        if not self.is_privileged(extra):
+            return self.request_priv(extra)
+
         return "Shadowlamb is teh greatest!"
 
-class ShadowlambHandler(PrefixHandler, AuthedPlugin):
+class ShadowlambHandler(PrefixHandler):
     def command_prefix(self):
         #return "+"
         return u'\u00a5';
 
     def __init__(self):
         PrefixHandler.__init__(self)
-        AuthedPlugin.__init__(self)
         self.cmd2action = {
                 "start" : self.start,
                 "reset" : self.reset,
@@ -50,7 +52,7 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
 
     def initialize(self, dbconn):
         PrefixHandler.initialize(self, dbconn)
-        model.init()
+        #model.init()
         self.quit = False
         self.thread = threading.Thread(target=self.timerfunc)
         self.thread.start()
@@ -317,6 +319,9 @@ class ShadowlambHandler(PrefixHandler, AuthedPlugin):
         return "hu!? should never get here"
 
     def execute(self, connection, event, extra, dbconn):
+        if not self.is_authed(extra):
+            return self.request_auth(extra)
+
         cmd = extra["cmd"].lower()
         msg_type = "say_nick" if irc.client.is_channel(event.target) else "notice"
 

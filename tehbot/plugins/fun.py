@@ -342,11 +342,14 @@ class HugPlugin(StandardCommand):
 
         return [("me", msg)]
 
-class RoflcopterPlugin(Command, PrivilegedPlugin):
+class RoflcopterPlugin(Command):
     def commands(self):
         return "roflcopter"
 
     def execute(self, connection, event, extra, dbconn):
+        if not self.is_privileged(extra):
+            return self.request_priv(extra)
+
         return r"""    ROFL:ROFL:ROFL:ROFL
          ___^___ _
  L    __/      [] \
@@ -373,11 +376,14 @@ class RouletteHandler(ChannelHandler):
         if msg.find("BANG") > -1 or msg.find("BOOM") > -1:
             return "!roulette"
 
-class WixxerdPlugin(Command, PrivilegedPlugin):
+class WixxerdPlugin(Command):
     def commands(self):
         return "wixxerd"
 
     def execute(self, connection, event, extra, dbconn):
+        if not self.is_privileged(extra):
+            return self.request_priv(extra)
+
         return r"""       .##...##..######..##..##..##..##..######..#####...#####..
        .##...##....##.....####....####...##......##..##..##..##.
        .##.#.##....##......##......##....####....#####...##..##.

@@ -14,17 +14,17 @@ class PrivPlugin(StandardCommand):
         pw = vars(self.pargs)["password"]
         return [("reqpriv", pw)]
 
-class ReloadPlugin(StandardCommand, PrivilegedPlugin):
-    def __init__(self):
-        StandardCommand.__init__(self)
-
+class ReloadPlugin(StandardCommand):
     def commands(self):
         return "reload"
 
     def execute_parsed(self, connection, event, extra, dbconn):
+        if not self.is_privileged(extra):
+            return self.request_priv(extra)
+
         return [("reload", None)]
 
-class QuitPlugin(StandardCommand, PrivilegedPlugin):
+class QuitPlugin(StandardCommand):
     def __init__(self):
         StandardCommand.__init__(self)
         self.parser.add_argument("msg", nargs="*")
@@ -34,12 +34,15 @@ class QuitPlugin(StandardCommand, PrivilegedPlugin):
         return "quit"
 
     def execute_parsed(self, connection, event, extra, dbconn):
+        if not self.is_privileged(extra):
+            return self.request_priv(extra)
+
         msg = " ".join(self.pargs.msg)
         if self.pargs.restart:
             return [("restart", msg)]
         return [("quit", msg)]
 
-class RawPlugin(StandardCommand, PrivilegedPlugin):
+class RawPlugin(StandardCommand):
     def __init__(self):
         StandardCommand.__init__(self)
         self.parser.add_argument("args", nargs="+")
@@ -48,6 +51,9 @@ class RawPlugin(StandardCommand, PrivilegedPlugin):
         return "raw"
 
     def execute_parsed(self, connection, event, extra, dbconn):
+        if not self.is_privileged(extra):
+            return self.request_priv(extra)
+
         args = self.pargs.args
         if args:
             connection.send_raw(u" ".join(args))
@@ -77,7 +83,7 @@ class PluginsPlugin(StandardCommand):
         list_all = self.pargs.list_all
         return [("plugins", (list_all,))]
 
-class ConfigPlugin(StandardCommand, PrivilegedPlugin):
+class ConfigPlugin(StandardCommand):
     def __init__(self):
         StandardCommand.__init__(self)
         self.parser.add_argument("args", nargs="*")
@@ -86,6 +92,9 @@ class ConfigPlugin(StandardCommand, PrivilegedPlugin):
         return "config"
 
     def execute_parsed(self, connection, event, extra, dbconn):
+        if not self.is_privileged(extra):
+            return self.request_priv(extra)
+
         args = self.pargs.args
         return [("config", args)]
 
