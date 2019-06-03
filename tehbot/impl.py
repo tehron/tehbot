@@ -76,14 +76,17 @@ class TehbotImpl:
         self.announcers = []
         self.prefix_handlers = []
         self.queue = Queue(maxsize=0)
+        self.actionqueue = Queue()
+        self.logqueue = Queue()
+        self.stop_logthread = False
+        self.logthread = threading.Thread(target=self._logger)
+        self.logthread.start()
         self.workers = []
         self.stop_workers = False
         self.quit_called = False
         self.restart_called = False
         self.dbfile = os.path.join(os.path.dirname(__file__), "../data/tehbot.sqlite")
         self.dbconn = sqlite3.connect(self.dbfile)
-        self.dbconn.execute("create table if not exists Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, type integer, message varchar)")
-        self.actionqueue = Queue()
         self.privusers = defaultdict(set)
         self.authusers = defaultdict(set)
         self.privqueue = defaultdict(Queue)
@@ -110,7 +113,7 @@ class TehbotImpl:
             self.queue.put((p, (None, None, None)))
 
         at = p.next_at()
-        self.myprint("Scheduling %s at %s" % (p.__class__.__name__, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(at))))
+        #self.myprint("Scheduling %s at %s" % (p.__class__.__name__, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(at))))
         self.core.reactor.scheduler.execute_at(at, callme)
 
     def deinit(self):
@@ -122,7 +125,7 @@ class TehbotImpl:
         with self.core.reactor.mutex:
             for cmd in self.core.reactor.scheduler.queue[:]:
                 try:
-                    if cmd.target.im_func.func_name == "callme":
+                    if cmd.target.func_name == "callme":
                         print "removing", cmd.target
                         self.core.reactor.scheduler.queue.remove(cmd)
                 except:
@@ -133,6 +136,7 @@ class TehbotImpl:
 
         self.dbconn.close()
         self.stop_workers = True
+        self.stop_logthread = True
 
     def myprint(self, s):
         s = self.regex.sub("", s)
@@ -154,9 +158,7 @@ class TehbotImpl:
         else:
             s = "%s %s: %s: %s" % (ts, network, target, s)
         print s.encode(encoding, "backslashreplace")
-
-        with self.dbconn:
-            self.dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?, ?)", (when, network, target, nick, typ, msg))
+        self.logqueue.put((when, network, target, nick, typ, msg))
 
     def load_plugins(self, modules):
         for p in modules:
@@ -228,6 +230,25 @@ class TehbotImpl:
 
     def privileged(self, connection, event):
         return event.source.nick in self.privusers[connection]
+
+    def _logger(self):
+        dbconn = sqlite3.connect(self.dbfile)
+
+        while True:
+            try:
+                when, network, target, nick, typ, msg = self.logqueue.get(timeout=0.1)
+                with dbconn:
+                    dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?, ?)", (when, network, target, nick, typ, msg))
+                self.logqueue.task_done()
+            except Empty:
+                pass
+            except:
+                self.core.print_exc()
+
+            if self.stop_logthread:
+                break
+
+        dbconn.close()
 
     def _process(self):
         dbconn = sqlite3.connect(self.dbfile)
@@ -339,6 +360,7 @@ class TehbotImpl:
     def process_once(self, timeout):
         self.core.reactor.process_once(timeout)
 
+        now = time.time()
         try:
             actions, plugin, connection, event, extra = self.actionqueue.get(False)
         except Empty:
@@ -476,7 +498,6 @@ class TehbotImpl:
                     self.say(connection, target, typ, msg)
                 elif action == "announce":
                     where, msg = args
-                    print where, msg
 
                     tgts = []
                     if "__all__" in where:
