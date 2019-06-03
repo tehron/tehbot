@@ -245,6 +245,25 @@ class Announcer(Plugin):
             at += int(datetime.timedelta(days=1).total_seconds())
         return at
 
+    def config(self, args, dbconn):
+        if args[0] == "modify":
+            if args[1] == "add" and args[2] == "where":
+                network = args[3]
+                channel = args[4]
+                if not self.settings.has_key("where"):
+                    self.settings["where"] = dict()
+                if not self.settings["where"].has_key(network):
+                    self.settings["where"][network] = []
+                self.settings["where"][network].append(channel)
+                self.save(dbconn)
+                return "Okay"
+            elif args[1] == "set" and args[2] == "timeout":
+                self.settings["timeout"] = int(args[3])
+                self.save(dbconn)
+                return "Okay"
+
+        return Plugin.config(self, args, dbconn)
+
 class Poller(Announcer):
     def default_settings(self):
         return { "timeout" : 10, "where" : {} }
