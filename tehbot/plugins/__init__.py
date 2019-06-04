@@ -230,7 +230,7 @@ class Announcer(Plugin):
         self.quit = False
 
     def default_settings(self):
-        return { "at" : 0, "where" : [] }
+        return { "at" : 0, "where" : {} }
 
     def at(self):
         return self.settings["at"]
@@ -257,8 +257,8 @@ class Announcer(Plugin):
                 self.settings["where"][network].append(channel)
                 self.save(dbconn)
                 return "Okay"
-            elif args[1] == "set" and args[2] == "timeout":
-                self.settings["timeout"] = int(args[3])
+            elif args[1] == "set" and args[2] in ["timeout", "at"]:
+                self.settings[args[2]] = int(args[3])
                 self.save(dbconn)
                 return "Okay"
 
