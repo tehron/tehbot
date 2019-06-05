@@ -19,7 +19,7 @@ class UnicodePlugin(StandardCommand):
 
     def execute_parsed(self, connection, event, extra, dbconn):
         url = "https://emojipedia.org/search/?%s" % urllib.urlencode(
-                { "q" : to_utf8(" ".join(self.pargs.search_term)) }
+                { "q" : Plugin.to_utf8(" ".join(self.pargs.search_term)) }
                 )
         try:
             opener = urllib2.build_opener()
@@ -38,6 +38,6 @@ class UnicodePlugin(StandardCommand):
                 else:
                     raise Exception
             except:
-                return u"%s %s" % (red(UnicodePlugin.prefix()), "Unknown Format in Reply")
+                return u"%s %s" % (Plugin.red(UnicodePlugin.prefix()), "Unknown Format in Reply")
 
-        return u"%s %s" % (green(UnicodePlugin.prefix()), sign)
+        return u"%s %s" % (Plugin.green(UnicodePlugin.prefix()), sign)
