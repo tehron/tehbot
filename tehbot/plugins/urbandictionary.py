@@ -1,5 +1,4 @@
 from tehbot.plugins import *
-import tehbot.plugins as plugins
 import urllib2
 import urllib
 import lxml.html
@@ -27,7 +26,7 @@ class UrbanDictionaryPlugin(StandardCommand):
 
         data = {
             "page" : page,
-            "term" : plugins.to_utf8(term)
+            "term" : Plugin.to_utf8(term)
         }
 
         prefix = "\x0303[Urban Dictionary]\x03 "
@@ -41,12 +40,12 @@ class UrbanDictionaryPlugin(StandardCommand):
             txt = "%s (%d/%d)\n" % (term, index + 1, count)
             definition = "\n".join(entry["definition"].splitlines())
             definition = re.sub(r'\[([^\[]*)\]', "\x02\\1\x0f", definition)
-            txt += plugins.shorten(definition, 300)
+            txt += Plugin.shorten(definition, 300)
 
             if entry.has_key("example"):
                 example = "\n".join(entry["example"].splitlines())
                 example = re.sub(r'\[([^\[]*)\]', "\x02\\1\x0f", example)
-                txt += "\n\x02Example:\x0f " + plugins.shorten(example, 300)
+                txt += "\n\x02Example:\x0f " + Plugin.shorten(example, 300)
         except Exception as e:
             print e
             if term == "dloser":
