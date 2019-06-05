@@ -42,6 +42,16 @@ class GreetingHandler(ChannelJoinHandler):
                 self.settings["no_greet"] = list(no_greet)
                 self.save(dbconn)
                 return "Okay"
+            elif args[1] in ["add", "rm"] and args[2] == "where":
+                network = args[3]
+                channel = args[4]
+                if not self.settings.has_key("where"):
+                    self.settings["where"] = dict()
+                if not self.settings["where"].has_key(network):
+                    self.settings["where"][network] = []
+                self.settings["where"][network].append(channel)
+                self.save(dbconn)
+                return "Okay"
 
         return ChannelJoinHandler.config(self, args, dbconn)
 
