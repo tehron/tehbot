@@ -1,5 +1,4 @@
 from tehbot.plugins import *
-import tehbot.plugins as plugins
 import urllib2
 import json
 import re
@@ -45,12 +44,12 @@ def collect_topics(json, key, topics):
                 m = re.search(r'/([^/]+)$', url)
                 top = m.group(1).replace("_", " ")
 
-            top = from_utf8(urllib.unquote(str(top)))
+            top = Plugin.from_utf8(urllib.unquote(str(top)))
             topics.add(u'\x02%s\x0f' % top)
 
 def ddgsearch(query, prefix=""):
     try:
-        res = search(to_utf8(query))
+        res = search(Plugin.to_utf8(query))
     except Exception as e:
         print e
         return u"Network Error"
@@ -62,13 +61,13 @@ def ddgsearch(query, prefix=""):
             topics = set()
             collect_topics(v, "RelatedTopics", topics)
             result = u"Did you mean %s" % orstr(sorted(topics))
-            result = plugins.shorten(prefix + result, 350) + u"?"
+            result = Plugin.shorten(prefix + result, 350) + u"?"
         elif typ == "A" or typ == "E":
             result = v["AbstractText"]
-            result = plugins.shorten(prefix + result, 350)
+            result = Plugin.shorten(prefix + result, 350)
         else:
             if v["Answer"]:
-                return plugins.shorten(prefix + v["Answer"], 350)
+                return Plugin.shorten(prefix + v["Answer"], 350)
 
             print res
             result = prefix + u"I don't know what you mean."
