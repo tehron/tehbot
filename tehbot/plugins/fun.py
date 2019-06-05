@@ -16,7 +16,7 @@ class BlamePlugin(StandardCommand):
         shuffle(goats)
         goats.sort(key=lambda x: random())
         shuffle(goats)
-        scapegoat = goats[goats[randint(0, len(goats) - 1)][int(1337 * random()) % 2].index(choice(two))][1][0]
+        scapegoat = choice(goats[goats[randint(0, len(goats) - 1)][int(1337 * random()) % 2].index(choice(two))][1])
         return u"I blame %s." % scapegoat
 
 class FamPlugin(StandardCommand):
@@ -55,7 +55,7 @@ class LiarsPlugin(StandardCommand):
 
         who = self.pargs.add
 
-        if not self.privileged(connection, event):
+        if not self.is_privileged(extra):
             return self.request_priv(extra)
 
         if dbconn.execute("select 1 from LiarsPlugin where liar = ?", (who,)).fetchone() is not None:
@@ -90,7 +90,7 @@ class PricksPlugin(StandardCommand):
 
         who = self.pargs.add
 
-        if not self.privileged(connection, event):
+        if not self.is_privileged(extra):
             return self.request_priv(extra)
 
         if dbconn.execute("select 1 from PricksPlugin where prick = ?", (who,)).fetchone() is not None:
@@ -165,7 +165,7 @@ class BeerPlugin(StandardCommand):
             return [("me", msg)]
 
         if pargs.refill:
-            if not self.privileged(connection, event):
+            if not self.is_privileged(extra):
                 return self.request_priv(extra)
 
             self.refill(dbconn)
