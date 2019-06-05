@@ -1,5 +1,4 @@
 from tehbot.plugins import *
-import tehbot.plugins as plugins
 import tmdbsimple as tmdb
 
 class MoviePlugin(StandardCommand):
@@ -34,7 +33,7 @@ class MoviePlugin(StandardCommand):
             if movie_info["homepage"]:
                 txt += " | \x02Homepage:\x02 %s" % movie_info["homepage"]
 
-            txt += "\n" + plugins.split(movie_info["overview"])
+            txt += "\n" + Plugin.split(movie_info["overview"])
 
         return txt
 
@@ -72,6 +71,6 @@ class TvPlugin(StandardCommand):
             if movie_info["homepage"]:
                 txt += " | \x02Homepage:\x02 %s" % movie_info["homepage"]
 
-            txt += "\n" + plugins.split(movie_info["overview"])
+            txt += "\n" + Plugin.split(movie_info["overview"])
 
         return txt
