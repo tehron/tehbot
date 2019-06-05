@@ -1,5 +1,4 @@
 from tehbot.plugins import *
-import tehbot.plugins as plugins
 import re
 
 class RegexReplaceHandler(ChannelHandler):
@@ -42,6 +41,6 @@ class RegexReplaceHandler(ChannelHandler):
 
         msg = res[0]
         msg = regex.sub(replace, msg)
-        msg = plugins.myfilter(msg)
-        msg = plugins.shorten(msg, 450)
+        msg = Plugin.myfilter(msg)
+        msg = Plugin.shorten(msg, 450)
         return u"%s: %s" % (user, msg)
