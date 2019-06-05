@@ -1,5 +1,5 @@
+from __future__ import absolute_import
 from tehbot.plugins import *
-import tehbot.plugins as plugins
 import wolframalpha
 import prettytable
 
@@ -57,7 +57,7 @@ class WolframAlphaPlugin(StandardCommand):
         try:
             res = None
             misc = []
-            for p in self.client.query(" ".join(map(to_utf8, self.pargs.query))).pods:
+            for p in self.client.query(" ".join(map(Plugin.to_utf8, self.pargs.query))).pods:
                 if p.id == "Input":
                     inp = " | ".join(p.text.splitlines())
                 elif p.id == "Result" and p.text:
@@ -78,4 +78,4 @@ class WolframAlphaPlugin(StandardCommand):
         except Exception as e:
             txt = "Error: %s" % e
 
-        return plugins.shorten(txt, 450)
+        return Plugin.shorten(txt, 450)
