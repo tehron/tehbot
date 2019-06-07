@@ -56,11 +56,13 @@ class GreetingHandler(ChannelJoinHandler):
         return ChannelJoinHandler.config(self, args, dbconn)
 
     def execute(self, connection, event, extra, dbconn):
-        for network, channels in self.settings["where"].items():
-            if connection.name != network or (event.target not in channels and channels != "__all__"):
-                return
+        def enabled():
+            for network, channels in self.settings["where"].items():
+                if connection.name == network and (event.target in channels or channels == "__all__"):
+                    return True
+            return False
 
-        if event.source.nick in self.settings["no_greet"]:
+        if not enabled() or event.source.nick in self.settings["no_greet"]:
             return
 
         if event.source.nick == "RichardBrook":
