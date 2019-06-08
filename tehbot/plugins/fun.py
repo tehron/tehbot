@@ -258,7 +258,7 @@ class BOSPlugin(StandardCommand):
 class DecidePlugin(StandardCommand):
     def __init__(self):
         StandardCommand.__init__(self)
-        self.parser.add_argument("choices", nargs="+")
+        self.parser.add_argument("choice", nargs="*")
         self.parser.add_argument("-o", "--or", action="store_true")
 
     def commands(self):
@@ -283,16 +283,15 @@ class DecidePlugin(StandardCommand):
         return parts
 
     def execute_parsed(self, connection, event, extra, dbconn):
-        choices = []
+        choices = ["Yes", "No"]
 
-        if vars(self.pargs)["or"]:
-            choices = self.pargs.choices
-        else:
-            parts = DecidePlugin.partition(self.pargs.choices)
-            if len(parts) > 1:
-                choices = map(" ".join, parts)
+        if self.pargs.choice:
+            if vars(self.pargs)["or"]:
+                choices = self.pargs.choice
             else:
-                choices = ["Yes", "No"]
+                parts = DecidePlugin.partition(self.pargs.choice)
+                if len(parts) > 1:
+                    choices = map(" ".join, parts)
 
         return choice(choices)
 
