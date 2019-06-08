@@ -254,21 +254,24 @@ class TehbotImpl:
         dbconn = sqlite3.connect(self.dbfile)
 
         while True:
-            try:
-                plugin, args = self.queue.get(timeout=0.1)
-                connection, event, extra = args
-                res = self.exec_plugin(plugin, connection, event, extra, dbconn)
-                self.actionqueue.put((res, plugin, connection, event, extra))
-                self.queue.task_done()
-            except Empty:
-                pass
-            except SystemExit:
-                raise
-            except:
-                self.core.print_exc()
-
             if self.stop_workers:
                 break
+
+            try:
+                plugin, args = self.queue.get(timeout=0.1)
+            except Empty:
+                continue
+
+            connection, event, extra = args
+
+            try:
+                res = self.exec_plugin(plugin, connection, event, extra, dbconn)
+            except:
+                res = None
+                self.core.print_exc()
+
+            self.actionqueue.put((res, plugin, connection, event, extra))
+            self.queue.task_done()
 
         dbconn.close()
 
