@@ -80,6 +80,9 @@ class PluginsPlugin(StandardCommand):
         return "plugins"
 
     def execute_parsed(self, connection, event, extra, dbconn):
+        if not self.is_privileged(extra):
+            return self.request_priv(extra)
+
         list_all = self.pargs.list_all
         return [("plugins", (list_all,))]
 
