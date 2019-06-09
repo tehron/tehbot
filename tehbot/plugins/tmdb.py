@@ -6,7 +6,7 @@ class MoviePlugin(StandardCommand):
 
     def __init__(self):
         StandardCommand.__init__(self)
-        self.parser.add_argument("movie")
+        self.parser.add_argument("movie", nargs="+")
 
     def commands(self):
         return "movie"
@@ -15,7 +15,8 @@ class MoviePlugin(StandardCommand):
         tmdb.API_KEY = self.settings["tmdb_api_key"]
 
         id = -1
-        res = tmdb.Search().movie(query=self.pargs.movie)
+        movie = " ".join(self.pargs.movie)
+        res = tmdb.Search().movie(query=movie)
         if res["total_results"] > 0:
             id = res["results"][0]["id"]
 
@@ -42,7 +43,7 @@ class TvPlugin(StandardCommand):
 
     def __init__(self):
         StandardCommand.__init__(self)
-        self.parser.add_argument("show")
+        self.parser.add_argument("show", nargs="+")
 
     def commands(self):
         return "tv"
@@ -51,7 +52,8 @@ class TvPlugin(StandardCommand):
         tmdb.API_KEY = self.settings["tmdb_api_key"]
 
         id = -1
-        res = tmdb.Search().tv(query=self.pargs.show)
+        show = " ".join(self.pargs.show)
+        res = tmdb.Search().tv(query=show)
         if res["total_results"] > 0:
             id = res["results"][0]["id"]
 
