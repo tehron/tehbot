@@ -98,8 +98,7 @@ class TehbotImpl:
     def postinit(self):
         with self.dbconn:
             self.dbconn.execute("create table if not exists Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, type integer, message varchar)")
-            self.dbconn.execute("create index if not exists idx_Messages_nick on Messages(nick)")
-            self.dbconn.execute("create index if not exists idx_Messages_ts on Messages(ts)")
+            self.dbconn.execute("create index if not exists idx_Messages_seen on Messages(nick, ts desc)")
 
         self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
 
