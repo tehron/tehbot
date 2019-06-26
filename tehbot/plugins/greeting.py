@@ -49,7 +49,12 @@ class GreetingHandler(ChannelJoinHandler):
                     self.settings["where"] = dict()
                 if not self.settings["where"].has_key(network):
                     self.settings["where"][network] = []
-                self.settings["where"][network].append(channel)
+                if args[1] == "add":
+                    self.settings["where"][network].append(channel)
+                else:
+                    if channel not in self.settings["where"][network]:
+                        return "channel not active"
+                    self.settings["where"][network].remove(channel)
                 self.save(dbconn)
                 return "Okay"
 
