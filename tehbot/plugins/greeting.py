@@ -91,7 +91,7 @@ class GreetPlugin(StandardCommand):
 
     def execute_parsed(self, connection, event, extra, dbconn):
         if self.pargs.add:
-            if not self.privileged(connection, event):
+            if not self.is_privileged(extra):
                 return self.request_priv(extra)
 
             greeting = self.pargs.add

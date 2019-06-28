@@ -36,7 +36,7 @@ class WwddPlugin(StandardCommand):
 
         what = self.pargs.add
 
-        if not self.privileged(connection, event):
+        if not self.is_privileged(extra):
             return self.request_priv(extra)
 
         if what.find("%s") < 0:
