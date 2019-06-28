@@ -1,10 +1,10 @@
-import tehbot.plugins as plugins
+from tehbot.plugins import *
 import urllib2
 import json
 import re, traceback
 import locale
 try:
-    locale.setlocale(locale.LC_ALL, "US" if plugins.is_windows() else "en_US")
+    locale.setlocale(locale.LC_ALL, "US" if Plugin.is_windows() else "en_US")
 except:
     pass
 
@@ -14,7 +14,7 @@ regex = re.compile("(?:https?:\/\/)?(?:www\.)?youtu\.?be(?:\.com)?\/?.*(?:watch|
 
 info_cache = {}
 
-class YoutubeHandler(plugins.ChannelHandler):
+class YoutubeHandler(ChannelHandler):
     def default_settings(self):
         return { "key" : None, "referer" : None }
 
@@ -26,7 +26,7 @@ class YoutubeHandler(plugins.ChannelHandler):
                     self.save(dbconn)
                     return "Okay"
 
-        return plugins.ChannelHandler.config(self, args, dbconn)
+        return ChannelHandler.config(self, args, dbconn)
 
     def execute(self, connection, event, extra, dbconn):
         match = None
@@ -57,19 +57,19 @@ class YoutubeHandler(plugins.ChannelHandler):
 
             try:
                 v = int(entry['statistics']['viewCount'])
-                views = plugins.grouped(v)
+                views = Plugin.grouped(v)
             except:
                 views = "?"
 
             try:
                 l = int(entry['statistics']['likeCount'])
-                likes = plugins.grouped(l)
+                likes = Plugin.grouped(l)
             except:
                 likes = "?"
 
             try:
                 d = int(entry['statistics']['dislikeCount'])
-                dislikes = plugins.grouped(d)
+                dislikes = Plugin.grouped(d)
             except:
                 dislikes = "?"
 
