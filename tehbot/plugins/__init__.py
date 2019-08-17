@@ -12,8 +12,10 @@ import datetime
 import json
 import importlib
 import inspect
+from dateutil import relativedelta
 
-__all__ = ["Plugin", "Command", "StandardCommand", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler"]
+__all__ = ["Plugin", "Command", "StandardCommand", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
+        "ThrowingArgumentParser"]
 
 class ArgumentParserError(Exception):
     pass
@@ -191,6 +193,23 @@ class Plugin:
             modules.append(p)
 
         return modules
+
+    @staticmethod
+    def time2str(a, b, granularity=2):
+        diff = relativedelta.relativedelta(datetime.datetime.fromtimestamp(a), datetime.datetime.fromtimestamp(b))
+        avail = [ "years", "months", "weeks", "days", "hours", "minutes", "seconds" ]
+        infos = []
+
+        for what in avail:
+            val = getattr(diff, what)
+            if val != 0:
+                w = what[:-1] if val == 1 else what
+                infos.append("%d %s" % (val, w))
+
+                if len(infos) == granularity:
+                    break
+
+        return ", ".join(infos)
 
 class Command(Plugin):
     """This is where the help text goes."""

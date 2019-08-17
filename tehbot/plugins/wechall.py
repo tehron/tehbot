@@ -210,7 +210,7 @@ class WeChallSitesPoller(Poller):
     def initialize(self, dbconn):
         Poller.initialize(self, dbconn)
         with dbconn:
-            dbconn.execute("create table if not exists WeChallSitesPoller(id integer primary key, ts datetime, sitename text, classname text, status text, url text, profileurl text, usercount integer, linkcount integer, challcount integer, basescore integer, average real, score integer)")
+            dbconn.execute("create table if not exists WeChallSitesPoller(id integer primary key, ts datetime, sitename text, classname text, status text, url text, profileurl text, usercount integer, linkcount integer, challcount integer, basescore integer, average real, score integer, challts datetime)")
 
     def _sites(self, dbconn):
         sites = dict()
@@ -227,18 +227,22 @@ class WeChallSitesPoller(Poller):
         sites = self._sites(dbconn)
 
         with dbconn:
+            now = time.time()
             for line in page.readlines():
                 line = Plugin.from_utf8(line)
                 sitename, classname, status, url, profileurl, usercount, linkcount, challcount, basescore, average, score = map(lambda x: x.replace("\\:", ":").replace("\\n", "\n"), line.strip().split("::", 10))
 
                 if not sites.has_key(sitename):
-                    dbconn.execute("insert into WeChallSitesPoller values(null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (time.time(), sitename, classname, status, url, profileurl, int(usercount), int(linkcount), int(challcount), int(basescore), float(average.replace("%", "")), int(score)))
+                    dbconn.execute("insert into WeChallSitesPoller values(null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (now, sitename, classname, status, url, profileurl, int(usercount), int(linkcount), int(challcount), int(basescore), float(average.replace("%", "")), int(score), now))
                     msgs.append(prefix + u"A new challenge site just spawned! Check out %s at %s" % (sitename, url))
                 else:
                     site = sites[sitename]
                     diff = int(challcount) - int(site[9])
                     if diff != 0:
-                        dbconn.execute("update WeChallSitesPoller set challcount=?, ts=? where id=?", (int(challcount), time.time(), site[0]))
+                        dbconn.execute("update WeChallSitesPoller set challcount=?, ts=?, where id=?", (int(challcount), now, site[0]))
+                        if diff > 0:
+                            dbconn.execute("update WeChallSitesPoller set challts=?, where id=?", (now, site[0]))
+
                         if diff == 1:
                             msgs.append(prefix + u"There is 1 new challenge on %s" % sitename)
                         elif diff > 1:
@@ -246,7 +250,7 @@ class WeChallSitesPoller(Poller):
                         else:
                             msgs.append(prefix + u"%s just deleted %d of their challenges" % (sitename, -diff))
                     elif status != site[4]:
-                        dbconn.execute("update WeChallSitesPoller set status=?, ts=? where id=?", (status, time.time(), site[0]))
+                        dbconn.execute("update WeChallSitesPoller set status=?, ts=? where id=?", (status, now, site[0]))
                         if status == "down":
                             msgs.append(prefix + u"Another one bites the dust: %s just vanished." % sitename)
                         elif status == "up":
@@ -255,3 +259,51 @@ class WeChallSitesPoller(Poller):
         msg = u"\n".join(msgs)
         if msg:
             return [("announce", (self.where(), msg))]
+
+
+
+class WcSitePlugin(StandardCommand):
+    """Shows information about a site on WeChall"""
+
+    def __init__(self):
+        StandardCommand.__init__(self)
+        self.parser.add_argument("site", nargs="?")
+        self.parser.add_argument("--last", action="store_true")
+
+    def commands(self):
+        return "wcsite"
+
+    def prefix(self):
+        return "[WcSite] "
+
+    def execute(self, connection, event, extra, dbconn):
+        self.parser.set_defaults(site=event.target)
+
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            if self.parser.help_requested:
+                return self.parser.format_help().strip()
+            sitename = pargs.site
+        except Exception as e:
+            return Plugin.red(self.prefix()) + u"Error: %s" % str(e)
+
+        if sitename.startswith("#"):
+            site = Util.chan2wc(sitename)
+        else:
+            site = sitename
+
+        with dbconn:
+            row = dbconn.cursor().execute("select * from WeChallSitesPoller where classname=? collate NOCASE", (site,)).fetchone()
+
+        if row is None:
+            return Plugin.red(self.prefix()) + u"Unknown site: %s" % sitename
+
+        id_, ts, sitename, classname, status, url, profileurl, usercount, linkcount, challcount, basescore, average, score, challts = row
+
+        if pargs.last:
+            now = time.time()
+            timestr = "just now" if now - challts < 3600 else Plugin.time2str(now, challts)
+            return Plugin.green(self.prefix()) + "Time since last challenge on %s: %s" % (sitename, timestr)
+        else:
+            timestr = Plugin.time2str(time.time(), challts)
+            return Plugin.green(self.prefix()) + "%s (%s) has %d challenges. %d users are registered to the site. The site is %s. The latest challenge is %s old." % (sitename, classname, challcount, usercount, status, timestr)
