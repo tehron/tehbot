@@ -23,13 +23,14 @@ class SeenPlugin(StandardCommand):
         res = c.fetchone()
 
         if res is None:
-            return u"I've never seen %s." % user
+            return [("say_nolog", u"I've never seen %s." % user)]
 
         if user == requser and irc.client.is_channel(event.target):
             res = c.fetchone()
 
         _, ts, server, channel, nick, _, message = res
-        msg =  u"I saw %s on %s in %s at %s saying '%s'." % (user, server, channel, time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)), message)
+        timestr = Plugin.time2str(time.time(), ts)
+        msg =  u"I saw %s %s ago on %s in %s saying '%s'." % (user, timestr, server, channel, message)
         return [("say_nolog", msg)]
 
 class OpHandler(ChannelJoinHandler):
