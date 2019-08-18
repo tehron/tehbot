@@ -216,7 +216,7 @@ class WeChallSitesPoller(Poller):
         sites = dict()
         with dbconn:
             for row in dbconn.execute("select * from WeChallSitesPoller"):
-                sites[row[2]] = row
+                sites[row[3]] = row
         return sites
 
     def execute(self, connection, event, extra, dbconn):
@@ -231,15 +231,18 @@ class WeChallSitesPoller(Poller):
             for line in page.readlines():
                 line = Plugin.from_utf8(line)
                 sitename, classname, status, url, profileurl, usercount, linkcount, challcount, basescore, average, score = map(lambda x: x.replace("\\:", ":").replace("\\n", "\n"), line.strip().split("::", 10))
+                insargs = (now, sitename, classname, status, url, profileurl, int(usercount), int(linkcount), int(challcount), int(basescore), float(average.replace("%", "")), int(score), now)
+                updargs = (now, sitename, status, url, profileurl, int(usercount), int(linkcount), int(challcount), int(basescore), float(average.replace("%", "")), int(score))
 
-                if not sites.has_key(sitename):
-                    dbconn.execute("insert into WeChallSitesPoller values(null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (now, sitename, classname, status, url, profileurl, int(usercount), int(linkcount), int(challcount), int(basescore), float(average.replace("%", "")), int(score), now))
+                if not sites.has_key(classname):
+                    dbconn.execute("insert into WeChallSitesPoller values(null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", insargs)
                     msgs.append(prefix + u"A new challenge site just spawned! Check out %s at %s" % (sitename, url))
                 else:
-                    site = sites[sitename]
+                    site = sites[classname]
+                    if site[2:-1] != insargs[1:-1]:
+                        dbconn.execute("update WeChallSitesPoller set ts=?, sitename=?, status=?, url=?, profileurl=?, usercount=?, linkcount=?, challcount=?, basescore=?, average=?, score=? where id=?", updargs + (site[0],))
                     diff = int(challcount) - int(site[9])
                     if diff != 0:
-                        dbconn.execute("update WeChallSitesPoller set challcount=?, ts=? where id=?", (int(challcount), now, site[0]))
                         if diff > 0:
                             dbconn.execute("update WeChallSitesPoller set challts=? where id=?", (now, site[0]))
 
@@ -250,7 +253,6 @@ class WeChallSitesPoller(Poller):
                         else:
                             msgs.append(prefix + u"%s just deleted %d of their challenges" % (sitename, -diff))
                     elif status != site[4]:
-                        dbconn.execute("update WeChallSitesPoller set status=?, ts=? where id=?", (status, now, site[0]))
                         if status == "down":
                             msgs.append(prefix + u"Another one bites the dust: %s just vanished." % sitename)
                         elif status == "up":
@@ -277,6 +279,7 @@ class WcSitePlugin(StandardCommand):
         return "[WcSite] "
 
     def execute(self, connection, event, extra, dbconn):
+        dbchange = 1566070200.0
         self.parser.set_defaults(site=event.target)
 
         try:
@@ -302,8 +305,16 @@ class WcSitePlugin(StandardCommand):
 
         if pargs.last:
             now = time.time()
-            timestr = "just now" if now - challts < 3600 else Plugin.time2str(now, challts)
+            if challts < dbchange:
+                timestr = "unknown"
+            else:
+                timestr = "just now" if now - challts < 3600 else Plugin.time2str(now, challts)
             return Plugin.green(self.prefix()) + "Time since last challenge on %s: %s" % (sitename, timestr)
         else:
-            timestr = Plugin.time2str(time.time(), challts)
-            return Plugin.green(self.prefix()) + "%s (%s) has %d challenges. %d users are registered to the site. The site is %s. The latest challenge is %s old." % (sitename, classname, challcount, usercount, status, timestr)
+            if challts < dbchange:
+                challstr = "The latest challenge age is unknown."
+            else:
+                timestr = Plugin.time2str(time.time(), challts)
+                challstr = "The latest challenge is %s old." % timestr
+
+            return Plugin.green(self.prefix()) + "%s (%s) has %d challenges. %d users are registered to the site. The site is %s. %s" % (sitename, classname, challcount, usercount, status, challstr)
