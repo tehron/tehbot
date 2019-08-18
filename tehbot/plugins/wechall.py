@@ -239,9 +239,9 @@ class WeChallSitesPoller(Poller):
                     site = sites[sitename]
                     diff = int(challcount) - int(site[9])
                     if diff != 0:
-                        dbconn.execute("update WeChallSitesPoller set challcount=?, ts=?, where id=?", (int(challcount), now, site[0]))
+                        dbconn.execute("update WeChallSitesPoller set challcount=?, ts=? where id=?", (int(challcount), now, site[0]))
                         if diff > 0:
-                            dbconn.execute("update WeChallSitesPoller set challts=?, where id=?", (now, site[0]))
+                            dbconn.execute("update WeChallSitesPoller set challts=? where id=?", (now, site[0]))
 
                         if diff == 1:
                             msgs.append(prefix + u"There is 1 new challenge on %s" % sitename)
