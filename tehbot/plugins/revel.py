@@ -2,6 +2,7 @@ from tehbot.plugins import *
 import urllib
 import urllib2
 import time
+import ssl
 
 class RevelSolvedPoller(Poller):
     def prefix(self):
@@ -26,7 +27,12 @@ class RevelSolvedPoller(Poller):
         except:
             ts = 0
 
-        reply = urllib2.urlopen(url % self.datestamp(ts), timeout=3)
+        try:
+            reply = urllib2.urlopen(url % self.datestamp(ts), timeout=3)
+        except urllib2.URLError, ssl.SSLError:
+            # ignore stupid SSL errors for RevEl
+            return
+
         entries = []
 
         for entry in reply.readlines():
