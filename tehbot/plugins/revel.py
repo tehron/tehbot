@@ -29,7 +29,7 @@ class RevelSolvedPoller(Poller):
 
         try:
             reply = urllib2.urlopen(url % self.datestamp(ts), timeout=3)
-        except urllib2.URLError, ssl.SSLError:
+        except (urllib2.URLError, ssl.SSLError):
             # ignore stupid SSL errors for RevEl
             return
 
