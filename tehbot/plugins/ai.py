@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from tehbot.plugins import *
 import wolframalpha
 import re
@@ -43,7 +44,7 @@ class AiHandler(ChannelHandler):
 
     def wolfram_handler(self, what):
         if not self.client:
-            return "No Wolfram"
+            return "No Wolfram|Alpha"
 
         for p in self.client.query(what).pods:
             if p.id == "Result" and p.text:
