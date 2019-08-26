@@ -55,11 +55,11 @@ class ShadowlambHandler(PrefixHandler):
         #model.init()
         self.quit = False
         self.thread = threading.Thread(target=self.timerfunc)
-        self.thread.start()
+        #self.thread.start()
 
     def deinit(self, dbconn):
         self.quit = True
-        self.thread.join()
+        #self.thread.join()
 
     def cmd(self, args):
         return u"\x02%s%s\x02" % (self.command_prefix(), args)
