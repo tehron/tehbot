@@ -51,21 +51,24 @@ class WolframAlphaPlugin(StandardCommand):
         s = pt.get_string()
         return s
 
-    def execute_parsed(self, connection, event, extra, dbconn):
-        txt = "\x0303[Wolfram|Alpha]\x03 "
+    def query(self, what):
+        inp, res, misc = None, None, []
 
+        for p in self.client.query(Plugin.to_utf8(what)).pods:
+            if p.id == "Input":
+                inp = " | ".join(p.text.splitlines())
+            elif p.id == "Result" and p.text:
+                res = self.format_table(p.text)
+            elif p.title and p.text:
+                misc.append("%s\n%s" % (p.title, self.format_table(p.text)))
+
+        return (inp, res, misc)
+
+    def result(self, what, prefix):
+        fn = Plugin.green
         try:
-            res = None
-            misc = []
-            for p in self.client.query(" ".join(map(Plugin.to_utf8, self.pargs.query))).pods:
-                if p.id == "Input":
-                    inp = " | ".join(p.text.splitlines())
-                elif p.id == "Result" and p.text:
-                    res = self.format_table(p.text)
-                elif p.title and p.text:
-                    misc.append("%s\n%s" % (p.title, self.format_table(p.text)))
-
-            txt += inp + "\n"
+            inp, res, misc = self.query(what)
+            txt = inp + "\n"
 
             if res:
                 txt += res + "\n"
@@ -74,8 +77,13 @@ class WolframAlphaPlugin(StandardCommand):
             else:
                 raise NameError
         except (NameError, AttributeError):
-            txt += "No results."
+            txt = "No results."
         except Exception as e:
-            txt = "Error: %s" % e
+            txt = unicode(e)
+            fn = Plugin.red
 
-        return Plugin.shorten(txt, 450)
+        return Plugin.shorten(fn(prefix) + txt, 450)
+
+    def execute_parsed(self, connection, event, extra, dbconn):
+        prefix = "[Wolfram|Alpha] "
+        return self.result(" ".join(self.pargs.query), prefix)

@@ -63,7 +63,7 @@ class GreetingHandler(ChannelJoinHandler):
     def execute(self, connection, event, extra, dbconn):
         def enabled():
             for network, channels in self.settings["where"].items():
-                if connection.name == network and (event.target in channels or channels == "__all__"):
+                if connection.tehbot.name == network and (event.target in channels or channels == "__all__"):
                     return True
             return False
 

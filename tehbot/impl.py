@@ -286,7 +286,7 @@ class TehbotImpl:
 
     def _get_connection(self, name):
         for c in self.core.reactor.connections:
-            if c.name == name:
+            if c.tehbot.name == name:
                 return c
         return None
 
@@ -299,13 +299,20 @@ class TehbotImpl:
         return None
 
     def connect(self):
-        for name in self.settings.connections():
+        conns = self.settings.connections()
+
+        for name in conns:
             conn = self._get_connection(name)
+
             if conn is None:
                 print "Connecting to %s" % name
                 conn = self.core.reactor.server()
+                conn.tehbot = lambda: None
+                conn.tehbot.name = name
+                conn.tehbot.params = conns[name]
+                conn.tehbot.network_id = conn.tehbot.params.get("id", name)
+
                 try:
-                    conn.name = name
                     self.reconnect(conn)
                 except:
                     self.core.print_exc()
@@ -314,9 +321,8 @@ class TehbotImpl:
                 self.dispatcher.join_channels(conn)
 
     def reconnect(self, connection):
-        connection.channels = set()
-        connection.locks = dict()
-        connection.tehbot_users = dict()
+        connection.tehbot.channels = set()
+        connection.tehbot.users = dict()
 
         params = self.settings.connection_params(connection)
 
@@ -357,7 +363,7 @@ class TehbotImpl:
             m2 = "%s: %s" % (nick, m) if nick else m
             for msplit in tehbot.plugins.Plugin.split(m2).split("\n"):
                 func(target, msplit)
-                self.logmsg(time.time(), connection.name, target, connection.get_nickname(), msplit, False, typ)
+                self.logmsg(time.time(), connection.tehbot.name, target, connection.get_nickname(), msplit, False, typ)
 
     def process_once(self, timeout):
         self.core.reactor.process_once(timeout)
@@ -397,15 +403,18 @@ class TehbotImpl:
 
         for action, args in actions:
             try:
-                if action == "say" or action == "me" or action == "notice":
+                if action == "say" or action == "me":
                     msg = args
                     getattr(self, action)(connection, target, typ, msg)
+                elif action == "notice":
+                    target, msg = args
+                    self.notice(connection, target, typ, msg)
                 elif action == "say_nolog":
                     msg = args
                     self.say(connection, target, 2, msg)
                 elif action == "say_nick":
-                    msg = args
-                    self.say_nick(connection, target, event.source.nick, typ, msg)
+                    nick, msg = args
+                    self.say_nick(connection, target, nick, typ, msg)
                 elif action == "nopriv":
                     self.say(connection, target, typ, u"%s is \x02not\x02 privileged" % event.source.nick)
                     break
@@ -504,7 +513,7 @@ class TehbotImpl:
                     tgts = []
                     if "__all__" in where:
                         for conn in self.core.reactor.connections:
-                            for ch in conn.channels:
+                            for ch in conn.tehbot.channels:
                                 tgts.append((conn, ch))
                     else:
                         for network in where:
@@ -512,15 +521,38 @@ class TehbotImpl:
                             if conn is None:
                                 continue
                             if "__all__" in where[network]:
-                                for ch in conn.channels:
+                                for ch in conn.tehbot.channels:
                                     tgts.append((conn, ch))
                             else:
                                 for ch in where[network]:
-                                    if ch in conn.channels:
+                                    if ch in conn.tehbot.channels:
                                         tgts.append((conn, ch))
 
                     for conn, channel in tgts:
                         self.say(conn, channel, typ, msg)
+                elif action == "mode":
+                    network, channel, modes = args
+                    conn = self._get_connection(network)
+                    if conn is not None:
+                        print conn.mode(channel, modes)
+                elif action == "extquery":
+                    plugin_name, what, maxlen = args
+
+                    p = self._get_plugin(plugin_name)
+                    if p is None:
+                        return
+
+                    msg = "Hm, I don't know."
+
+                    try:
+                        inp, res, misc = p.query(what)
+                        print inp
+                        if res:
+                            msg = res
+                    except:
+                        pass
+
+                    self.say(connection, target, typ, Plugin.shorten(msg, maxlen))
             except:
                 self.core.print_exc()
 
@@ -563,7 +595,7 @@ class TehbotImpl:
     def kbd_stats(self, args):
         print "Connections"
         for c in self.core.reactor.connections:
-            print " * %s: %s" % (c.name, "connected" if c.is_connected() else "not connected")
+            print " * %s: %s" % (c.tehbot.name, "connected" if c.is_connected() else "not connected")
 
         print "Delayed Commands"
         for c in self.core.reactor.scheduler.queue:
@@ -571,7 +603,7 @@ class TehbotImpl:
 
         print "Privileged Users"
         for c, nicks in self.privusers.items():
-            print " * %s: %r" % (c.name, sorted(nicks))
+            print " * %s: %r" % (c.tehbot.name, sorted(nicks))
 
     def kbd_config(self, args):
         arr = shlex.split(args or "")
@@ -711,7 +743,7 @@ class Dispatcher:
                 break
 
     def on_nicknameinuse(self, connection, event):
-        print "%s: Nick name in use" % connection.name
+        print "%s: Nick name in use" % connection.tehbot.name
         print event.type, event.source, event.target, event.arguments
         try:
             newnick = event.arguments[0] + "_"
@@ -721,7 +753,7 @@ class Dispatcher:
         connection.nick(newnick)
 
     def on_welcome(self, connection, event):
-        self.tehbot.logmsg(time.time(), connection.name, None, None, "connected to %s" % connection.server, False, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.name, None, None, "connected to %s" % connection.server, False, 0)
 
         params = self.tehbot.settings.connection_params(connection)
         nickservpw = params.get("password", None)
@@ -734,23 +766,17 @@ class Dispatcher:
         params = self.tehbot.settings.connection_params(connection)
         channels = set(params.get("channels", []))
 
-        channels_to_join = channels.difference(connection.channels)
-        channels_to_part = connection.channels.difference(channels)
-
-        for ch in channels_to_join:
-            connection.locks[ch] = threading.Lock()
-
-        for ch in channels_to_part:
-            del connection.locks[ch]
+        channels_to_join = channels.difference(connection.tehbot.channels)
+        channels_to_part = connection.tehbot.channels.difference(channels)
 
         if channels_to_join:
             mchans = ",".join(channels_to_join)
-            self.tehbot.myprint("%s: joining %s" % (connection.name, mchans))
+            self.tehbot.myprint("%s: joining %s" % (connection.tehbot.name, mchans))
             connection.send_raw("JOIN %s" % mchans)
 
         if channels_to_part:
             mchans = ",".join(channels_to_part)
-            self.tehbot.myprint("%s: parting %s" % (connection.name, mchans))
+            self.tehbot.myprint("%s: parting %s" % (connection.tehbot.name, mchans))
             connection.part(channels_to_part)
 
     def on_disconnect(self, connection, event):
@@ -758,8 +784,8 @@ class Dispatcher:
             return
 
         delay = 120
-        self.tehbot.logmsg(time.time(), connection.name, None, None, "lost connection", False, 0)
-        self.tehbot.myprint("%s: reconnecting in %d seconds" % (connection.name, delay))
+        self.tehbot.logmsg(time.time(), connection.tehbot.name, None, None, "lost connection", False, 0)
+        self.tehbot.myprint("%s: reconnecting in %d seconds" % (connection.tehbot.name, delay))
 
         with self.tehbot.core.reactor.mutex:
             for cmd in self.tehbot.core.reactor.scheduler.queue[:]:
@@ -770,14 +796,14 @@ class Dispatcher:
         self.tehbot.core.reactor.scheduler.execute_after(delay, functools.partial(self.tehbot.reconnect, connection))
 
     def on_join(self, connection, event):
-        self.tehbot.logmsg(time.time(), connection.name, None, None, "%s: %s joined" % (event.target, event.source.nick), False, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.name, None, None, "%s: %s joined" % (event.target, event.source.nick), False, 0)
         nick = event.source.nick
         channel = event.target
         botname = self.tehbot.settings.value("botname", connection)
 
         if nick == botname:
-            connection.tehbot_users[channel] = []
-            connection.channels.add(channel.lower())
+            connection.tehbot.users[channel] = []
+            connection.tehbot.channels.add(channel.lower())
 
             params = self.tehbot.settings.connection_params(connection)
             channels = set(params.get("channels", []))
@@ -785,7 +811,7 @@ class Dispatcher:
             if channel.lower() not in channels:
                 connection.part(channel)
 
-        connection.tehbot_users[channel].append(nick)
+        connection.tehbot.users[channel].append(nick)
 
         if nick == botname:
             return
@@ -794,19 +820,19 @@ class Dispatcher:
             self.tehbot.queue.put((h, (connection, event, {})))
 
     def on_part(self, connection, event):
-        self.tehbot.logmsg(time.time(), connection.name, event.target, None, "%s left" % event.source.nick, False, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.name, event.target, None, "%s left" % event.source.nick, False, 0)
         nick = event.source.nick
         channel = event.target
         botname = self.tehbot.settings.value("botname", connection)
 
         try:
-            connection.tehbot_users[channel].remove(nick)
+            connection.tehbot.users[channel].remove(nick)
         except ValueError as e:
             pass
 
         if nick == botname:
-            del connection.tehbot_users[channel]
-            connection.channels.remove(channel.lower())
+            del connection.tehbot.users[channel]
+            connection.tehbot.channels.remove(channel.lower())
 
         try:
             self.tehbot.privusers[connection].remove(event.source.nick)
@@ -819,13 +845,13 @@ class Dispatcher:
             pass
 
     def on_quit(self, connection, event):
-        self.tehbot.logmsg(time.time(), connection.name, None, None, "%s has quit (%s)" % (event.source.nick, event.arguments[0]), False, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.name, None, None, "%s has quit (%s)" % (event.source.nick, event.arguments[0]), False, 0)
         botname = self.tehbot.settings.value("botname", connection)
         nick = event.source.nick
 
-        for channel in connection.tehbot_users.keys():
+        for channel in connection.tehbot.users.keys():
             try:
-                connection.tehbot_users[channel].remove(nick)
+                connection.tehbot.users[channel].remove(nick)
             except ValueError as e:
                 pass
 
@@ -858,7 +884,7 @@ class Dispatcher:
         else:
             target = nick
 
-        self.tehbot.logmsg(time.time(), connection.name, target, nick, msg, True, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.name, target, nick, msg, True, 0)
 
     def react_to_command(self, connection, event, msg, ts, plugin=None):
         if not msg:
@@ -876,8 +902,8 @@ class Dispatcher:
     def on_pubmsg(self, connection, event):
         now = time.time()
         msg = event.arguments[0]
-        typ = self.tehbot.settings.log_type(connection.name, event.target)
-        self.tehbot.logmsg(time.time(), connection.name, event.target, event.source.nick, msg, False, typ)
+        typ = self.tehbot.settings.log_type(connection.tehbot.name, event.target)
+        self.tehbot.logmsg(time.time(), connection.tehbot.name, event.target, event.source.nick, msg, False, typ)
         cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
@@ -894,7 +920,7 @@ class Dispatcher:
     def on_privmsg(self, connection, event):
         now = time.time()
         msg = event.arguments[0]
-        self.tehbot.logmsg(time.time(), connection.name, event.source.nick, event.source.nick, msg, False, 1)
+        self.tehbot.logmsg(time.time(), connection.tehbot.name, event.source.nick, event.source.nick, msg, False, 1)
         cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
@@ -908,15 +934,15 @@ class Dispatcher:
     def on_nick(self, connection, event):
         oldnick = event.source.nick
         newnick = event.target
-        self.tehbot.logmsg(time.time(), connection.name, None, None, "%s is now known as %s" % (oldnick, newnick), False, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.name, None, None, "%s is now known as %s" % (oldnick, newnick), False, 0)
         botname = self.tehbot.settings.value("botname", connection)
 
-        for channel in connection.tehbot_users.keys():
+        for channel in connection.tehbot.users.keys():
             try:
-                connection.tehbot_users[channel].remove(oldnick)
+                connection.tehbot.users[channel].remove(oldnick)
             except ValueError:
                 pass
-            connection.tehbot_users[channel].append(newnick)
+            connection.tehbot.users[channel].append(newnick)
 
         # reconquer our nick!
         if oldnick == botname:
@@ -942,7 +968,7 @@ class Dispatcher:
         if channel == "*":
             return
 
-        connection.tehbot_users[channel] = []
+        connection.tehbot.users[channel] = []
 
         for nick in nick_list.split():
             nick_modes = []
@@ -954,4 +980,4 @@ class Dispatcher:
             # for mode in nick_modes:
                 # self.channels[channel].set_mode(mode, nick)
 
-            connection.tehbot_users[channel].append(nick)
+            connection.tehbot.users[channel].append(nick)

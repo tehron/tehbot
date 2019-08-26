@@ -136,7 +136,7 @@ class ConductPlugin(StandardCommand):
         return False
 
     def execute_parsed(self, connection, event, extra, dbconn):
-        if not self.target_valid(connection.name, event.target.lower()):
+        if not self.target_valid(connection.tehbot.name, event.target.lower()):
             return
 
         return self.conducts[self.pargs.nr - 1]

@@ -47,7 +47,7 @@ class Settings:
 
     def value(self, key, connection=None):
         try:
-            params = self.values["connections"][connection.name]
+            params = self.values["connections"][connection.tehbot.name]
             v = params[key]
         except:
             try:
@@ -60,11 +60,11 @@ class Settings:
         return self.values["connections"]
 
     def connection_params(self, connection):
-        return self.values["connections"][connection.name]
+        return self.values["connections"][connection.tehbot.name]
 
     def network_id(self, connection):
         p = self.connection_params(connection)
-        return p["id"] if p.has_key("id") else connection.name
+        return p["id"] if p.has_key("id") else connection.tehbot.name
 
     def log_type(self, network, channel):
         where = self.values["logging"]["where"]

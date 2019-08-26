@@ -15,9 +15,12 @@ import inspect
 from dateutil import relativedelta
 
 __all__ = ["Plugin", "Command", "StandardCommand", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
-        "ThrowingArgumentParser"]
+        "ThrowingArgumentParser", "PluginError"]
 
 class ArgumentParserError(Exception):
+    pass
+
+class PluginError(Exception):
     pass
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
@@ -150,12 +153,15 @@ class Plugin:
         return "\n".join(ret)
 
     @staticmethod
-    def shorten(msg, maxlen):
-        if len(msg) > maxlen:
-            if maxlen < 3:
-                return "..."
-            return msg[:maxlen - 3] + "..."
-        return msg
+    def shorten(msg, maxlen, post=""):
+        plen = len(post)
+        if len(msg) + plen <= maxlen:
+            return msg + post
+
+        if maxlen < 3:
+            return "..." + post
+
+        return msg[:maxlen - 3 - plen] + "..." + post
 
     @staticmethod
     def green(msg):
