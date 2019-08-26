@@ -80,7 +80,6 @@ class TehbotImpl:
         self.logqueue = Queue()
         self.stop_logthread = False
         self.logthread = threading.Thread(target=self._logger)
-        self.logthread.start()
         self.workers = []
         self.stop_workers = False
         self.quit_called = False
@@ -105,6 +104,7 @@ class TehbotImpl:
         for p in self.pollers + self.announcers:
             self.schedule(p)
 
+        self.logthread.start()
         self.start_workers()
 
     def schedule(self, p):
