@@ -24,7 +24,11 @@ class Tehbot:
             reload(plugins)
             self.newimpl = impl.TehbotImpl(self)
             modules = self.newimpl.gather_modules()
-            map(reload, modules)
+            for m in modules:
+                try:
+                    reload(m)
+                except ImportError:
+                    pass
             self.newimpl.load_plugins(modules)
         except Exception as e:
             Tehbot.print_exc()
