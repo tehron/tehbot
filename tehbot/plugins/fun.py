@@ -406,3 +406,44 @@ class WixxerdPlugin(Command):
                                      |        `.__,
                                      \_________.-"""
 
+
+
+class DeadHourPlugin(Command):
+    def commands(self):
+        return "dead_hour"
+
+    def execute(self, connection, event, extra, dbconn):
+        if not self.is_privileged(extra):
+            return self.request_priv(extra)
+
+        if not irc.client.is_channel(event.target):
+            return
+
+        users = set(connection.tehbot.users[event.target])
+
+        # TODO replace "tehbot" with actual botname
+        users -= set(["Lamb3", "tehbot", "ChanServ"])
+
+        def modelist(users):
+            def check(ulist):
+                s = "-" + "o" * len(ulist) + " " + " ".join(ulist)
+                return len(s) <= 510
+
+            ulist = []
+
+            while users:
+                u = users.pop()
+                if check(ulist + [u]):
+                    ulist.append(u)
+                else:
+                    users.add(u)
+                    break
+
+            return "-" + "o" * len(ulist) + " " + " ".join(ulist)
+
+        res = []
+        while users:
+            modes = modelist(users)
+            res.append(("mode", (connection.tehbot.name, event.target, modes)))
+
+        return res
