@@ -2,7 +2,7 @@ from tehbot.plugins import *
 import psutil
 import os
 import time
-import sys
+import platform
 
 class BotStatsPlugin(StandardCommand):
     """Shows various information about tehbot"""
@@ -54,6 +54,6 @@ class BotStatsPlugin(StandardCommand):
 
         stats.append("Nr. of Threads: %d" % (proc.num_threads()))
 
-        stats.append("Python %d.%d.%d" % (sys.version_info[0], sys.version_info[1], sys.version_info[2]))
+        stats.append("Python %s" % platform.python_version())
 
         return txt + ", ".join(stats)
