@@ -5,6 +5,7 @@ import urllib
 import json
 import re
 import datetime
+import zlib
 
 def ends_message():
     end = datetime.datetime(2015, 12, 11, 20)
@@ -140,3 +141,40 @@ class ConductPlugin(StandardCommand):
             return
 
         return self.conducts[self.pargs.nr - 1]
+
+class HackThisStatusPlugin(StandardCommand):
+    def __init__(self):
+        StandardCommand.__init__(self)
+        self.parser.add_argument("challenge", nargs="+")
+
+    def commands(self):
+        return "htstatus"
+
+    def status_real6(self):
+        code = self.settings["code_real6"].decode("base64")
+        if zlib.crc32(code) != -819666813:
+            raise Exception("crc32")
+
+        exec code
+        return res
+
+    def status_basic7(self):
+        code = self.settings["code_basic7"].decode("base64")
+        if zlib.crc32(code) != -258743683:
+            raise Exception("crc32")
+
+        exec code
+        return res
+
+    def execute_parsed(self, connection, event, extra, dbconn):
+        chall = " ".join(self.pargs.challenge)
+        chall = re.sub(r'''\s|\+|level''', "", chall.lower())
+        chall = chall.replace("b7", "basic7").replace("r6", "real6")
+        prefix = "[HackThis!! Status]"
+
+        try:
+            succ = getattr(self, "status_" + chall)()
+            col = Plugin.green if succ else Plugin.red
+            return col(prefix) + " Level is " + ("online" if succ else "offline")
+        except:
+            return Plugin.red(prefix) + " No status for this level implemented"
