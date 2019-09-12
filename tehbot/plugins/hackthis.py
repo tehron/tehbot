@@ -2,10 +2,15 @@ from tehbot.plugins import *
 import shlex
 import urllib2
 import urllib
+import urlparse
+import lxml.html
+import cookielib
 import json
 import re
 import datetime
 import zlib
+import time
+import re
 
 def ends_message():
     end = datetime.datetime(2015, 12, 11, 20)
@@ -178,3 +183,82 @@ class HackThisStatusPlugin(StandardCommand):
             return col(prefix) + " Level is " + ("online" if succ else "offline")
         except:
             return Plugin.red(prefix) + " No status for this level implemented"
+
+class HackThisForumPoller(Poller):
+    def prefix(self):
+        return u"[HackThis!! Forum]"
+
+    def initialize(self, dbconn):
+        Poller.initialize(self, dbconn)
+        with dbconn:
+            dbconn.execute("CREATE TABLE if not exists HackThisForumPoller(id integer primary key, url varchar unique, title text, replies integer, last_ts datetime, last_user text)")
+
+        self.cookies = cookielib.CookieJar()
+        self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookies))
+        self.url = "https://www.hackthis.co.uk/"
+        self.loginurl = self.url + "?login"
+        self.forumurl = self.url + "forum"
+        self.logout_url = None
+        self.logged_in = False
+
+    def deinit(self, dbconn):
+        if self.logged_in:
+            self.logout()
+
+    def login(self):
+        data = urllib.urlencode({"username" : self.settings["hackthis.user"], "password" : self.settings["hackthis.password"]})
+        page = self.opener.open(self.loginurl, data).read()
+        self.logout_url = self.url + re.search(r'''<a href='/(\?logout[^']*)'>''', page).group(1)
+        self.logged_in = True
+
+    def logout(self):
+        self.opener.open(self.logout_url).read()
+        self.logged_in = False
+
+    def execute(self, connection, event, extra, dbconn):
+        if not self.logged_in:
+            self.login()
+
+        fp = self.opener.open(self.forumurl, timeout=10)
+        tree = lxml.html.parse(fp)
+        topics_node = tree.xpath("//div[@class='forum-topics']")[0]
+        entries = []
+
+        for thread in topics_node.xpath(".//li[@class='forum-section']//li[contains(@class, 'row')]"):
+            anchor = thread.xpath(".//div[contains(@class, 'section_info')]/a")[0]
+            url = anchor.xpath("@href")[0]
+            title = anchor.text
+            id = int(re.search(r'/(\d+)-[^/]+', url).group(1))
+            replies = int(thread.xpath(".//div[contains(@class, 'section_replies')]/text()")[0])
+            latest = thread.xpath(".//div[contains(@class, 'section_latest')]")[0]
+            timestr = latest.xpath("./time/@datetime")[0]
+            last_ts = time.mktime(time.strptime(timestr, "%Y-%m-%dT%H:%M:%S+00:00"))
+            last_user = latest.xpath("./a/text()")[0].strip()
+            entries.append((id, url, title, replies, last_ts, last_user))
+
+        msgs = []
+
+        with dbconn:
+            for e in entries:
+                id, url, title, replies, last_ts, last_user = e
+                c = dbconn.execute("select last_ts from HackThisForumPoller where id = ?", (id, ))
+                res = c.fetchone()
+                announce, newthread = False, False
+                if res is None:
+                    dbconn.execute("insert into HackThisForumPoller values(?, ?, ?, ?, ?, ?)", e)
+                    announce = True
+                    newthread = replies == 0
+                elif res[0] < last_ts:
+                    dbconn.execute("update HackThisForumPoller set last_ts=?, last_user=? where id=?", (last_ts, last_user, id))
+                    announce = True
+                    newthread = False
+
+                if announce:
+                    if newthread:
+                        msgs.append(Plugin.green(self.prefix()) + " New Thread %s by %s" % (Plugin.bold(title), Plugin.bold(last_user)))
+                    else:
+                        msgs.append(Plugin.green(self.prefix()) + " New Reply in %s by %s" % (Plugin.bold(title), Plugin.bold(last_user)))
+
+        msg = u"\n".join(msgs)
+        if msg:
+            return [("announce", (self.where(), msg))]
