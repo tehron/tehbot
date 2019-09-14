@@ -24,29 +24,31 @@ class Site(BaseSite):
             return None
 
         rank, challs_solved, challs_total, users_total, challs_contributed, user = match
+        extra = None
 
         if int(challs_contributed) > 0:
             extra = " %s has contributed %d challenge%s." % (user, int(challs_contributed), "" if int(challs_contributed) == 1 else "s")
-            if int(rank) > 1:
-                try:
-                    user2 = Site.hs_rank_to_user(int(rank) - 1)
-                    result = urllib2.urlopen(url1 % Plugin.to_latin1(user2), timeout=5).read().decode("latin1").split(":")
-                    if len(result) == 6:
-                        rank2, challs_solved2, challs_total2, users_total2, challs_contributed2, user2 = result
-                        count = int(challs_solved2) - int(challs_solved)
-                        if int(challs_contributed) <= int(challs_contributed2):
-                            count += 1
-                        extra += " %s needs to solve %d more challenge%s to rank up." % (user, count, "" if count == 1 else "s")
-                except:
-                    pass
-        else:
-            extra = None
+
+        if int(rank) > 1:
+            try:
+                user2 = Site.hs_rank_to_user(int(rank) - 1)
+                result = urllib2.urlopen(url1 % Plugin.to_latin1(user2), timeout=5).read().decode("latin1").split(":")
+                if len(result) == 6:
+                    rank2, challs_solved2, challs_total2, users_total2, challs_contributed2, user2 = result
+                    count = int(challs_solved2) - int(challs_solved)
+                    if int(challs_contributed) <= int(challs_contributed2):
+                        count += 1
+                    if extra is None:
+                        extra = ""
+                    extra += " %s needs to solve %d more challenge%s to rank up." % (user, count, "" if count == 1 else "s")
+            except:
+                pass
 
         return user, str(int(challs_solved)), int(challs_total), rank, int(users_total), None, None, extra
 
     @staticmethod
     def hs_rank_to_user(rank):
-        tree = lxml.html.parse(url2 % rank)
+        tree = lxml.html.parse(urllib2.urlopen(url2 % rank, timeout=3))
         rows = tree.xpath("//td[@class='middle']//table[@class='mtable']/tr")
         if len(rows) < 2:
             return ""
