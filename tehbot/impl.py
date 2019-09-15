@@ -271,7 +271,8 @@ class TehbotImpl:
                 res = None
                 self.core.print_exc()
 
-            self.actionqueue.put((res, plugin, connection, event, extra))
+            if res is not None:
+                self.actionqueue.put((res, plugin, connection, event, extra))
             self.queue.task_done()
 
         dbconn.close()
