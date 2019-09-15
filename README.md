@@ -24,14 +24,18 @@ Tehbot has a command line interface which accepts the following commands:
 * `config global set cmdprefix "!"` -- set tehbot's command prefix to `!` (tehbot will react to IRC messages that start with `!`)
 * `config global add connection ircnet irc.network.org 7000` -- add ircnet as IRC network tehbot should connect to
 * `config connection ircnet set ssl "True"`
-* `config connection ircnet add channels #channel1,#channel2,#channel3,...`
-* `config connection ircnet add operators "your_nickserv_regged_nick1,your_nickserv_regged_nick2,..."`
+* `config connection ircnet add channels #channel1`
+* `config connection ircnet add channels #channel2`
+* `config connection ircnet add operators your_nickserv_regged_nick1`
+* `config connection ircnet add operators your_nickserv_regged_nick2`
 
 Optionally:
 * `config connection ircnet set botname "tehnetworkbot"` -- set a network specific name tehbot should use
 * `config connection ircnet set password "********"` -- set a NICKSERV password tehbot should use to authenticate
 * `config connection ircnet set host "irc.network.org"`
 * `config connection ircnet set port 7000`
+
+* `config channel ircnet #channel1 set logging False` -- turn off logging for this channel
 
 ### Plugin Configuration
 * `config plugin PingPlugin set enabled True`
