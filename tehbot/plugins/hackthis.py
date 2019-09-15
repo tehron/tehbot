@@ -131,18 +131,14 @@ class ConductPlugin(StandardCommand):
 
     def default_settings(self):
         return {
-                "where" : { "Macak" : [ "#hackthis" ] }
+                "where" : ["macak:#hackthis" ]
                 }
 
-    def target_valid(self, name, ch):
-        for network, channels in self.settings["where"].items():
-            if network == name and ch in channels:
-                return True
-
-        return False
+    def target_valid(self, name):
+        return name in self.settings["where"]
 
     def execute_parsed(self, connection, event, extra, dbconn):
-        if not self.target_valid(connection.tehbot.name, event.target.lower()):
+        if not self.target_valid(connection.tehbot.ircid+":"+event.target.lower()):
             return
 
         return self.conducts[self.pargs.nr - 1]
