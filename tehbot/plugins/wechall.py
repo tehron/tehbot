@@ -79,8 +79,9 @@ class RemoteUpdatePlugin(StandardCommand):
 
         try:
             pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
+            m = self.parser.get_help_msg()
+            if m:
+                return m.strip()
             user = pargs.user
             site = pargs.site
 
@@ -106,8 +107,9 @@ class HistoryPlugin(StandardCommand):
 
         try:
             pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
+            m = self.parser.get_help_msg()
+            if m:
+                return m.strip()
             user = pargs.user
         except Exception as e:
             return u"Error: %s" % str(e)
@@ -192,8 +194,9 @@ class WcStatsPlugin(StandardCommand):
 
         try:
             pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
+            m = self.parser.get_help_msg()
+            if m:
+                return m.strip()
         except Exception as e:
             return u"Error: %s" % str(e)
 
@@ -284,8 +287,9 @@ class WcSitePlugin(StandardCommand):
 
         try:
             pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
+            m = self.parser.get_help_msg()
+            if m:
+                return m.strip()
             sitename = pargs.site
         except Exception as e:
             return Plugin.red(self.prefix()) + u"Error: %s" % str(e)

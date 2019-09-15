@@ -11,8 +11,13 @@ class Tehbot:
     def __init__(self):
         self.reactor = irc.client.Reactor()
         self.impl = None
-        self.reload()
+        res = self.reload()
         self.finalize()
+
+        if res is not None:
+            mod, lineno, exc = res
+            msg = u"Error in %s(%d): %s" % (mod, lineno, plugins.Plugin.exc2str(exc))
+            raise exc
 
     def __getattr__(self, attr):
         return getattr(self.impl, attr)
@@ -60,9 +65,9 @@ class Tehbot:
         del self.newimpl
 
     @staticmethod
-    def print_exc():
+    def print_exc(handler="GLOBAL"):
         exctype, value = sys.exc_info()[:2]
-        print u"%s: %s" % (Tehbot.ts(), exctype)
+        print u"%s %s: %s" % (handler, Tehbot.ts(), exctype)
         traceback.print_exc()
 
     @staticmethod

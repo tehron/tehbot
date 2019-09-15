@@ -86,20 +86,18 @@ class PluginsPlugin(StandardCommand):
         list_all = self.pargs.list_all
         return [("plugins", (list_all,))]
 
-class ConfigPlugin(StandardCommand):
+class ConfigPlugin(Command):
     def __init__(self):
-        StandardCommand.__init__(self)
-        self.parser.add_argument("args", nargs="*")
+        Command.__init__(self)
 
     def commands(self):
         return "config"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra, dbconn):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
 
-        args = self.pargs.args
-        return [("config", args)]
+        return [("config", extra["args"])]
 
 class PingPlugin(StandardCommand):
     def __init__(self):

@@ -136,8 +136,9 @@ class ShadowlambHandler(PrefixHandler):
 
         try:
             pargs = parser.parse_args(extra["args"], decode=False)
-            if parser.help_requested:
-                return parser.format_help().strip()
+            m = parser.get_help_msg()
+            if m:
+                return m.strip()
         except Exception as e:
             return u"Error: %s" % exc2str(e)
 

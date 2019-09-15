@@ -1,107 +1,160 @@
 import sys
 import os
-import select
+import signal
+import platform
 import psutil
 import threading
 import traceback
 from tehbot import *
 import irc.client
 from Queue import Queue, Empty
+import cmd
 
-def kbdinput():
-    def process_cmd():
-        while True:
-            r, _, _ = select.select([sys.stdin], [], [], 0.1)
-            if bot.quit_called:
-                return False
+class CommandLine(cmd.Cmd):
+    def do_config(self, line):
+        cliqueue.put(("kbd_config", line))
 
-            if r:
-                break
+    def do_stats(self, line):
+        cliqueue.put(("kbd_stats", line))
 
-        inp = sys.stdin.readline()
+    def do_quit(self, line):
+        cliqueue.put(("kbd_quit", line))
 
-        if inp[0] == "/": # command mode
-            tmp = inp[1:].split(None, 1)
+    def do_reload(self, line):
+        cliqueue.put(("kbd_reload", line))
 
-            if len(tmp) > 0:
-                cmd = tmp[0].lower()
-                args = tmp[1] if len(tmp) > 1 else None
-                queue.put(("kbd_" + cmd, args))
+    def do_EOF(self, line):
+        self.do_quit(line)
 
-        return True
+    def complete_config(self, text, line, start_index, end_index):
+        handlers = []
+        arr = line[:start_index].split()
+        l = " ".join(arr)
 
-    while True:
-        try:
-            if not process_cmd():
-                break
-        except EOFError:
-            break
-        except:
-            Tehbot.print_exc()
+        if l == "config":
+            handlers = ["global", "connection", "channel", "plugin"]
+        elif l == "config global":
+            handlers = ["set", "unset", "add", "remove", "show"]
+        elif l == "config global set" or l == "config global show":
+            handlers = ["botname", "username", "ircname", "cmdprefix", "privpassword", "nr_worker_threads"]
+        elif l == "config global unset":
+            handlers = ["privpassword"]
+        elif l == "config global add" or l == "config global remove":
+            handlers = ["connection"]
+        elif l == "config global remove connection":
+            handlers = bot.settings.connections().keys()
+        elif l.startswith("config connection"):
+            conns = bot.settings.connections().keys()
+            if len(arr) == 2:
+                handlers = conns
+            elif len(arr) == 3:
+                handlers = ["set", "unset", "add", "remove", "show"]
+            elif len(arr) == 4:
+                if l.endswith(" set"):
+                    handlers = ["name", "host", "port", "ssl", "botname", "password", "enabled"]
+                elif l.endswith(" unset"):
+                    handlers = ["botname", "password"]
+                elif l.endswith(" add") or l.endswith(" remove"):
+                    handlers = ["channels", "operators"]
+                elif l.endswith(" show"):
+                    handlers = ["host", "port", "ssl", "botname", "password", "enabled", "channels", "operators"]
+        elif l.startswith("config channel"):
+            conns = bot.settings.connections()
+            if len(arr) == 2:
+                handlers = conns.keys()
+            elif len(arr) == 3:
+                channels = conns[arr[-1]]["channels"]
+                handlers = channels
+            elif len(arr) == 4:
+                handlers = ["set", "unset", "show"]
+            elif len(arr) == 5:
+                if l.endswith(" set") or l.endswith(" unset") or l.endswith(" show"):
+                    handlers = ["logging"]
+        elif l.startswith("config plugin"):
+            plugins = [p.__class__.__name__ for p in bot.plugins]
+            if len(arr) == 2:
+                handlers = plugins
+            elif len(arr) == 3:
+                handlers = ["set", "show"]
+            elif len(arr) == 4:
+                if l.endswith(" set") or l.endswith(" show"):
+                    handlers = ["enabled"]
 
+        if not text:
+            return handlers
+        
+        return [h for h in handlers if h.startswith(text)]
 
-queue = Queue()
-kbdthread = threading.Thread(target=kbdinput)
+    def emptyline(self):
+        pass
 
-try:
-    bot = Tehbot()
-except:
-    Tehbot.print_exc()
-    sys.exit(-1)
-
-if not bot.impl:
-    sys.exit(-1)
-
-try:
-    bot.connect()
-except:
-    Tehbot.print_exc()
-
-
-kbdthread.start()
-
-#import plugins
-#if not plugins.is_windows():
-    #def sighandler(signum, frame):
-        #bot.reload()
-
-    #import signal
-    #signal.signal(signal.SIGHUP, sighandler)
-
-while True:
-    if bot.quit_called:
-        break
+def botloop():
+    global bot, restart
 
     try:
-        bot.process_once(0.05)
-
-        try:
-            cmd, args = queue.get(False)
-        except Empty:
-            continue
-
-        queue.task_done()
-
-        try:
-            func = getattr(bot, cmd)
-        except AttributeError as e:
-            print "Unknown command:", cmd
-            continue
-
-        func(args)
-    except KeyboardInterrupt:
-        bot.quit()
-    except irc.client.ServerNotConnectedError:
-        bot.restart_called = True
-        break
+        bot = Tehbot()
     except:
         Tehbot.print_exc()
 
-kbdthread.join()
+    if bot:
+        try:
+            bot.connect()
+        except:
+            Tehbot.print_exc()
+
+        while not bot.quit_called:
+            try:
+                process_cliqueue()
+                bot.process_once(0.2)
+            except:
+                Tehbot.print_exc()
+
+        restart = bot.restart_called
+
+    os.kill(os.getpid(), signal.SIGABRT) # interrupt raw_input() used in cli.cmdloop()!
+
+def process_cliqueue():
+    try:
+        cmd, args = cliqueue.get(False)
+    except Empty:
+        return
+
+    cliqueue.task_done()
+
+    try:
+        func = getattr(bot, cmd)
+    except AttributeError as e:
+        print "Unknown command:", cmd
+        return
+
+    func(args)
+
+def sighandler(signum, frame):
+    raise SystemExit()
 
 
 
-if bot.restart_called:
+
+print "Initializing tehbot..."
+cliqueue = Queue()
+cli = CommandLine()
+cli.prompt = "tehbot> "
+signal.signal(signal.SIGABRT, sighandler)
+bot, restart = None, False
+botthread = threading.Thread(target=botloop)
+botthread.start()
+
+while True:
+    try:
+        cli.cmdloop()
+    except KeyboardInterrupt:
+        print "^C"
+    except SystemExit:
+        break # some signal interrupted readline() in raw_input()
+
+botthread.join()
+
+if restart:
     try:
         p = psutil.Process(os.getpid())
         for handler in p.open_files() + p.connections():
@@ -110,6 +163,4 @@ if bot.restart_called:
         Tehbot.print_exc()
 
     python = sys.executable
-    # somehow "python -m tehbot" gets turned into "python -c ..."!?
-    #os.execl(python, python, *sys.argv)
     os.execl(python, python, '-m', 'tehbot')

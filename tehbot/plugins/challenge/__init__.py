@@ -111,8 +111,9 @@ class StatsPlugin(StandardCommand):
 
         try:
             pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
+            m = self.parser.get_help_msg()
+            if m:
+                return m.strip()
             user, rank = None, None
             if pargs.numeric:
                 rank = int(pargs.user_or_rank)
@@ -200,8 +201,9 @@ class SolversPlugin(StandardCommand):
 
         try:
             pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
+            m = self.parser.get_help_msg()
+            if m:
+                return m.strip()
             challenge_name_or_nr = " ".join(pargs.challenge_name_or_nr)
             site = pargs.site.lower()
             user = pargs.user

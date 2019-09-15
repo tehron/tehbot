@@ -148,8 +148,9 @@ class BeerPlugin(StandardCommand):
 
         try:
             pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
+            m = self.parser.get_help_msg()
+            if m:
+                return m.strip()
         except Exception as e:
             msg = u"Error: %s"
             return msg % unicode(e)
@@ -444,6 +445,6 @@ class DeadHourPlugin(Command):
         res = []
         while users:
             modes = modelist(users)
-            res.append(("mode", (connection.tehbot.name, event.target, modes)))
+            res.append(("mode", (connection, event.target, modes)))
 
         return res

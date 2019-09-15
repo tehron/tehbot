@@ -90,6 +90,7 @@ class TehbotImpl:
         self.authusers = defaultdict(set)
         self.privqueue = defaultdict(Queue)
         self.settings = Settings()
+        self.settings.init(self.dbconn)
         self.settings.load(self.dbconn)
         pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
         self.regex = re.compile(pattern, re.UNICODE)
@@ -125,7 +126,6 @@ class TehbotImpl:
             for cmd in self.core.reactor.scheduler.queue[:]:
                 try:
                     if cmd.target.func_name == "callme":
-                        print "removing", cmd.target
                         self.core.reactor.scheduler.queue.remove(cmd)
                 except:
                     pass
@@ -141,7 +141,7 @@ class TehbotImpl:
         s = self.regex.sub("", s)
         print time.strftime("%H:%M:%S"), s.encode(encoding, "backslashreplace")
 
-    def logmsg(self, when, network, target, nick, msg, is_action, typ):
+    def logmsg(self, when, ircid, network, target, nick, msg, is_action, typ):
         msg = self.regex.sub("", msg)
         if nick is None:
             s = msg
@@ -157,7 +157,7 @@ class TehbotImpl:
         else:
             s = "%s %s: %s: %s" % (ts, network, target, s)
         print s.encode(encoding, "backslashreplace")
-        self.logqueue.put((when, network, target, nick, typ, msg))
+        self.logqueue.put((when, ircid, target, nick, typ, msg))
 
     def load_plugins(self, modules):
         for p in modules:
@@ -213,6 +213,8 @@ class TehbotImpl:
         if event:
             if irc.client.is_channel(event.target):
                 if not plugin.pub_allowed:
+                    return
+                if not plugin.is_enabled(connection.tehbot.ircid, event.target):
                     return
             else:
                 if not plugin.priv_allowed:
@@ -286,7 +288,7 @@ class TehbotImpl:
 
     def _get_connection(self, name):
         for c in self.core.reactor.connections:
-            if c.tehbot.name == name:
+            if c.tehbot.ircid == name:
                 return c
         return None
 
@@ -301,16 +303,18 @@ class TehbotImpl:
     def connect(self):
         conns = self.settings.connections()
 
-        for name in conns:
-            conn = self._get_connection(name)
+        for ircid in conns:
+            if not conns[ircid].get("enabled", True):
+                continue
+
+            conn = self._get_connection(ircid)
 
             if conn is None:
-                print "Connecting to %s" % name
                 conn = self.core.reactor.server()
                 conn.tehbot = lambda: None
-                conn.tehbot.name = name
-                conn.tehbot.params = conns[name]
-                conn.tehbot.network_id = conn.tehbot.params.get("id", name)
+                conn.tehbot.ircid = ircid
+
+                print "Connecting to %s" % self.settings.connection_name(conn)
 
                 try:
                     self.reconnect(conn)
@@ -363,7 +367,7 @@ class TehbotImpl:
             m2 = "%s: %s" % (nick, m) if nick else m
             for msplit in tehbot.plugins.Plugin.split(m2).split("\n"):
                 func(target, msplit)
-                self.logmsg(time.time(), connection.tehbot.name, target, connection.get_nickname(), msplit, False, typ)
+                self.logmsg(time.time(), connection.tehbot.ircid, self.settings.connection_name(connection), target, connection.get_nickname(), msplit, False, typ)
 
     def process_once(self, timeout):
         self.core.reactor.process_once(timeout)
@@ -391,7 +395,7 @@ class TehbotImpl:
             typ = 0
         elif irc.client.is_channel(event.target):
             target = event.target
-            typ = 0
+            typ = 0 if self.settings.channel_options(connection, event.target).get("logging", True) else 2
         else:
             target = event.source.nick
             typ = 1
@@ -465,12 +469,7 @@ class TehbotImpl:
                     finally:
                         self.finalize()
                 elif action == "config":
-                    if not args:
-                        msg = "That won't work"
-                    else:
-                        handler = args[0]
-                        args = args[1:]
-                        msg = self.config(handler, args, self.dbconn)
+                    msg = self.config(args, self.dbconn)
                     self.say(connection, target, typ, msg)
                 elif action == "reqpriv":
                     pw = args
@@ -508,33 +507,21 @@ class TehbotImpl:
                     msg = "%s: %s" % (pre, ", ".join(sorted(pl)))
                     self.say(connection, target, typ, msg)
                 elif action == "announce":
-                    where, msg = args
+                    targets, msg = args
 
                     tgts = []
-                    if "__all__" in where:
-                        for conn in self.core.reactor.connections:
-                            for ch in conn.tehbot.channels:
+                    conns = self.core.reactor.connections
+                    for t in targets:
+                        ircid, ch = t.split(":")
+                        for conn in conns:
+                            if conn.tehbot.ircid == ircid:
                                 tgts.append((conn, ch))
-                    else:
-                        for network in where:
-                            conn = self._get_connection(network)
-                            if conn is None:
-                                continue
-                            if "__all__" in where[network]:
-                                for ch in conn.tehbot.channels:
-                                    tgts.append((conn, ch))
-                            else:
-                                for ch in where[network]:
-                                    if ch in conn.tehbot.channels:
-                                        tgts.append((conn, ch))
 
                     for conn, channel in tgts:
                         self.say(conn, channel, typ, msg)
                 elif action == "mode":
-                    network, channel, modes = args
-                    conn = self._get_connection(network)
-                    if conn is not None:
-                        print conn.mode(channel, modes)
+                    conn, channel, modes = args
+                    conn.mode(channel, modes)
                 elif action == "extquery":
                     plugin_name, what, maxlen = args
 
@@ -595,7 +582,7 @@ class TehbotImpl:
     def kbd_stats(self, args):
         print "Connections"
         for c in self.core.reactor.connections:
-            print " * %s: %s" % (c.tehbot.name, "connected" if c.is_connected() else "not connected")
+            print " * %s: %s" % (self.settings.connection_name(c), "connected" if c.is_connected() else "not connected")
 
         print "Delayed Commands"
         for c in self.core.reactor.scheduler.queue:
@@ -603,104 +590,243 @@ class TehbotImpl:
 
         print "Privileged Users"
         for c, nicks in self.privusers.items():
-            print " * %s: %r" % (c.tehbot.name, sorted(nicks))
+            print " * %s: %r" % (self.settings.connection_name(c), sorted(nicks))
 
     def kbd_config(self, args):
         arr = shlex.split(args or "")
-        if not arr:
-            return
-        print self.config(arr[0], arr[1:], self.dbconn)
+        print self.config(arr, self.dbconn)
 
-    def config(self, handler, arr, dbconn):
-        if handler == "tehbot":
-            if arr[0] == "connections":
-                if arr[1] == "add":
-                    name = arr[2]
+    @staticmethod
+    def valid_id(ircid):
+        if re.search(r'''[a-zA-Z][a-zA-Z0-9_]*''', ircid) is None:
+            raise argparse.ArgumentTypeError("Illegal ircid! (doesn't match [a-z][a-z0-9_]*')")
+        return ircid
 
-                    if name in self.settings.connections():
-                        return "That name already exists!"
+    @staticmethod
+    def is_valid_id(ircid):
+        try:
+            TehbotImpl.valid_id(ircid)
+        except argparse.ArgumentTypeError:
+            return False
+        return True
 
-                    self.settings["connections"][name] = {
-                            "host" : None,
-                            "port" : 6667,
-                            "ssl" : False,
-                            "channels" : [ ],
-                            "operators" : [ ],
-                            "id" : None
-                            }
-                    self.settings.save(dbconn)
-                    return "Okay"
-                elif arr[1] == "modify":
-                    name = arr[2]
-                    action = arr[3]
-                    key = arr[4]
-                    value = arr[5]
+    def set_value(self, args, dbconn):
+        self.settings[args.key] = args.value
+        self.settings.save(dbconn)
 
-                    if name not in self.settings.connections():
-                        return "Connction not found: %s" % name
+    def unset_value(self, args, dbconn):
+        if args.key not in ["privpassword"]:
+            return "unsetting %s not allowed" % args.key
+        self.settings[args.key] = None
+        self.settings.save(dbconn)
 
-                    if action not in ["set", "add"]:
-                        return "Illegal action: %s" % action
+    def show_value(self, args, dbconn):
+        v = self.settings[args.key]
+        if v is not None and args.key == "privpassword":
+            v = len(v) * "*"
+        return 'tehbot["%s"] = %s' % (args.key, "None" if v is None else v)
 
-                    if key == "ssl":
-                        value = bool(value)
-                    elif key == "port":
-                        value = int(value)
+    def add_connection(self, args, dbconn):
+        conns = self.settings.connections()
+        if args.ircid in conns:
+            return "duplicate ircid: %s" % args.ircid
 
-                    if key == "channels":
-                        if not self.settings["connections"][name].has_key(key):
-                            self.settings["connections"][name][key] = []
-                        self.settings["connections"][name][key].append(value)
-                    elif key == "operators":
-                        if not self.settings["connections"][name].has_key(key):
-                            self.settings["connections"][name][key] = []
-                        self.settings["connections"][name][key].append(("nickserv", value))
-                    elif key == "id":
-                        for cname, conn in self.settings.connections().items():
-                            if cname != name and conn.has_key(key) and conn[key] == value:
-                                return "That id already exists in connection '%s'!" % cname
-                            self.settings["connections"][name][key] = value
-                    else:
-                        self.settings["connections"][name][key] = value
+        conns[args.ircid] = {
+                "name" : args.ircid,
+                "host" : args.host,
+                "port" : args.port,
+                "ssl" : False,
+                "botname" : None,
+                "password" : None,
+                "channels" : [],
+                "operators" : [],
+                "enabled" : True,
+                "channel_options" : { }
+        }
+        self.settings.save(dbconn)
 
-                        if key == "botname":
-                            self.settings["connections"][name]["username"] = value
-                            self.settings["connections"][name]["ircname"] = value
+    def remove_connection(self, args, dbconn):
+        conns = self.settings.connections()
+        if args.ircid not in conns:
+            return "no such ircid: %s" % args.ircid
+        del conns[args.ircid]
+        self.settings.save(dbconn)
 
-                    self.settings.save(dbconn)
-                    return "Okay"
-                elif arr[1] == "show":
-                    return "no!"
-                    #return repr(self.settings["connections"])
-            elif arr[0] == "logging":
-                if arr[1] == "modify":
-                    action = arr[2]
-                    key = arr[3]
-                    value = arr[4]
-
-                    if action != "add":
-                        return "Illegal action: %s" % action
-
-                    network, channel = value.split(",")
-
-                    dt = self.settings["logging"][key]
-                    if not dt.has_key(network):
-                        dt[network] = []
-                    dt[network].append(channel)
-                    self.settings.save(dbconn)
-                    return "Okay"
-            elif arr[0] == "modify":
-                if arr[1] == "set":
-                    key = arr[2]
-                    value = arr[3]
-                    self.settings[key] = value
-                    self.settings.save(dbconn)
-                    return "Okay"
+    def connection_set_value(self, args, dbconn):
+        conns = self.settings.connections()
+        if args.ircid not in conns:
+            return "no such ircid: %s" % args.ircid
+        if args.key == "port":
+            v = int(args.value)
+        elif args.key in ["ssl", "enabled"]:
+            v = Plugin.str2bool(args.value)
         else:
-            for h in self.plugins:
-                if h.__class__.__name__ == handler:
-                    return h.config(arr, dbconn)
+            v = args.value
+        conns[args.ircid][args.key] = v
+        self.settings.save(dbconn)
 
+    def connection_unset_value(self, args, dbconn):
+        conns = self.settings.connections()
+        if args.ircid not in conns:
+            return "no such ircid: %s" % args.ircid
+        if args.key not in ["botname", "password"]:
+            return "unsetting %s not allowed" % args.key
+        conns[args.ircid][args.key] = None
+        self.settings.save(dbconn)
+
+    def connection_show_value(self, args, dbconn):
+        conns = self.settings.connections()
+        if args.ircid not in conns:
+            return "no such ircid: %s" % args.ircid
+        v = conns[args.ircid][args.key]
+        if v is not None and args.key == "password":
+            v = len(v) * "*"
+        return 'connections["%s"]["%s"] = %s' % (args.ircid, args.key, "None" if v is None else v)
+
+    def connection_add_value(self, args, dbconn):
+        conns = self.settings.connections()
+        if args.ircid not in conns:
+            return "no such ircid: %s" % args.ircid
+        v = args.value
+        if args.key == "channels":
+            conns[args.ircid]["channel_options"][args.value] = { }
+        elif args.key == "operators":
+            v = ("nickserv", v)
+        if v in conns[args.ircid][args.key]:
+            return "already added to %s: %s" % (args.key, args.value)
+        conns[args.ircid][args.key].append(v)
+        self.settings.save(dbconn)
+
+    def connection_remove_value(self, args, dbconn):
+        conns = self.settings.connections()
+        if args.ircid not in conns:
+            return "no such ircid: %s" % args.ircid
+        v = args.value
+        if args.key == "channels":
+            del conns[args.ircid]["channel_options"][args.value]
+        elif args.key == "operators":
+            v = ("nickserv", v)
+        conns[args.ircid][args.key].remove(v)
+        self.settings.save(dbconn)
+
+    def channel_set_value(self, args, dbconn):
+        conns = self.settings.connections()
+        if args.ircid not in conns:
+            return "no such ircid: %s" % args.ircid
+        c = conns[args.ircid]
+        if args.channel not in c["channels"]:
+            return "no such channel: %s" % args.channel
+        v = args.value
+        if args.key in ["logging"]:
+            v = Plugin.str2bool(v)
+        c["channel_options"][args.channel][args.key] = v
+        self.settings.save(dbconn)
+
+    def channel_unset_value(self, args, dbconn):
+        conns = self.settings.connections()
+        if args.ircid not in conns:
+            return "no such ircid: %s" % args.ircid
+        c = conns[args.ircid]
+        if args.channel not in c["channels"]:
+            return "no such channel: %s" % args.channel
+        del c["channel_options"][args.channel][args.key]
+        self.settings.save(dbconn)
+
+    def channel_show_value(self, args, dbconn):
+        conns = self.settings.connections()
+        if args.ircid not in conns:
+            return "no such ircid: %s" % args.ircid
+        c = conns[args.ircid]
+        if args.channel not in c["channels"]:
+            return "no such channel: %s" % args.channel
+        v = c["channel_options"][args.channel][args.key]
+        return 'connections["%s"]["%s"]["%s"] = %s' % (args.ircid, args.channel, args.key, "None" if v is None else v)
+
+    def config(self, args, dbconn):
+        parser = ThrowingArgumentParser(prog="config")
+        handlers = parser.add_subparsers(title="handlers", help="additional help")
+        global_parser = handlers.add_parser("global")
+        connection_parser = handlers.add_parser("connection")
+        connection_parser.add_argument("ircid")
+        channel_parser = handlers.add_parser("channel")
+        channel_parser.add_argument("ircid")
+        channel_parser.add_argument("channel")
+        plugin_parser = handlers.add_parser("plugin")
+        
+        global_cmds = global_parser.add_subparsers(title="commands", help="additional help")
+        global_set_parser = global_cmds.add_parser("set")
+        global_unset_parser = global_cmds.add_parser("unset")
+        global_add_parser = global_cmds.add_parser("add")
+        global_remove_parser = global_cmds.add_parser("remove")
+        global_show_parser = global_cmds.add_parser("show")
+        global_keys = ["botname", "username", "ircname", "cmdprefix", "privpassword", "nr_worker_threads"]
+        global_set_parser.add_argument("key", choices=global_keys)
+        global_set_parser.add_argument("value")
+        global_set_parser.set_defaults(func=self.set_value)
+        global_unset_parser.add_argument("key", choices=global_keys)
+        global_unset_parser.set_defaults(func=self.unset_value)
+        global_add_handlers = global_add_parser.add_subparsers()
+        global_add_connection_parser = global_add_handlers.add_parser("connection")
+        global_add_connection_parser.add_argument("ircid", type=TehbotImpl.valid_id)
+        global_add_connection_parser.add_argument("host")
+        global_add_connection_parser.add_argument("port", type=int)
+        global_add_connection_parser.set_defaults(func=self.add_connection)
+        global_remove_handlers = global_remove_parser.add_subparsers()
+        global_remove_connection_parser = global_remove_handlers.add_parser("connection")
+        global_remove_connection_parser.add_argument("ircid", type=TehbotImpl.valid_id)
+        global_remove_connection_parser.set_defaults(func=self.remove_connection)
+        global_show_parser.add_argument("key", choices=global_keys)
+        global_show_parser.set_defaults(func=self.show_value)
+
+        connection_cmds = connection_parser.add_subparsers(title="commands", help="additional help")
+        connection_set_parser = connection_cmds.add_parser("set")
+        connection_unset_parser = connection_cmds.add_parser("unset")
+        connection_add_parser = connection_cmds.add_parser("add")
+        connection_remove_parser = connection_cmds.add_parser("remove")
+        connection_show_parser = connection_cmds.add_parser("show")
+        connection_set_keys = ["name", "host", "port", "ssl", "botname", "password", "enabled"]
+        connection_add_keys = ["channels", "operators"]
+        connection_set_parser.add_argument("key", choices=connection_set_keys)
+        connection_set_parser.add_argument("value")
+        connection_set_parser.set_defaults(func=self.connection_set_value)
+        connection_unset_parser.add_argument("key", choices=connection_set_keys)
+        connection_unset_parser.set_defaults(func=self.connection_unset_value)
+        connection_add_parser.add_argument("key", choices=connection_add_keys)
+        connection_add_parser.add_argument("value")
+        connection_add_parser.set_defaults(func=self.connection_add_value)
+        connection_remove_parser.add_argument("key", choices=connection_add_keys)
+        connection_remove_parser.add_argument("value")
+        connection_remove_parser.set_defaults(func=self.connection_remove_value)
+        connection_show_parser.add_argument("key", choices=connection_set_keys+connection_add_keys)
+        connection_show_parser.set_defaults(func=self.connection_show_value)
+
+        channel_cmds = channel_parser.add_subparsers(title="commands", help="additional help")
+        channel_set_parser = channel_cmds.add_parser("set")
+        channel_unset_parser = channel_cmds.add_parser("unset")
+        channel_show_parser = channel_cmds.add_parser("show")
+        channel_set_keys = ["logging"]
+        channel_set_parser.add_argument("key", choices=channel_set_keys)
+        channel_set_parser.add_argument("value")
+        channel_set_parser.set_defaults(func=self.channel_set_value)
+        channel_unset_parser.add_argument("key", choices=channel_set_keys)
+        channel_unset_parser.set_defaults(func=self.channel_unset_value)
+        channel_show_parser.add_argument("key", choices=channel_set_keys)
+        channel_show_parser.set_defaults(func=self.channel_show_value)
+
+        plugin_cmds = plugin_parser.add_subparsers(title="plugins", help="additional help")
+        for p in self.plugins:
+            p.integrate_parser(plugin_cmds)
+
+        try:
+            pargs = parser.parse_args(args)
+            m = parser.get_help_msg()
+            if m:
+                return m.strip()
+            res = pargs.func(pargs, dbconn)
+        except Exception as e:
+            res = u"Error: %s" % Plugin.exc2str(e)
+
+        return "Okay" if res is None else res
 
 class Dispatcher:
     def __init__(self, tehbot):
@@ -743,7 +869,7 @@ class Dispatcher:
                 break
 
     def on_nicknameinuse(self, connection, event):
-        print "%s: Nick name in use" % connection.tehbot.name
+        print "%s: Nick name in use" % self.tehbot.settings.connection_name(connection)
         print event.type, event.source, event.target, event.arguments
         try:
             newnick = event.arguments[0] + "_"
@@ -753,7 +879,7 @@ class Dispatcher:
         connection.nick(newnick)
 
     def on_welcome(self, connection, event):
-        self.tehbot.logmsg(time.time(), connection.tehbot.name, None, None, "connected to %s" % connection.server, False, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), None, None, "connected to %s" % connection.server, False, 0)
 
         params = self.tehbot.settings.connection_params(connection)
         nickservpw = params.get("password", None)
@@ -771,12 +897,12 @@ class Dispatcher:
 
         if channels_to_join:
             mchans = ",".join(channels_to_join)
-            self.tehbot.myprint("%s: joining %s" % (connection.tehbot.name, mchans))
+            self.tehbot.myprint("%s: joining %s" % (self.tehbot.settings.connection_name(connection), mchans))
             connection.send_raw("JOIN %s" % mchans)
 
         if channels_to_part:
             mchans = ",".join(channels_to_part)
-            self.tehbot.myprint("%s: parting %s" % (connection.tehbot.name, mchans))
+            self.tehbot.myprint("%s: parting %s" % (self.tehbot.settings.connection_name(connection), mchans))
             connection.part(channels_to_part)
 
     def on_disconnect(self, connection, event):
@@ -784,22 +910,21 @@ class Dispatcher:
             return
 
         delay = 120
-        self.tehbot.logmsg(time.time(), connection.tehbot.name, None, None, "lost connection", False, 0)
-        self.tehbot.myprint("%s: reconnecting in %d seconds" % (connection.tehbot.name, delay))
+        self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), None, None, "lost connection", False, 0)
+        self.tehbot.myprint("%s: reconnecting in %d seconds" % (self.tehbot.settings.connection_name(connection), delay))
 
         with self.tehbot.core.reactor.mutex:
             for cmd in self.tehbot.core.reactor.scheduler.queue[:]:
                 if isinstance(cmd.target, functools.partial) and cmd.target.args == ('keep-alive',) and cmd.target.func.__self__ == connection:
-                    print "removing cmd", cmd
                     self.tehbot.core.reactor.scheduler.queue.remove(cmd)
 
         self.tehbot.core.reactor.scheduler.execute_after(delay, functools.partial(self.tehbot.reconnect, connection))
 
     def on_join(self, connection, event):
-        self.tehbot.logmsg(time.time(), connection.tehbot.name, None, None, "%s: %s joined" % (event.target, event.source.nick), False, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), None, None, "%s: %s joined" % (event.target, event.source.nick), False, 0)
         nick = event.source.nick
         channel = event.target
-        botname = self.tehbot.settings.value("botname", connection)
+        botname = connection.get_nickname()
 
         if nick == botname:
             connection.tehbot.users[channel] = []
@@ -820,10 +945,10 @@ class Dispatcher:
             self.tehbot.queue.put((h, (connection, event, {})))
 
     def on_part(self, connection, event):
-        self.tehbot.logmsg(time.time(), connection.tehbot.name, event.target, None, "%s left" % event.source.nick, False, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), event.target, None, "%s left" % event.source.nick, False, 0)
         nick = event.source.nick
         channel = event.target
-        botname = self.tehbot.settings.value("botname", connection)
+        botname = connection.get_nickname()
 
         try:
             connection.tehbot.users[channel].remove(nick)
@@ -845,7 +970,7 @@ class Dispatcher:
             pass
 
     def on_quit(self, connection, event):
-        self.tehbot.logmsg(time.time(), connection.tehbot.name, None, None, "%s has quit (%s)" % (event.source.nick, event.arguments[0]), False, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), None, None, "%s has quit (%s)" % (event.source.nick, event.arguments[0]), False, 0)
         botname = self.tehbot.settings.value("botname", connection)
         nick = event.source.nick
 
@@ -878,13 +1003,15 @@ class Dispatcher:
         nick = event.source.nick
 
         if irc.client.is_channel(event.target):
+            typ = 0 if self.tehbot.settings.channel_options(connection, event.target).get("logging", True) else 2
             target = event.target
             for h in self.tehbot.channel_handlers:
                 self.tehbot.queue.put((h, (connection, event, {"msg":msg})))
         else:
+            typ = 1
             target = nick
 
-        self.tehbot.logmsg(time.time(), connection.tehbot.name, target, nick, msg, True, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), target, nick, msg, True, typ)
 
     def react_to_command(self, connection, event, msg, ts, plugin=None):
         if not msg:
@@ -902,8 +1029,8 @@ class Dispatcher:
     def on_pubmsg(self, connection, event):
         now = time.time()
         msg = event.arguments[0]
-        typ = self.tehbot.settings.log_type(connection.tehbot.name, event.target)
-        self.tehbot.logmsg(time.time(), connection.tehbot.name, event.target, event.source.nick, msg, False, typ)
+        typ = 0 if self.tehbot.settings.channel_options(connection, event.target).get("logging", True) else 2
+        self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), event.target, event.source.nick, msg, False, typ)
         cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
@@ -920,7 +1047,7 @@ class Dispatcher:
     def on_privmsg(self, connection, event):
         now = time.time()
         msg = event.arguments[0]
-        self.tehbot.logmsg(time.time(), connection.tehbot.name, event.source.nick, event.source.nick, msg, False, 1)
+        self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), event.source.nick, event.source.nick, msg, False, 1)
         cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
 
         if msg:
@@ -934,7 +1061,7 @@ class Dispatcher:
     def on_nick(self, connection, event):
         oldnick = event.source.nick
         newnick = event.target
-        self.tehbot.logmsg(time.time(), connection.tehbot.name, None, None, "%s is now known as %s" % (oldnick, newnick), False, 0)
+        self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), None, None, "%s is now known as %s" % (oldnick, newnick), False, 0)
         botname = self.tehbot.settings.value("botname", connection)
 
         for channel in connection.tehbot.users.keys():

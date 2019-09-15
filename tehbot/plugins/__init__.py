@@ -13,6 +13,7 @@ import json
 import importlib
 import inspect
 from dateutil import relativedelta
+from tehbot.impl import TehbotImpl
 
 __all__ = ["Plugin", "Command", "StandardCommand", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
         "ThrowingArgumentParser", "PluginError"]
@@ -24,14 +25,36 @@ class PluginError(Exception):
     pass
 
 class ThrowingArgumentParser(argparse.ArgumentParser):
+    def __init__(self, **kwargs):
+        self.subparseractions = []
+        self.help_msg = None
+        argparse.ArgumentParser.__init__(self, **kwargs)
+
     def error(self, message):
         raise ArgumentParserError(message)
 
+    def add_subparsers(self, **kwargs):
+        sub = argparse.ArgumentParser.add_subparsers(self, **kwargs)
+        self.subparseractions.append(sub)
+        return sub
+
+    def get_help_msg(self):
+        if self.help_msg is not None:
+            return self.help_msg
+
+        for a in self.subparseractions:
+            for p in a.choices.values():
+                h = p.get_help_msg()
+                if h is not None:
+                    return h
+
+        return None
+
     def print_help(self, file=None):
-        self.help_requested = True
+        self.help_msg = self.format_help()
 
     def parse_args(self, args=None, namespace=None, decode=True):
-        self.help_requested = False
+        self.help_msg = None
         if isinstance(args, basestring):
             args = Plugin.mysplit(args, decode)
 
@@ -50,7 +73,8 @@ class Plugin:
 
     def initialize(self, dbconn):
         self.settings = {
-                "enabled" : inspect.getmodule(self).__name__ == "tehbot.plugins.core"
+                "enabled" : inspect.getmodule(self).__name__ == "tehbot.plugins.core",
+                "channel_enabled" : { }
                 }
         self.settings.update(self.default_settings())
 
@@ -68,8 +92,42 @@ class Plugin:
     def deinit(self, dbconn):
         pass
 
-    def is_enabled(self):
-        return self.settings["enabled"]
+    def convert_value(self, key, value):
+        if key in ["enabled"]:
+            v = Plugin.str2bool(value)
+        else:
+            v = value
+        return v
+
+    def set_value(self, args, dbconn):
+        v = self.convert_value(args.key, args.value)
+        self.settings[args.key] = v
+        self.save(dbconn)
+
+    def show_value(self, args, dbconn):
+        v = self.settings[args.key]
+        return '%s["%s"] = %s' % (self.__class__.__name__, args.key, v)
+
+    def values_to_set(self):
+        return ["enabled"]
+
+    def integrate_parser(self, parseraction):
+        p = parseraction.add_parser(self.__class__.__name__)
+        self.parser_cmds = p.add_subparsers(title="commands", help="additional help")
+        set_parser = self.parser_cmds.add_parser("set")
+        show_parser = self.parser_cmds.add_parser("show")
+        set_parser.add_argument("key", choices=self.values_to_set())
+        set_parser.add_argument("value")
+        set_parser.set_defaults(func=self.set_value)
+        show_parser.add_argument("key", choices=self.values_to_set())
+        show_parser.set_defaults(func=self.show_value)
+
+    def is_enabled(self, ircid=None, channel=None):
+        if not self.settings["enabled"]:
+            return False
+        if ircid is None or channel is None:
+            return True
+        return self.settings["channel_enabled"].get("%s:%s" % (ircid, channel), True)
 
     def is_privileged(self, extra):
         return extra["priv"]
@@ -82,21 +140,6 @@ class Plugin:
 
     def request_auth(self, extra):
         return [("noauth", None)] if extra.has_key("auth_requested") else [("doauth", None)]
-
-    def config(self, args, dbconn):
-        if args[0] == "modify":
-            if args[1] == "set":
-                if args[2] == "enabled":
-                    state = args[3].lower() == "true"
-                    self.settings["enabled"] = state
-                    self.save(dbconn)
-                    return "Okay"
-                else:
-                    key = args[2]
-                    value = args[3]
-                    self.settings[key] = value
-                    self.save(dbconn)
-                    return "Okay"
 
     def save(self, dbconn):
         value = json.dumps(self.settings)
@@ -217,6 +260,10 @@ class Plugin:
 
         return ", ".join(infos)
 
+    @staticmethod
+    def str2bool(s):
+        return s.lower() in ("true", "yes", "t", "1")
+
 class Command(Plugin):
     """This is where the help text goes."""
 
@@ -233,8 +280,9 @@ class StandardCommand(Command):
     def execute(self, connection, event, extra, dbconn):
         try:
             self.pargs = self.parser.parse_args(extra["args"])
-            if self.parser.help_requested:
-                return self.parser.format_help().strip()
+            m = self.parser.get_help_msg()
+            if m:
+                return m.strip()
         except Exception as e:
             return u"Error: %s" % Plugin.exc2str(e)
 
@@ -255,7 +303,7 @@ class Announcer(Plugin):
         self.quit = False
 
     def default_settings(self):
-        return { "at" : 0, "where" : {} }
+        return { "at" : 0, "where" : [] }
 
     def at(self):
         return self.settings["at"]
@@ -270,28 +318,48 @@ class Announcer(Plugin):
             at += int(datetime.timedelta(days=1).total_seconds())
         return at
 
-    def config(self, args, dbconn):
-        if args[0] == "modify":
-            if args[1] == "add" and args[2] == "where":
-                network = args[3]
-                channel = args[4]
-                if not self.settings.has_key("where"):
-                    self.settings["where"] = dict()
-                if not self.settings["where"].has_key(network):
-                    self.settings["where"][network] = []
-                self.settings["where"][network].append(channel)
-                self.save(dbconn)
-                return "Okay"
-            elif args[1] == "set" and args[2] in ["timeout", "at"]:
-                self.settings[args[2]] = int(args[3])
-                self.save(dbconn)
-                return "Okay"
+    def add_value(self, args, dbconn):
+        arr = args.value.split(":")
+        if len(arr) != 2 or not TehbotImpl.is_valid_id(arr[0]) or (not arr[1].startswith("#") and arr[1] != "__all__"):
+            return "illegal value for %s: %s" % (args.key, args.value)
+        if args.value in self.settings[args.key]:
+            return "already added to %s: %s" (args.key, args.value)
+        self.settings[args.key].append(args.value)
+        self.save(dbconn)
 
-        return Plugin.config(self, args, dbconn)
+    def remove_value(self, args, dbconn):
+        arr = args.value.split(":")
+        if len(arr) != 2 or not TehbotImpl.is_valid_id(arr[0]) or (not arr[1].startswith("#") and arr[1] != "__all__"):
+            return "illegal value for %s: %s" % (args.key, args.value)
+        if not args.value in self.settings[args.key]:
+            return "not contained in %s: %s" (args.key, args.value)
+        self.settings[args.key].remove(args.value)
+        self.save(dbconn)
+
+    def values_to_set(self):
+        return Plugin.values_to_set(self) + ["at"]
+
+    def convert_value(self, key, value):
+        if value in ["at"]:
+            v = int(value)
+        else:
+            v = Plugin.convert_value(self, key, value)
+        return v
+
+    def integrate_parser(self, parseraction):
+        Plugin.integrate_parser(self, parseraction)
+        add_parser = self.parser_cmds.add_parser("add")
+        remove_parser = self.parser_cmds.add_parser("remove")
+        add_parser.add_argument("key", choices=["where"])
+        add_parser.add_argument("value")
+        add_parser.set_defaults(func=self.add_value)
+        remove_parser.add_argument("key", choices=["where"])
+        remove_parser.add_argument("value")
+        remove_parser.set_defaults(func=self.remove_value)
 
 class Poller(Announcer):
     def default_settings(self):
-        return { "timeout" : 10, "where" : {} }
+        return { "timeout" : 10, "where" : [] }
 
     def timeout(self):
         return self.settings["timeout"]
@@ -299,3 +367,13 @@ class Poller(Announcer):
     def next_at(self):
         at = time.time() + self.timeout()
         return at
+
+    def values_to_set(self):
+        return Announcer.values_to_set(self) + ["timeout"]
+
+    def convert_value(self, key, value):
+        if value in ["timeout"]:
+            v = int(value)
+        else:
+            v = Announcer.convert_value(self, key, value)
+        return v

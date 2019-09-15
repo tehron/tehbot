@@ -11,7 +11,7 @@ A Python IRC Bot
 * `python -m tehbot`
 
 ## Interacting with tehbot
-Tehbot has an active command line which accepts the following commands (commands have to be preceded with a slash `/`):
+Tehbot has a command line interface which accepts the following commands:
 * `reload` -- reloads all plugins and applies all changes made to tehbot's connections
 * `quit` -- quits tehbot (optional arguments are supplied as quit message)
 * `stats` -- shows some statistics about connected networks' status and period command plugins
@@ -20,20 +20,19 @@ Tehbot has an active command line which accepts the following commands (commands
 ## Configuration
 
 ### Global Configuration
-* `/config tehbot modify set botname "mytehbot"` -- set tehbot's name to `mytehbot`
-* `/config tehbot modify set cmdprefix "!"` -- set tehbot's command prefix to `!` (tehbot will react to IRC messages that start with `!`)
-* `/config tehbot connections add "IRC Network"` -- add an IRC network tehbot should connect to as "IRC Network"
-  * `/config tehbot connections modify "IRC Network" set host "irc.network.org"`
-  * `/config tehbot connections modify "IRC Network" set port 7000`
-  * `/config tehbot connections modify "IRC Network" set ssl "True"`
-  * `/config tehbot connections modify "IRC Network" add channels "#channel1"`
-  * `/config tehbot connections modify "IRC Network" add channels "#channel2"`
-  * `/config tehbot connections modify "IRC Network" add operators "your_nickserv_regged_nick"`
-  
-  Optionally:
-  * `/config tehbot connections modify "IRC Network" set botname "tehnetworkbot"` -- set a network specific name tehbot should use
-  * `/config tehbot connections modify "IRC Network" set password "********"` -- set a NICKSERV password tehbot should use to authenticate
-  * `/config tehbot connections modify "IRC Network" set id "net"` -- set a unique id for a network
+* `config global set botname "mytehbot"` -- set tehbot's name to `mytehbot`
+* `config global set cmdprefix "!"` -- set tehbot's command prefix to `!` (tehbot will react to IRC messages that start with `!`)
+* `config global add connection ircnet irc.network.org 7000` -- add ircnet as IRC network tehbot should connect to
+* `config connection ircnet set ssl "True"`
+* `config connection ircnet add channels #channel1,#channel2,#channel3,...`
+* `config connection ircnet add operators "your_nickserv_regged_nick1,your_nickserv_regged_nick2,..."`
+
+Optionally:
+* `config connection ircnet set botname "tehnetworkbot"` -- set a network specific name tehbot should use
+* `config connection ircnet set password "********"` -- set a NICKSERV password tehbot should use to authenticate
+* `config connection ircnet set host "irc.network.org"`
+* `config connection ircnet set port 7000`
 
 ### Plugin Configuration
+* `config plugin PingPlugin set enabled True`
 ...
