@@ -19,14 +19,11 @@ class SeenPlugin(StandardCommand):
         user = self.pargs.user[0]
         requser = event.source.nick
         c = dbconn.cursor()
-        c.execute(u"select * from Messages where nick=? and type=0 order by ts desc limit 2", (user,))
+        c.execute(u"select * from Messages where nick=? and type=0 order by ts desc limit 1", (user,))
         res = c.fetchone()
 
         if res is None:
             return [("say_nolog", u"I've never seen %s." % user)]
-
-        if user == requser and irc.client.is_channel(event.target):
-            res = c.fetchone()
 
         _, ts, server, channel, nick, _, message = res
         timestr = Plugin.time2str(time.time(), ts)
