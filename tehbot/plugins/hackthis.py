@@ -11,6 +11,7 @@ import datetime
 import zlib
 import time
 import re
+import ssl
 
 def ends_message():
     end = datetime.datetime(2015, 12, 11, 20)
@@ -215,7 +216,12 @@ class HackThisForumPoller(Poller):
         if not self.logged_in:
             self.login()
 
-        fp = self.opener.open(self.forumurl, timeout=10)
+        try:
+            fp = self.opener.open(self.forumurl, timeout=10)
+        except (urllib2.URLError, ssl.SSLError):
+            # ignore stupid SSL errors for HackThis!!
+            return
+
         tree = lxml.html.parse(fp)
         topics_node = tree.xpath("//div[@class='forum-topics']")[0]
         entries = []
