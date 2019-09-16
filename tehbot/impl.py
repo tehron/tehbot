@@ -271,8 +271,7 @@ class TehbotImpl:
                 res = None
                 self.core.print_exc()
 
-            if res is not None:
-                self.actionqueue.put((res, plugin, connection, event, extra))
+            self.actionqueue.put((res, plugin, connection, event, extra))
             self.queue.task_done()
 
         dbconn.close()
@@ -373,22 +372,22 @@ class TehbotImpl:
     def process_once(self, timeout):
         self.core.reactor.process_once(timeout)
 
-        now = time.time()
-        try:
-            actions, plugin, connection, event, extra = self.actionqueue.get(False)
-        except Empty:
-            return
-
-        try:
-            self.process_actions(actions, plugin, connection, event, extra)
-        finally:
+        while True:
             try:
-                if isinstance(plugin, tehbot.plugins.Announcer):
-                    self.schedule(plugin)
-            except:
-                self.core.print_exc()
+                actions, plugin, connection, event, extra = self.actionqueue.get(False)
+            except Empty:
+                break
 
-            self.actionqueue.task_done()
+            try:
+                self.process_actions(actions, plugin, connection, event, extra)
+            finally:
+                try:
+                    if isinstance(plugin, tehbot.plugins.Announcer):
+                        self.schedule(plugin)
+                except:
+                    self.core.print_exc()
+
+                self.actionqueue.task_done()
 
     def process_actions(self, actions, plugin, connection, event, extra):
         if event is None:
