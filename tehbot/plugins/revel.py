@@ -3,6 +3,8 @@ import urllib
 import urllib2
 import time
 import ssl
+import lxml.html
+import re
 
 class RevelSolvedPoller(Poller):
     def prefix(self):
@@ -64,6 +66,83 @@ class RevelSolvedPoller(Poller):
         self.settings["ts"] = ts
         self.save(dbconn)
 
+        msg = u"\n".join(msgs)
+        if msg:
+            return [("announce", (self.where(), msg))]
+
+
+
+class RevelPoller(Poller):
+    def initialize(self, dbconn):
+        Poller.initialize(self, dbconn)
+        with dbconn:
+            dbconn.execute("create table if not exists RevelPollerNews(id integer, ts datetime, content text)")
+            dbconn.execute("create table if not exists RevelPollerUser(id integer, name text, ts datetime)")
+            dbconn.execute("create table if not exists RevelPollerChallenge(id integer, name text, ts datetime)")
+            dbconn.execute("create table if not exists RevelPollerForum(id integer, forum integer, ts datetime, title text, url text, who text)")
+
+    def execute(self, connection, event, extra, dbconn):
+        url = "https://www.revolutionelite.co.uk/index.php"
+
+        try:
+            reply = urllib2.urlopen(url, timeout=5)
+        except (urllib2.URLError, ssl.SSLError):
+            # ignore stupid SSL errors for RevEl
+            return
+
+        tree = lxml.html.parse(reply)
+
+        news = []
+        for ni in tree.xpath("//div[@class='sidebar']/h4[text()='Latest News']/following-sibling::ul[1]/li"):
+            match = re.search(r'''(\d+)(?:st|nd|rd|th)\s+(\w+)\s+(\d+)\s*-\s*(.*)''', ni.text_content())
+            ts = time.mktime(time.strptime(" ".join(match.groups()[:3]), "%d %B %Y"))
+            content = match.group(4)
+            news.append((ts, content))
+
+        latest_user = tree.xpath("//div[@class='sidebar']/h4[text()='Latest Stats:']/following-sibling::ul[1]/li//h5[text()='Latest Registered User:']/following-sibling::a/text()")[0].strip()
+        latest_challenge = tree.xpath("//div[@class='sidebar']/h4[text()='Latest Stats:']/following-sibling::ul[1]/li//h5[text()='Latest Challenge Online:']/following-sibling::a/text()")[0].strip()
+
+        forum_posts = []
+        for post in tree.xpath("//div[@class='sidebar']/h4[text()='Latest Message Board Posts:']/following-sibling::center/ul/li"):
+            ts = time.mktime(time.strptime(post.xpath(".//text()[2]")[0], "%B %d, %Y, %H:%M:%S %p"))
+            title = post.xpath(".//a[1]/text()")[0].strip()
+            url = post.xpath(".//a[1]/@href")[0].strip()
+            who = post.xpath(".//a[2]/text()")[0].strip()
+            forum_posts.append((0, ts, title, url, who))
+
+        solution_forum_posts = []
+        for post in tree.xpath("//div[@class='sidebar']//h4[text()='Latest Solutions Posts:']/following-sibling::center/ul/li"):
+            ts = time.mktime(time.strptime(post.xpath(".//text()[2]")[0], "%B %d, %Y, %H:%M:%S %p"))
+            title = post.xpath(".//a[1]/text()")[0].strip()
+            url = post.xpath(".//a[1]/@href")[0].strip()
+            who = post.xpath(".//a[2]/text()")[0].strip()
+            solution_forum_posts.append((1, ts, title, url, who))
+
+        msgs = []
+        with dbconn:
+            for n in news[::-1]:
+                c = dbconn.execute("select 1 from RevelPollerNews where ts=? and content=?", n)
+                if not c.fetchone():
+                    dbconn.execute("insert into RevelPollerNews values(null, ?, ?)", n)
+                    msgs.append(Plugin.green("[Revolution Elite News]") + " " + n[1])
+
+            c = dbconn.execute("select 1 from RevelPollerUser where name=?", (latest_user, ))
+            if not c.fetchone():
+                dbconn.execute("insert into RevelPollerUser values(null, ?, ?)", (latest_user, time.time()))
+                msgs.append(Plugin.green("[Revolution Elite Users]") + " " + ("%s just joined" % Plugin.bold(latest_user)))
+
+            for p in forum_posts[::-1]:
+                c = dbconn.execute("select 1 from RevelPollerForum where forum=? and ts=? and title=?", (p[0], p[1], p[2]))
+                if not c.fetchone():
+                    dbconn.execute("insert into RevelPollerForum values(null, ?, ?, ?, ?, ?)", p)
+                    msgs.append(Plugin.green("[Revolution Elite Forum]") + " " + ("New post in %s by %s" % (Plugin.bold(p[2]), Plugin.bold(p[4]))))
+
+            for p in solution_forum_posts[::-1]:
+                c = dbconn.execute("select 1 from RevelPollerForum where forum=? and ts=? and title=?", (p[0], p[1], p[2]))
+                if not c.fetchone():
+                    dbconn.execute("insert into RevelPollerForum values(null, ?, ?, ?, ?, ?)", p)
+                    msgs.append(Plugin.green("[Revolution Elite Forum]") + " " + ("New solution post in %s by %s" % (Plugin.bold(p[2]), Plugin.bold(p[4]))))
+            
         msg = u"\n".join(msgs)
         if msg:
             return [("announce", (self.where(), msg))]
