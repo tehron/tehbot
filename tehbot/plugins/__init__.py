@@ -340,7 +340,7 @@ class Announcer(Plugin):
         return Plugin.values_to_set(self) + ["at"]
 
     def convert_value(self, key, value):
-        if value in ["at"]:
+        if key in ["at"]:
             v = int(value)
         else:
             v = Plugin.convert_value(self, key, value)
@@ -372,7 +372,7 @@ class Poller(Announcer):
         return Announcer.values_to_set(self) + ["timeout"]
 
     def convert_value(self, key, value):
-        if value in ["timeout"]:
+        if key in ["timeout"]:
             v = int(value)
         else:
             v = Announcer.convert_value(self, key, value)
