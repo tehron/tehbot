@@ -23,47 +23,11 @@ class GreetingHandler(ChannelJoinHandler):
                 (10, "Hola %s"),
             ])
 
-    def config(self, args, dbconn):
-        if args[0] == "modify":
-            if args[1] in ["add", "rm"] and args[2] == "no_greet":
-                who = args[3]
-                if not self.settings.has_key("no_greet"):
-                    self.settings["no_greet"] = []
-                no_greet = set(self.settings["no_greet"])
-
-                if args[1] == "add":
-                    if who in no_greet:
-                        return "%s already is in no_greet" % who
-                    no_greet.add(who)
-                elif args[1] == "rm":
-                    if who not in no_greet:
-                        return "%s is not in no_greet" % who
-                    no_greet.remove(who)
-                self.settings["no_greet"] = list(no_greet)
-                self.save(dbconn)
-                return "Okay"
-            elif args[1] in ["add", "rm"] and args[2] == "where":
-                network = args[3]
-                channel = args[4]
-                if not self.settings.has_key("where"):
-                    self.settings["where"] = dict()
-                if not self.settings["where"].has_key(network):
-                    self.settings["where"][network] = []
-                if args[1] == "add":
-                    self.settings["where"][network].append(channel)
-                else:
-                    if channel not in self.settings["where"][network]:
-                        return "channel not active"
-                    self.settings["where"][network].remove(channel)
-                self.save(dbconn)
-                return "Okay"
-
-        return ChannelJoinHandler.config(self, args, dbconn)
-
     def execute(self, connection, event, extra, dbconn):
         def enabled():
-            for network, channels in self.settings["where"].items():
-                if connection.tehbot.ircid == network and (event.target in channels or channels == "__all__"):
+            for w in self.settings["where"]:
+                network, channel = w.split(":")
+                if connection.tehbot.ircid == network and event.target.lower() == channel.lower():
                     return True
             return False
 
