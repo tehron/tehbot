@@ -58,3 +58,4 @@ target/
 
 data/tehbot.sqlite
 tehbot/plugins/shadowlamb/sldb.sqlite
+tehbot/plugins/hackthis/status_*.py

@@ -8,10 +8,10 @@ import cookielib
 import json
 import re
 import datetime
-import zlib
 import time
 import re
 import ssl
+import os.path
 
 def ends_message():
     end = datetime.datetime(2015, 12, 11, 20)
@@ -152,20 +152,13 @@ class HackThisStatusPlugin(StandardCommand):
     def commands(self):
         return "htstatus"
 
-    def status_real6(self):
-        code = self.settings["code_real6"].decode("base64")
-        if zlib.crc32(code) != -819666813:
-            raise Exception("crc32")
-
-        exec code
-        return res
-
-    def status_basic7(self):
-        code = self.settings["code_basic7"].decode("base64")
-        if zlib.crc32(code) != -258743683:
-            raise Exception("crc32")
-
-        exec code
+    def status(self, filename):
+        d = os.path.dirname(__file__)
+        code = open(os.path.join(d, filename)).read()
+        try:
+            exec code
+        except:
+            res = False
         return res
 
     def execute_parsed(self, connection, event, extra, dbconn):
@@ -175,7 +168,7 @@ class HackThisStatusPlugin(StandardCommand):
         prefix = "[HackThis!! Status]"
 
         try:
-            succ = getattr(self, "status_" + chall)()
+            succ = self.status("status_%s.py" % chall)
             col = Plugin.green if succ else Plugin.red
             return col(prefix) + " Level is " + ("online" if succ else "offline")
         except:
