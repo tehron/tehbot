@@ -211,11 +211,11 @@ class HackThisForumPoller(Poller):
 
         try:
             fp = self.opener.open(self.forumurl, timeout=10)
+            tree = lxml.html.parse(fp)
         except (urllib2.URLError, ssl.SSLError):
             # ignore stupid SSL errors for HackThis!!
             return
 
-        tree = lxml.html.parse(fp)
         topics_node = tree.xpath("//div[@class='forum-topics']")[0]
         entries = []
 
