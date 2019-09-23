@@ -1,4 +1,5 @@
 import irc.client
+import irc.modes
 from Queue import Queue, Empty
 import traceback
 import time
@@ -936,7 +937,7 @@ class Dispatcher:
             if channel.lower() not in channels:
                 connection.part(channel)
 
-        connection.tehbot.users[channel].append(nick)
+        connection.tehbot.users[channel].append((nick, set()))
 
         if nick == botname:
             return
@@ -951,7 +952,9 @@ class Dispatcher:
         botname = connection.get_nickname()
 
         try:
-            connection.tehbot.users[channel].remove(nick)
+            lst = connection.tehbot.users[channel]
+            idx = [u for u,m in lst].index(nick)
+            del connection.tehbot.users[channel][idx]
         except ValueError as e:
             pass
 
@@ -976,7 +979,9 @@ class Dispatcher:
 
         for channel in connection.tehbot.users.keys():
             try:
-                connection.tehbot.users[channel].remove(nick)
+                lst = connection.tehbot.users[channel]
+                idx = [u for u,m in lst].index(nick)
+                del connection.tehbot.users[channel][idx]
             except ValueError as e:
                 pass
 
@@ -1066,10 +1071,12 @@ class Dispatcher:
 
         for channel in connection.tehbot.users.keys():
             try:
-                connection.tehbot.users[channel].remove(oldnick)
-            except ValueError:
+                lst = connection.tehbot.users[channel]
+                idx = [u for u,m in lst].index(oldnick)
+                _, mode = lst[idx]
+                connection.tehbot.users[channel][idx] = (newnick, mode)
+            except ValueError as e:
                 pass
-            connection.tehbot.users[channel].append(newnick)
 
         # reconquer our nick!
         if oldnick == botname:
@@ -1098,13 +1105,32 @@ class Dispatcher:
         connection.tehbot.users[channel] = []
 
         for nick in nick_list.split():
-            nick_modes = []
+            nick_modes = set()
 
             if nick[0] in connection.features.prefix:
-                nick_modes.append(connection.features.prefix[nick[0]])
+                nick_modes.add(connection.features.prefix[nick[0]])
                 nick = nick[1:]
 
-            # for mode in nick_modes:
-                # self.channels[channel].set_mode(mode, nick)
+            connection.tehbot.users[channel].append((nick, nick_modes))
 
-            connection.tehbot.users[channel].append(nick)
+    def on_mode(self, connection, event):
+        if not irc.client.is_channel(event.target):
+            return
+
+        modes = irc.modes.parse_channel_modes(" ".join(event.arguments))
+        channel = event.target
+        lst = connection.tehbot.users[channel]
+
+        for op, mode, arg in modes:
+            if arg is None:
+                continue
+
+            idx = [u for u,m in lst].index(arg)
+            _, m = lst[idx]
+
+            if op == "+":
+                m.add(mode)
+            elif mode in m:
+                m.remove(mode)
+
+            connection.tehbot.users[channel][idx] = (arg, m)

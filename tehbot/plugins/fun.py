@@ -11,7 +11,7 @@ class BlamePlugin(StandardCommand):
         return "blame"
 
     def execute_parsed(self, connection, event, extra, dbconn):
-        two = connection.tehbot_users[event.target] if irc.client.is_channel(event.target) else [u"spaceone"]
+        two = [u for u,m in connection.tehbot.users[event.target]] if irc.client.is_channel(event.target) else [u"spaceone"]
         goats = zip((two for one in range(23)), 42 * [ reduce(random, [], two) ])
         shuffle(goats)
         goats.sort(key=lambda x: random())
@@ -420,27 +420,46 @@ class DeadHourPlugin(Command):
         if not irc.client.is_channel(event.target):
             return
 
-        users = set(connection.tehbot.users[event.target])
+        channel = event.target
+        users = connection.tehbot.users[channel][:]
+        botname = connection.get_nickname()
+        idx = [u for u,m in users].index(botname)
 
-        # TODO replace "tehbot" with actual botname
-        users -= set(["Lamb3", "tehbot", "ChanServ"])
+        if not users[idx][1].intersection("qo"):
+            return "I don't have enough privileges in this channel to do that."
+
+        skip_users = ["Lamb3", "ChanServ", botname]
 
         def modelist(users):
-            def check(ulist):
-                s = "-" + "o" * len(ulist) + " " + " ".join(ulist)
+            def check(ulist, mlist):
+                s = "-" + "".join(mlist) + " " + " ".join(ulist)
                 return len(s) <= 510
 
+            mlist = []
             ulist = []
 
             while users:
-                u = users.pop()
-                if check(ulist + [u]):
-                    ulist.append(u)
+                u, mods = users.pop()
+                if u in skip_users:
+                    continue
+
+                if "o" in mods:
+                    m = "o"
+                elif "h" in mods:
+                    m = "h"
+                elif "v" in mods:
+                    m = "v"
                 else:
-                    users.add(u)
+                    continue
+
+                if check(ulist + [u], mlist + [m]):
+                    ulist.append(u)
+                    mlist.append(m)
+                else:
+                    users.add((u, mods))
                     break
 
-            return "-" + "o" * len(ulist) + " " + " ".join(ulist)
+            return "-" + "".join(mlist) + " " + " ".join(ulist)
 
         res = []
         while users:
