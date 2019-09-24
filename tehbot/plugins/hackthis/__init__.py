@@ -12,11 +12,12 @@ import time
 import re
 import ssl
 import os.path
+import tehbot
 
 class HackThisOpener:
     def __init__(self):
-        d = os.path.dirname(__file__)
-        self.cookiejar = cookielib.MozillaCookieJar(os.path.join(d, "cookies.txt"))
+        d = os.path.dirname(tehbot.__file__)
+        self.cookiejar = cookielib.MozillaCookieJar(os.path.join(d, "..", "data", "hackthis.cookies"))
         self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
         self.url = "https://www.hackthis.co.uk/"
         self.loginurl = self.url + "?login"
