@@ -272,3 +272,26 @@ class HackThisForumPoller(Poller):
         msg = u"\n".join(msgs)
         if msg:
             return [("announce", (self.where(), msg))]
+
+class HackThisZenPlugin(StandardCommand):
+    def __init__(self):
+        StandardCommand.__init__(self)
+        self.opener = HackThisOpener()
+
+    def commands(self):
+        return "htzen"
+
+    def execute_parsed(self, connection, event, extra, dbconn):
+        if not self.opener.logged_in:
+            self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
+
+        try:
+            fp = self.opener.open("https://www.hackthis.co.uk/", timeout=10)
+            tree = lxml.html.parse(fp)
+        except (urllib2.URLError, ssl.SSLError):
+            # ignore stupid SSL errors for HackThis!!
+            return
+
+        zen = tree.xpath("//section[@id='content-wrap']/div[contains(@class, 'sidebar')]/article[@class='widget']")[0]
+        zen = " ".join(zen.text.split())
+        return zen
