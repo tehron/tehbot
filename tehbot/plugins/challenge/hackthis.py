@@ -4,30 +4,21 @@ import urllib2
 import urlparse
 import lxml.html
 import re
-import cookielib
 import json
+from tehbot.plugins.hackthis import HackThisOpener
 
 class Site(BaseSite):
     def __init__(self):
         self.url = self.siteurl() + "/"
         self.url2 = self.url + "user/%s"
         self.url3 = self.url + "files/ajax/user.php?action=graph&type=levels&uid=%d"
-        self.cookies = cookielib.CookieJar()
-        self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookies))
+        self.opener = HackThisOpener()
 
     def prefix(self):
         return u"[HackThis!!]"
 
     def siteurl(self):
         return "https://www.hackthis.co.uk"
-
-    def login(self):
-        data = urllib.urlencode({"username" : self.settings["hackthis.user"], "password" : self.settings["hackthis.password"]})
-        page = self.opener.open(self.url + "?login", data).read()
-        self.logout_url = self.url + re.search(r'''<a href='/(\?logout[^']*)'>''', page).group(1)
-
-    def logout(self):
-        self.opener.open(self.logout_url).read()
 
     @staticmethod
     def count_lvldata(data):
@@ -58,15 +49,12 @@ class Site(BaseSite):
     def helper(self, u):
         tree = lxml.html.parse(self.opener.open(self.url2 % u))
         data = Site.extract_data(tree)
-
-        if data is None:
-            self.login()
-            tree = lxml.html.parse(self.opener.open(self.url2 % u))
-            data = Site.extract_data(tree)
-
         return (tree, data)
 
     def userstats(self, user):
+        if not self.opener.logged_in:
+            self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
+
         tree, data = self.helper(urllib.quote(Plugin.to_utf8(user).replace("/", "")))
 
         if data is None:

@@ -13,6 +13,38 @@ import re
 import ssl
 import os.path
 
+class HackThisOpener:
+    def __init__(self):
+        d = os.path.dirname(__file__)
+        self.cookiejar = cookielib.MozillaCookieJar(os.path.join(d, "cookies.txt"))
+        self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
+        self.url = "https://www.hackthis.co.uk/"
+        self.loginurl = self.url + "?login"
+        self.logged_in = False
+
+    def login(self, username, password):
+        try:
+            self.cookiejar.load()
+            for c in self.cookiejar:
+                if c.name == "autologin" and not c.is_expired():
+                    self.logged_in = True
+                    return
+        except:
+            pass
+
+        data = urllib.urlencode({"username" : username, "password" : password})
+        page = self.opener.open(self.loginurl, data).read()
+        self.logout_url = self.url + re.search(r'''<a href='/(\?logout[^']*)'>''', page).group(1)
+        self.cookiejar.save()
+        self.logged_in = True
+
+    def logout(self):
+        self.opener.open(self.logout_url).read()
+        self.logged_in = False
+
+    def open(self, url, data=None, timeout=None):
+        return self.opener.open(url, data, timeout)
+
 def ends_message():
     end = datetime.datetime(2015, 12, 11, 20)
     secs = (end - datetime.datetime.now()).seconds
@@ -183,31 +215,13 @@ class HackThisForumPoller(Poller):
         with dbconn:
             dbconn.execute("CREATE TABLE if not exists HackThisForumPoller(id integer primary key, url varchar unique, title text, replies integer, last_ts datetime, last_user text)")
 
-        self.cookies = cookielib.CookieJar()
-        self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookies))
+        self.opener = HackThisOpener()
         self.url = "https://www.hackthis.co.uk/"
-        self.loginurl = self.url + "?login"
         self.forumurl = self.url + "forum"
-        self.logout_url = None
-        self.logged_in = False
-
-    def deinit(self, dbconn):
-        if self.logged_in:
-            self.logout()
-
-    def login(self):
-        data = urllib.urlencode({"username" : self.settings["hackthis.user"], "password" : self.settings["hackthis.password"]})
-        page = self.opener.open(self.loginurl, data).read()
-        self.logout_url = self.url + re.search(r'''<a href='/(\?logout[^']*)'>''', page).group(1)
-        self.logged_in = True
-
-    def logout(self):
-        self.opener.open(self.logout_url).read()
-        self.logged_in = False
 
     def execute(self, connection, event, extra, dbconn):
-        if not self.logged_in:
-            self.login()
+        if not self.opener.logged_in:
+            self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
 
         try:
             fp = self.opener.open(self.forumurl, timeout=10)
