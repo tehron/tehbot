@@ -4,6 +4,7 @@ import os.path
 from enum import Enum
 import time
 import datetime
+import tehbot
 
 class EnumConverter(StrConverter):
     def validate(converter, val, obj=None):
@@ -18,7 +19,8 @@ class EnumConverter(StrConverter):
         # Any enum type can be used, so py_type ensures the correct one is used to create the enum instance
         return converter.py_type[value]
 
-db = Database("sqlite", "sldb.sqlite", create_db=True)
+d = os.path.abspath(os.path.dirname(tehbot.__file__))
+db = Database("sqlite", os.path.join(d, "..", "data", "sldb.sqlite"), create_db=True)
 db.provider.converter_classes.append((Enum, EnumConverter))
 
 
