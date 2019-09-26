@@ -235,9 +235,13 @@ class HackThisForumPoller(Poller):
         entries = []
 
         for thread in topics_node.xpath(".//li[@class='forum-section']//li[contains(@class, 'row')]"):
-            anchor = thread.xpath(".//div[contains(@class, 'section_info')]/a")[0]
-            url = anchor.xpath("@href")[0]
+            section = thread.xpath(".//div[contains(@class, 'section_info')]")[0]
+            anchor = section.xpath("./a")[0]
             title = anchor.text
+            url = anchor.xpath("@href")[0]
+            pages = section.xpath("./div[@class='lite-pagination']/ul/li/a/@href")
+            if pages:
+                url = pages[-1]
             id = int(re.search(r'/(\d+)-[^/]+', url).group(1))
             replies = int(thread.xpath(".//div[contains(@class, 'section_replies')]/text()")[0])
             latest = thread.xpath(".//div[contains(@class, 'section_latest')]")[0]
@@ -259,15 +263,15 @@ class HackThisForumPoller(Poller):
                     announce = True
                     newthread = replies == 0
                 elif res[0] < last_ts:
-                    dbconn.execute("update HackThisForumPoller set last_ts=?, last_user=? where id=?", (last_ts, last_user, id))
+                    dbconn.execute("update HackThisForumPoller set last_ts=?, last_user=?, url=? where id=?", (last_ts, last_user, url, id))
                     announce = True
                     newthread = False
 
                 if announce:
                     if newthread:
-                        msgs.append(Plugin.green(self.prefix()) + " New Thread %s by %s" % (Plugin.bold(title), Plugin.bold(last_user)))
+                        msgs.append(Plugin.green(self.prefix()) + " New Thread %s by %s (id: %d)" % (Plugin.bold(title), Plugin.bold(last_user), id))
                     else:
-                        msgs.append(Plugin.green(self.prefix()) + " New Reply in %s by %s" % (Plugin.bold(title), Plugin.bold(last_user)))
+                        msgs.append(Plugin.green(self.prefix()) + " New Reply in %s by %s (id: %d)" % (Plugin.bold(title), Plugin.bold(last_user), id))
 
         msg = u"\n".join(msgs)
         if msg:
@@ -295,3 +299,59 @@ class HackThisZenPlugin(StandardCommand):
         zen = tree.xpath("//section[@id='content-wrap']/div[contains(@class, 'sidebar')]/article[@class='widget']")[0]
         zen = " ".join(zen.text.split())
         return zen
+
+class HackThisForumPlugin(StandardCommand):
+    def __init__(self):
+        StandardCommand.__init__(self)
+        self.parser.add_argument("what", nargs="?")
+        self.opener = HackThisOpener()
+
+    def commands(self):
+        return "htforum"
+
+    def prefix(self):
+        return u"[HackThis!! Forum]"
+
+    def execute(self, connection, event, extra, dbconn):
+        self.parser.set_defaults(what="latest")
+
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            m = self.parser.get_help_msg()
+            if m:
+                return m.strip()
+            what = pargs.what
+        except Exception as e:
+            return u"Error: %s" % unicode(e)
+
+        if what != "latest":
+            try:
+                what = int(what)
+            except:
+                return Plugin.red(self.prefix()) + " Illegal id: %s" % what
+
+        with dbconn:
+            if what == "latest":
+                c = dbconn.execute("select url from HackThisForumPoller order by last_ts desc limit 1")
+            else:
+                c = dbconn.execute("select url from HackThisForumPoller where id=?", (what,))
+            res = c.fetchone()
+            if res is None:
+                return Plugin.red(self.prefix()) + " No such id: %s" % what
+            url = res[0]
+
+        if not self.opener.logged_in:
+            self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
+
+        try:
+            fp = self.opener.open("https://www.hackthis.co.uk" + url, timeout=10)
+            tree = lxml.html.parse(fp)
+        except (urllib2.URLError, ssl.SSLError) as e:
+            # ignore stupid SSL errors for HackThis!!
+            return Plugin.red(self.prefix()) + u" %s" % unicode(e)
+
+        post = tree.xpath("//li[@id='latest']")[0]
+        user = post.xpath(".//a[contains(@class, 'user')]")[0].text.strip()
+        body = post.xpath(".//div[@itemprop='articleBody']")[0]
+        msg = " ".join(body.text_content().split())
+        return Plugin.green(self.prefix()) + " %s: %s" % (user, msg)
