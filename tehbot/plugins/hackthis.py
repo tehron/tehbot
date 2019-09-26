@@ -235,13 +235,9 @@ class HackThisForumPoller(Poller):
         entries = []
 
         for thread in topics_node.xpath(".//li[@class='forum-section']//li[contains(@class, 'row')]"):
-            section = thread.xpath(".//div[contains(@class, 'section_info')]")[0]
-            anchor = section.xpath("./a")[0]
-            title = anchor.text
+            anchor = thread.xpath(".//div[contains(@class, 'section_info')]/a")[0]
             url = anchor.xpath("@href")[0]
-            pages = section.xpath("./div[@class='lite-pagination']/ul/li/a/@href")
-            if pages:
-                url = pages[-1]
+            title = anchor.text
             id = int(re.search(r'/(\d+)-[^/]+', url).group(1))
             replies = int(thread.xpath(".//div[contains(@class, 'section_replies')]/text()")[0])
             latest = thread.xpath(".//div[contains(@class, 'section_latest')]")[0]
@@ -263,7 +259,7 @@ class HackThisForumPoller(Poller):
                     announce = True
                     newthread = replies == 0
                 elif res[0] < last_ts:
-                    dbconn.execute("update HackThisForumPoller set last_ts=?, last_user=?, url=? where id=?", (last_ts, last_user, url, id))
+                    dbconn.execute("update HackThisForumPoller set last_ts=?, last_user=? where id=?", (last_ts, last_user, id))
                     announce = True
                     newthread = False
 
@@ -344,7 +340,7 @@ class HackThisForumPlugin(StandardCommand):
             self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
 
         try:
-            fp = self.opener.open("https://www.hackthis.co.uk" + url, timeout=10)
+            fp = self.opener.open("https://www.hackthis.co.uk%s?post=latest" % url, timeout=10)
             tree = lxml.html.parse(fp)
         except (urllib2.URLError, ssl.SSLError) as e:
             # ignore stupid SSL errors for HackThis!!
