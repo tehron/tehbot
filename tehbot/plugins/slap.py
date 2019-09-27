@@ -220,9 +220,23 @@ class SlapwarzPlugin(StandardCommand):
     def timeout(self):
         return 24 * 60 * 60
 
+    def resolve_nick(self, users, arg):
+        if arg in users:
+            return arg
+
+        for u in users:
+            if u.lower().find(arg.lower()) > -1:
+                return u
+
+        return arg
+
     def execute_parsed(self, connection, event, extra, dbconn):
         who = event.source.nick
-        victim = self.pargs.victim
+        if irc.client.is_channel(event.target):
+            users = [u for u,m in connection.tehbot.users[event.target]]
+        else:
+            users = []
+        victim = self.resolve_nick(users, self.pargs.victim)
         when = time.time()
 
         words = []
