@@ -98,7 +98,7 @@ class TehbotImpl:
 
     def postinit(self):
         with self.dbconn:
-            self.dbconn.execute("create table if not exists Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, type integer, message varchar)")
+            self.dbconn.execute("create table if not exists Messages(id integer primary key, ts datetime, server varchar, channel varchar, nick varchar, type integer, message varchar, is_action integer)")
             self.dbconn.execute("create index if not exists idx_Messages_seen on Messages(nick, ts desc)")
 
         self.core.reactor.add_global_handler("all_events", self.dispatcher.dispatch, -10)
@@ -158,7 +158,7 @@ class TehbotImpl:
         else:
             s = "%s %s: %s: %s" % (ts, network, target, s)
         print s.encode(encoding, "backslashreplace")
-        self.logqueue.put((when, ircid, target, nick, typ, msg))
+        self.logqueue.put((when, ircid, target, nick, typ, msg, is_action))
 
     def load_plugins(self, modules):
         for p in modules:
@@ -238,9 +238,9 @@ class TehbotImpl:
 
         while True:
             try:
-                when, network, target, nick, typ, msg = self.logqueue.get(timeout=0.1)
+                data = self.logqueue.get(timeout=0.1)
                 with dbconn:
-                    dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?, ?)", (when, network, target, nick, typ, msg))
+                    dbconn.execute("insert into Messages values(null, ?, ?, ?, ?, ?, ?, ?)", data)
                 self.logqueue.task_done()
             except Empty:
                 pass
