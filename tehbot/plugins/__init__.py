@@ -258,7 +258,7 @@ class Plugin:
                 if len(infos) == granularity:
                     break
 
-        return ", ".join(infos) or "now"
+        return ", ".join(infos) or "less than a second"
 
     @staticmethod
     def str2bool(s):
