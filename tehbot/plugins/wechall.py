@@ -238,7 +238,7 @@ class WeChallSitesPoller(Poller):
                 updargs = (now, sitename, status, url, profileurl, int(usercount), int(linkcount), int(challcount), int(basescore), float(average.replace("%", "")), int(score))
 
                 if not sites.has_key(classname):
-                    dbconn.execute("insert into WeChallSitesPoller values(null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", insargs)
+                    dbconn.execute("insert into WeChallSitesPoller values(null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", insargs)
                     msgs.append(prefix + u"A new challenge site just spawned! Check out %s at %s" % (sitename, url))
                 else:
                     site = sites[classname]
