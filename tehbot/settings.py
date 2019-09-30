@@ -11,7 +11,7 @@ class Settings:
     def init(self, dbconn):
         with dbconn:
             dbconn.execute("create table if not exists Settings(key text primary key, value text)")
-        self. upgrade_database(dbconn)
+        self.upgrade_database(dbconn)
 
     def database_version(self):
         return 1
@@ -63,7 +63,6 @@ class Settings:
 
         with dbconn:
             dbconn.execute("insert or replace into Settings values('tehbot', ?)", (val,))
-
 
     def value(self, key, connection=None):
         if connection is None:

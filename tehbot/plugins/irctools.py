@@ -4,6 +4,7 @@ import sqlite3
 import time
 import irc.client
 import threading
+from tehbot.settings import Settings
 
 class SeenPlugin(StandardCommand):
     """Shows when a user was last seen."""
@@ -14,6 +15,14 @@ class SeenPlugin(StandardCommand):
 
     def commands(self):
         return ["seen", "last"]
+
+    def ircid2name(self, ircid, dbconn):
+        settings = Settings()
+        settings.load(dbconn)
+        try:
+            return settings.value("connections")[ircid]["name"]
+        except:
+            return ircid
 
     def execute_parsed(self, connection, event, extra, dbconn):
         user = self.pargs.user[0]
@@ -27,7 +36,8 @@ class SeenPlugin(StandardCommand):
 
         _, ts, server, channel, nick, _, message = res
         timestr = Plugin.time2str(time.time(), ts)
-        msg =  u"I saw %s %s ago on %s in %s saying '%s'." % (user, timestr, server, channel, message)
+        name = self.ircid2name(server, dbconn)
+        msg =  u"I saw %s %s ago on %s in %s saying '%s'." % (user, timestr, name, channel, message)
         return [("say_nolog", msg)]
 
 class OpHandler(ChannelJoinHandler):
