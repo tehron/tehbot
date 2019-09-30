@@ -44,7 +44,7 @@ class SlapwarzPlugin(StandardCommand):
                 (21, 0, 'epicly', 70),
 
                 (22, 1, 'totally fails at', 0),
-                (23, 1, 'screws thyselfhim/herself while slapping', 3),
+                (23, 1, 'screws him/herself while slapping', 3),
                 (24, 1, 'fails at', 5),
                 (25, 1, 'fails a bit at', 8),
                 (26, 1, 'misses' , 10),
