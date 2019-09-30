@@ -213,7 +213,7 @@ class SlapwarzPlugin(StandardCommand):
                 (187, 3, 'lighter', 18),
                 (188, 3, 'beamer', 42),
                 (189, 3, 'dongle', 17),
-                (190, 3, 'flying spagetthi monster', 15),
+                (190, 3, 'flying spaghetti monster', 15),
                 (191, 3, 'cake', 19),
             ])
 
