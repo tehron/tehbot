@@ -225,7 +225,7 @@ class HackThisForumPoller(Poller):
             self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
 
         try:
-            fp = self.opener.open(self.forumurl, timeout=10)
+            fp = self.opener.open(self.forumurl)
             tree = lxml.html.parse(fp)
         except (urllib2.URLError, ssl.SSLError):
             # ignore stupid SSL errors for HackThis!!
@@ -286,11 +286,10 @@ class HackThisZenPlugin(StandardCommand):
             self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
 
         try:
-            fp = self.opener.open("https://www.hackthis.co.uk/", timeout=10)
+            fp = self.opener.open("https://www.hackthis.co.uk/")
             tree = lxml.html.parse(fp)
-        except (urllib2.URLError, ssl.SSLError):
-            # ignore stupid SSL errors for HackThis!!
-            return
+        except (urllib2.URLError, ssl.SSLError) as e:
+            return Plugin.red(self.prefix()) + u" %s" % unicode(e)
 
         zen = tree.xpath("//section[@id='content-wrap']/div[contains(@class, 'sidebar')]/article[@class='widget']")[0]
         zen = " ".join(zen.text.split())
@@ -340,10 +339,9 @@ class HackThisForumPlugin(StandardCommand):
             self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
 
         try:
-            fp = self.opener.open("https://www.hackthis.co.uk%s?post=latest" % url, timeout=10)
+            fp = self.opener.open("https://www.hackthis.co.uk%s?post=latest" % url)
             tree = lxml.html.parse(fp)
         except (urllib2.URLError, ssl.SSLError) as e:
-            # ignore stupid SSL errors for HackThis!!
             return Plugin.red(self.prefix()) + u" %s" % unicode(e)
 
         post = tree.xpath("//li[@id='latest']")[0]
