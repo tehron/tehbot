@@ -24,6 +24,32 @@ class SeenPlugin(StandardCommand):
         except:
             return ircid
 
+    def get_action(self, message):
+        arr = message.split()
+        if not arr:
+            return None
+        verb = arr[0]
+        if len(verb) < 2 or verb[-1].lower() != "s":
+            return None
+        verb = verb[:-1]
+        v = verb.lower()
+
+        if v[-2:] == "ie":
+            verb = verb[:-2] + "y"
+        elif v[-1] == "e":
+            if not v.endswith("ee"):
+                verb = verb[:-1]
+        elif v[-2:] == "ic":
+            verb = verb + "k"
+        elif v[-1] not in "aeiou" and v[-2:-1] in "aeiou":
+            if v[-3:-2] not in "aeiou":
+                verb = verb + verb[-1]
+        args = " ".join(arr[1:])
+        msg = verb + "ing"
+        if args:
+            msg += " " + args
+        return msg
+
     def execute_parsed(self, connection, event, extra, dbconn):
         user = self.pargs.user[0]
         requser = event.source.nick
@@ -34,10 +60,14 @@ class SeenPlugin(StandardCommand):
         if res is None:
             return [("say_nolog", u"I've never seen %s." % user)]
 
-        _, ts, server, channel, nick, _, message = res
+        _, ts, server, channel, nick, _, message, is_action = res
         timestr = Plugin.time2str(time.time(), ts)
         name = self.ircid2name(server, dbconn)
-        msg =  u"I saw %s %s ago on %s in %s saying '%s'." % (user, timestr, name, channel, message)
+        action = self.get_action(message)
+        if is_action and action is not None:
+            msg = u"I saw %s %s ago on %s in %s %s." % (user, timestr, name, channel, action)
+        else:
+            msg =  u"I saw %s %s ago on %s in %s saying '%s'." % (user, timestr, name, channel, message)
         return [("say_nolog", msg)]
 
 class OpHandler(ChannelJoinHandler):
