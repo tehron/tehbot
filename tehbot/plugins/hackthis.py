@@ -344,9 +344,12 @@ class HackThisForumPlugin(StandardCommand):
         except (urllib2.URLError, ssl.SSLError) as e:
             return Plugin.red(self.prefix()) + u" %s" % unicode(e)
 
-        post = tree.xpath("//li[@id='latest']")[0]
-        user = post.xpath(".//a[contains(@class, 'user')]")[0].text.strip()
-        body = post.xpath(".//div[@itemprop='articleBody']//text()[not(ancestor::div[@class='bbcode_spoiler_body']) and not(ancestor::div[@class='post_signature'])]")
-        body = " ".join("".join(body).split())
-        msg = Plugin.green(self.prefix()) + " %s: %s" % (user, body)
+        try:
+            post = tree.xpath("//li[@id='latest']")[0]
+            user = post.xpath(".//a[contains(@class, 'user')]")[0].text.strip()
+            body = post.xpath(".//div[@itemprop='articleBody']//text()[not(ancestor::div[@class='bbcode_spoiler_body']) and not(ancestor::div[@class='post_signature'])]")
+            body = " ".join("".join(body).split())
+            msg = Plugin.green(self.prefix()) + " %s: %s" % (user, body)
+        except:
+            msg = Plugin.red(self.prefix()) + " unparsable HTML"
         return Plugin.shorten(msg, 450)
