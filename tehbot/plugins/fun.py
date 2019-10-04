@@ -413,6 +413,11 @@ class DeadHourPlugin(Command):
     def commands(self):
         return "dead_hour"
 
+    def default_settings(self):
+        return {
+                "max_modes" : 20
+                }
+
     def execute(self, connection, event, extra, dbconn):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
@@ -433,7 +438,7 @@ class DeadHourPlugin(Command):
         def modelist(users):
             def check(ulist, mlist):
                 s = "-" + "".join(mlist) + " " + " ".join(ulist)
-                return len(s) <= 510
+                return len(s) <= 450 and len(ulist) <= self.settings["max_modes"]
 
             mlist = []
             ulist = []
@@ -456,7 +461,7 @@ class DeadHourPlugin(Command):
                     ulist.append(u)
                     mlist.append(m)
                 else:
-                    users.add((u, mods))
+                    users.append((u, mods))
                     break
 
             return "-" + "".join(mlist) + " " + " ".join(ulist)
