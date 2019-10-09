@@ -300,6 +300,7 @@ class HackThisForumPlugin(StandardCommand):
         StandardCommand.__init__(self)
         self.parser.add_argument("what", nargs="?")
         self.opener = HackThisOpener()
+        self.splitter = re.compile("[\t\r\n ]*")
 
     def commands(self):
         return "htforum"
@@ -345,10 +346,55 @@ class HackThisForumPlugin(StandardCommand):
             return Plugin.red(self.prefix()) + u" %s" % unicode(e)
 
         try:
-            post = tree.xpath("//li[@id='latest']")[0]
+            post = tree.xpath("//ul[contains(@class, 'post-list')]/li")[-1]
             user = post.xpath(".//a[contains(@class, 'user')]")[0].text.strip()
-            body = post.xpath(".//div[@itemprop='articleBody']//text()[not(ancestor::div[@class='bbcode_spoiler_body']) and not(ancestor::div[@class='post_signature'])]")
-            body = " ".join("".join(body).split())
+            elems = post.xpath(".//div[@itemprop='articleBody']/text()[not(ancestor::div[@class='bbcode_spoiler_body']) and not(ancestor::div[@class='post_signature'])] | .//div[@itemprop='articleBody']/*")
+            body = []
+            for e in elems:
+                if isinstance(e, lxml.html.HtmlElement):
+                    if e.tag == "i" and e.xpath("starts-with(@class, 'icon-')"):
+                        if e.attrib["class"] == "icon-happy":
+                            body.append(u"\U0001f600")
+                        elif e.attrib["class"] == "icon-smiley":
+                            body.append(u"\U0001f642")
+                        elif e.attrib["class"] == "icon-tongue":
+                            body.append(u"\U0001f61b")
+                        elif e.attrib["class"] == "icon-sad":
+                            body.append(u"\U0001f625")
+                        elif e.attrib["class"] == "icon-wink":
+                            body.append(u"\U0001f609")
+                        elif e.attrib["class"] == "icon-cool":
+                            body.append(u"\U0001f60e")
+                        elif e.attrib["class"] == "icon-angry":
+                            body.append(u"\U0001f620")
+                        elif e.attrib["class"] == "icon-shocked":
+                            body.append(u"\U0001f62e")
+                        elif e.attrib["class"] == "icon-confused":
+                            body.append(u"\U0001f615")
+                        elif e.attrib["class"] == "icon-neutral":
+                            body.append(u"\U0001f610")
+                        elif e.attrib["class"] == "icon-wondering":
+                            body.append(u"\U0001f914")
+                        elif e.attrib["class"] == "icon-heart":
+                            body.append(u"\U00002764")
+                    elif e.tag == "blockquote":
+                        quote = []
+                        author = "author"
+                        for q in e.xpath("text()|span"):
+                            if isinstance(q, lxml.html.HtmlElement):
+                                author = q.text_content()
+                            else:
+                                quote.append(q)
+                        quote = " ".join(filter(None, self.splitter.split(" ".join(quote))))
+                        body.append("%s (%s)" % (Plugin.italic(quote), author))
+                    elif e.tag == "div" and e.xpath("@class='bbcode_spoiler' or @class='post_signature'"):
+                        pass
+                    else:
+                        body.append(e.text_content())
+                else:
+                    body.append(e)
+
+            body = " ".join(filter(None, self.splitter.split(" ".join(body))))
             msg = Plugin.green(self.prefix()) + " %s: %s" % (user, body)
         except:
             msg = Plugin.red(self.prefix()) + " unparsable HTML"
