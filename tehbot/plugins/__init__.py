@@ -208,15 +208,19 @@ class Plugin:
 
     @staticmethod
     def green(msg):
-        return u"\x0303%s\x03" % msg
+        return "\x0303%s\x03" % msg
 
     @staticmethod
     def red(msg):
-        return u"\x0304%s\x03" % msg
+        return "\x0304%s\x03" % msg
 
     @staticmethod
     def bold(msg):
-        return u"\x02%s\x0f" % msg
+        return "\x02%s\x0f" % msg
+
+    @staticmethod
+    def italic(msg):
+        return "\x1d%s\x0f" % msg
 
     @staticmethod
     def exc2str(ex):
