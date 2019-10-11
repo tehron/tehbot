@@ -238,7 +238,7 @@ class HackThisForumPoller(Poller):
             anchor = thread.xpath(".//div[contains(@class, 'section_info')]/a")[0]
             url = anchor.xpath("@href")[0]
             title = anchor.text
-            id = int(re.search(r'/(\d+)-[^/]+', url).group(1))
+            id = int(re.search(r'/(\d+)[^/]*', url).group(1))
             replies = int(thread.xpath(".//div[contains(@class, 'section_replies')]/text()")[0])
             latest = thread.xpath(".//div[contains(@class, 'section_latest')]")[0]
             timestr = latest.xpath("./time/@datetime")[0]
