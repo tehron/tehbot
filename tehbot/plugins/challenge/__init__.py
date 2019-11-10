@@ -18,8 +18,10 @@ sitemap = {
     "wc" : "wc",
     "nf" : "nf",
     "net-force" : "nf",
-    "ht" : "hackthis",
-    "hackthis" : "hackthis",
+    "ht" : "defendtheweb",
+    "hackthis" : "defendtheweb",
+    "dtw" : "defendtheweb",
+    "defendtheweb" : "defendtheweb",
     "wix" : "wix",
     "wixxerd" : "wix",
     "tbs" : "tbs",
@@ -107,7 +109,7 @@ class StatsPlugin(StandardCommand):
         return u"%s %s" % (Plugin.green(site.prefix()), txt)
 
     def values_to_set(self):
-        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key" ]
+        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key" ]
 
     def execute(self, connection, event, extra, dbconn):
         self.parser.set_defaults(user_or_rank=event.source.nick)
