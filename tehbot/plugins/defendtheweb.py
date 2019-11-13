@@ -133,7 +133,7 @@ class DefendTheWebForumPoller(Poller):
                     announce = True
                     newthread = replies == 0
                 elif res[0] < last_ts:
-                    dbconn.execute("update HackThisForumPoller set last_ts=?, last_user=? where id=?", (last_ts, last_user, id))
+                    dbconn.execute("update HackThisForumPoller set url=?, last_ts=?, last_user=? where id=?", (url, last_ts, last_user, id))
                     announce = True
                     newthread = False
 
