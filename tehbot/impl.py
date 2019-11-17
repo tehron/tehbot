@@ -945,8 +945,11 @@ class Dispatcher:
         if self.tehbot.quit_called:
             return
 
-        delay = 60 + 60 * random.random()
+        if not self.tehbot.settings.connection_params(connection).get("enabled", True):
+            return
+
         self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), None, None, "lost connection", False, 0)
+        delay = 60 + 60 * random.random()
         self.tehbot.myprint("%s: reconnecting in %d seconds" % (self.tehbot.settings.connection_name(connection), delay))
 
         with self.tehbot.core.reactor.mutex:
