@@ -24,6 +24,8 @@ from tehbot.plugins import *
 from tehbot.settings import Settings
 import locale
 encoding = locale.getdefaultlocale()[1] or "ascii"
+import random
+import socket
 
 def _terminate_thread(thread):
     """Terminates a python thread from another thread.
@@ -64,6 +66,32 @@ class ImplementationError(Exception):
     def __init__(self, clazz, what, pyfile):
         msg = "%s has no attribute '%s' in %s" % (clazz.__name__, what, pyfile)
         Exception.__init__(self, msg)
+
+class SocketFactory:
+    family = socket.AF_INET
+
+    def identity(x):
+            return x
+
+    def __init__(self, bind_address=None, wrapper=identity, ipv6=False, connect_timeout=10):
+        self.bind_address = bind_address
+        self.wrapper = wrapper
+        if ipv6:
+            self.family = socket.AF_INET6
+        self.connect_timeout = connect_timeout
+
+    def connect(self, server_address):
+        sock = self.wrapper(socket.socket(self.family, socket.SOCK_STREAM))
+        self.bind_address and sock.bind(self.bind_address)
+        sock.settimeout(self.connect_timeout)
+        try:
+            sock.connect(server_address)
+        except Exception as e:
+            raise e
+        finally:
+            sock.settimeout(None)
+        return sock
+    __call__ = connect
 
 class TehbotImpl:
     def __init__(self, tehbot):
@@ -305,10 +333,12 @@ class TehbotImpl:
         conns = self.settings.connections()
 
         for ircid in conns:
-            if not conns[ircid].get("enabled", True):
-                continue
-
             conn = self._get_connection(ircid)
+
+            if not conns[ircid].get("enabled", True):
+                if conn is not None:
+                    conn.disconnect("Network has been disabled")
+                continue
 
             if conn is None:
                 conn = self.core.reactor.server()
@@ -316,31 +346,36 @@ class TehbotImpl:
                 conn.tehbot.ircid = ircid
 
                 print "Connecting to %s" % self.settings.connection_name(conn)
-
-                try:
-                    self.reconnect(conn)
-                except:
-                    self.core.print_exc()
-                    conn.close()
-            else:
+                self.reconnect(conn)
+            elif conn.is_connected():
                 self.dispatcher.join_channels(conn)
 
     def reconnect(self, connection):
+        params = self.settings.connection_params(connection)
+
+        if not params.get("enabled", True):
+            self.myprint("%s: giving up reconnect attempt: network has been disabled" % (self.settings.connection_name(connection)))
+            return
+
         connection.tehbot.channels = set()
         connection.tehbot.users = dict()
 
-        params = self.settings.connection_params(connection)
-
         if params["ssl"]:
             import ssl
-            factory = irc.client.connection.Factory(wrapper=ssl.wrap_socket)
+            factory = SocketFactory(wrapper=ssl.wrap_socket)
         else:
-            factory = irc.client.connection.Factory()
+            factory = SocketFactory()
         botname = self.settings.value("botname", connection)
         username = self.settings.value("username", connection)
         ircname = self.settings.value("ircname", connection)
         nickservpw = params.get("password", None)
-        connection.connect(params["host"], params["port"], botname, nickservpw, username, ircname, factory)
+
+        try:
+            connection.connect(params["host"], params["port"], botname, nickservpw, username, ircname, factory)
+        except irc.client.ServerConnectionError as e:
+            self.dispatcher.on_disconnect(connection, None)
+            return
+
         connection.set_rate_limit(2)
         connection.set_keepalive(60)
 
@@ -910,7 +945,7 @@ class Dispatcher:
         if self.tehbot.quit_called:
             return
 
-        delay = 120
+        delay = 60 + 60 * random.random()
         self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), None, None, "lost connection", False, 0)
         self.tehbot.myprint("%s: reconnecting in %d seconds" % (self.tehbot.settings.connection_name(connection), delay))
 
