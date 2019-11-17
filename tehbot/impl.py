@@ -362,9 +362,9 @@ class TehbotImpl:
 
         if params["ssl"]:
             import ssl
-            factory = SocketFactory(wrapper=ssl.wrap_socket)
+            factory = SocketFactory(connect_timeout=3, wrapper=ssl.wrap_socket)
         else:
-            factory = SocketFactory()
+            factory = SocketFactory(connect_timeout=3)
         botname = self.settings.value("botname", connection)
         username = self.settings.value("username", connection)
         ircname = self.settings.value("ircname", connection)
