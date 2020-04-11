@@ -141,6 +141,97 @@ class HistoryPlugin(StandardCommand):
             print e
             return "Parse Error"
 
+class WeChallInfoPlugin(StandardCommand):
+    """Shows various information about a user on WeChall."""
+
+    def __init__(self):
+        StandardCommand.__init__(self)
+        self.parser.add_argument("user", nargs="?")
+
+    def commands(self):
+        return "wcinfo"
+
+    def execute(self, connection, event, extra, dbconn):
+        self.parser.set_defaults(user=event.source.nick)
+
+        try:
+            pargs = self.parser.parse_args(extra["args"])
+            m = self.parser.get_help_msg()
+            if m:
+                return m.strip()
+            user = pargs.user
+        except Exception as e:
+            return u"Error: %s" % str(e)
+
+        profileurl = "http://www.wechall.net/en/profile/%s"
+        xpuser = "//div[@id='page']/div[@class='fl']/table/tr"
+        xpactivity = "//div[@id='page']/table[@class='cl']/tr"
+        prefix = "\x0303[WeChall Info]\x03 "
+        timefmt = "%b %d, %Y - %H:%M:%S"
+
+        try:
+            tree = lxml.html.parse(urllib2.urlopen(profileurl % urllib.quote_plus(Plugin.to_utf8(user))))
+            user, score, rank, regdate, lastlogin, views, email, lastact = None, None, None, None, None, None, None, None
+            lastacttxt = None
+            country = None
+
+            for row in tree.xpath(xpuser):
+                etag = row.xpath("th")
+                evalue = row.xpath("td")
+                if etag and evalue:
+                    s = etag[0].text_content().strip().lower()
+                    v = evalue[0].text_content().strip()
+                    if s == "country":
+                        country = evalue[0].xpath("img/@alt")[0]
+                    if s == "username":
+                        user = v
+                    elif s == "score":
+                        score = int(v)
+                    elif s == "global rank" and v.lower() != "hidden":
+                        rank = int(v)
+                    elif s == "register date":
+                        regdate = time.mktime(time.strptime(v, timefmt))
+                    elif s == "last activity" and v.lower() != "unknown":
+                        lastlogin = time.mktime(time.strptime(v, timefmt))
+                    elif s == "profile views":
+                        views = int(v)
+                    elif s == "email":
+                        email = v
+
+            for row in tree.xpath(xpactivity):
+                ev1 = row.xpath("td[1]")
+                ev2 = row.xpath("td[2]")
+                if ev1 and ev2:
+                    v = ev1[0].text_content().strip()
+                    t = ev2[0].text_content().strip()
+                    if v.lower() != "unknown":
+                        lastact = time.mktime(time.strptime(v, timefmt))
+                        lastacttxt = t[0].lower() + t[1:]
+                        break
+
+        except Exception as e:
+            print e
+            return "Parse Error"
+
+        if user is None:
+            return prefix + "The requested user was not found."
+
+        now = time.time()
+        timestr1 = "moments" if now - regdate < 120 else Plugin.time2str(now, regdate)
+        rankstr = "" if rank is None else " (holding rank %d)" % rank
+        res = "%s registered to WeChall %s ago. The user has a score of %d point%s%s and their profile has been viewed %d times since." % (user, timestr1, score, "" if score == 1 else "s", rankstr, views)
+        if country is not None:
+            res += " %s comes from %s." % (user, country)
+        if lastlogin is not None:
+            timestr2 = "moments" if now - lastlogin < 120 else Plugin.time2str(now, lastlogin)
+            res += " The last user's login was %s ago." % timestr2
+        if lastact is not None:
+            timestr2 = "moments" if now - lastact < 120 else Plugin.time2str(now, lastact)
+            res += " The user %s %s ago." % (lastacttxt, timestr2)
+        if rank is not None:
+            res += " %s is %son page 1." % (user, "\x02not\x02 " if rank > 50 else "")
+        return prefix + res
+
 
 """
 TODO: create table WeChallActivityPoller(id integer primary key, datetime integer, type text, wcusername text, sitename text, siteclass text,
