@@ -12,8 +12,6 @@ searchurl = "https://www.googleapis.com/youtube/v3/videos?key=%s&id=%s&part=snip
 # regex = re.compile("youtube.com/watch(\?|\?.*&|\?.*&amp;)v=([0-9a-zA-Z+-_]{11})")
 regex = re.compile("(?:https?:\/\/)?(?:www\.)?youtu\.?be(?:\.com)?\/?.*(?:watch|embed)?(?:.*v=|v\/|\/)([\w\-_]+)\&?")
 
-info_cache = {}
-
 class YoutubeHandler(ChannelHandler):
     def default_settings(self):
         return { "key" : None, "referer" : None }
@@ -39,41 +37,36 @@ class YoutubeHandler(ChannelHandler):
             return
 
         vid = match.group(1)
-        #vid = "nw-z_FAyIVc"
-        if vid in info_cache:
-            txt = info_cache[vid] + " (cached)"
-        else:
-            req = urllib2.Request(searchurl % (self.settings["key"], vid))
-            req.add_header("Referer", self.settings["referer"])
-            resp = urllib2.urlopen(req).read()
-            resp = json.loads(resp)
-            entry = resp["items"][0]
-            name = entry["snippet"]["title"]
 
-            try:
-                duration = entry['contentDetails']['duration'][2:].lower()
-            except:
-                duration = "?"
+        req = urllib2.Request(searchurl % (self.settings["key"], vid))
+        req.add_header("Referer", self.settings["referer"])
+        resp = urllib2.urlopen(req).read()
+        resp = json.loads(resp)
+        entry = resp["items"][0]
+        name = entry["snippet"]["title"]
 
-            try:
-                v = int(entry['statistics']['viewCount'])
-                views = Plugin.grouped(v)
-            except:
-                views = "?"
+        try:
+            duration = entry['contentDetails']['duration'][2:].lower()
+        except:
+            duration = "?"
 
-            try:
-                l = int(entry['statistics']['likeCount'])
-                likes = Plugin.grouped(l)
-            except:
-                likes = "?"
+        try:
+            v = int(entry['statistics']['viewCount'])
+            views = Plugin.grouped(v)
+        except:
+            views = "?"
 
-            try:
-                d = int(entry['statistics']['dislikeCount'])
-                dislikes = Plugin.grouped(d)
-            except:
-                dislikes = "?"
+        try:
+            l = int(entry['statistics']['likeCount'])
+            likes = Plugin.grouped(l)
+        except:
+            likes = "?"
 
-            txt = "\x0303[YouTube]\x03 %s (%s) | Views: %s | Likes: +%s/-%s" % (name, duration, views, likes, dislikes)
-            info_cache[vid] = txt
+        try:
+            d = int(entry['statistics']['dislikeCount'])
+            dislikes = Plugin.grouped(d)
+        except:
+            dislikes = "?"
 
+        txt = "\x0303[YouTube]\x03 %s (%s) | Views: %s | Likes: +%s/-%s" % (name, duration, views, likes, dislikes)
         return txt
