@@ -25,7 +25,7 @@ Tehbot has a command line interface which accepts the following commands:
 * `config global add connection ircnet irc.network.org 7000` -- add ircnet as IRC network tehbot should connect to
 * `config connection ircnet set ssl "True"`
 * `config connection ircnet add channels #channel1`
-* `config connection ircnet add channels #channel2`
+* `config connection ircnet add channels #channel2`channelkey
 * `config connection ircnet add operators your_nickserv_regged_nick1`
 * `config connection ircnet add operators your_nickserv_regged_nick2`
 
