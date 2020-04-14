@@ -37,13 +37,13 @@ class Util:
         return page
 
     @staticmethod
-    def wcstats(dbconn, top):
+    def wcstats(dbconn, top, when):
         prefix = "\x0303[WeChall Statistics]\x03 "
         today = datetime.date.today()
         yesterday = today - datetime.timedelta(days=1)
 
         topscorers = dict()
-        for row in dbconn.execute("select wcusername, sum(gainabs) as totalgain from WeChallActivityPoller where datestamp >= ? and type='gain' group by wcusername order by totalgain desc;", (today.strftime("%Y%m%d000000"), )):
+        for row in dbconn.execute("select wcusername, sum(gainabs) as totalgain from WeChallActivityPoller where datestamp >= ? and type='gain' group by wcusername order by totalgain desc;", (when.strftime("%Y%m%d000000"), )):
             score = int(row[1])
             if not topscorers.has_key(score):
                 topscorers[score] = []
@@ -52,8 +52,15 @@ class Util:
             if len(topscorers) == top:
                 break
 
+        if when == yesterday:
+            whenstr = "yesterday"
+        elif when == today:
+            whenstr = "today"
+        else:
+            whenstr = when.strftime('%Y-%m-%d')
+
         if len(topscorers) == 0:
-            return "No activity yet for today"
+            return "No activity yet for %s" % whenstr
 
         def names(lst):
             a = ", ".join(lst[:len(lst) - 1])
@@ -61,7 +68,7 @@ class Util:
                 a += " and "
             return a + lst[-1]
 
-        return prefix + u"Today's Top Scorer: %s" % " | ".join("%s (%d)" % (names(topscorers[score]), score) for score in sorted(topscorers, reverse=True))
+        return prefix + u"Top Scorer of %s: %s" % (whenstr, " | ".join("%s (%d)" % (names(topscorers[score]), score) for score in sorted(topscorers, reverse=True)))
 
 class RemoteUpdatePlugin(StandardCommand):
     """Updates WeChall score for a user on a site."""
@@ -275,13 +282,14 @@ class WcStatsPlugin(StandardCommand):
 
     def __init__(self):
         StandardCommand.__init__(self)
-        self.parser.add_argument("-t", "--top", type=int, choices=range(1, 10))
+        self.parser.add_argument("-t", "--top", type=int, choices=range(1, 10 + 1))
+        self.parser.add_argument("-d", "--date", type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'))
 
     def commands(self):
         return "wcstats"
 
     def execute(self, connection, event, extra, dbconn):
-        self.parser.set_defaults(top=3)
+        self.parser.set_defaults(top=3, date=datetime.date.today())
 
         try:
             pargs = self.parser.parse_args(extra["args"])
@@ -291,14 +299,16 @@ class WcStatsPlugin(StandardCommand):
         except Exception as e:
             return u"Error: %s" % str(e)
 
-        return Util.wcstats(dbconn, pargs.top)
+        return Util.wcstats(dbconn, pargs.top, pargs.date)
 
 class WeChallStatsAnnouncer(Announcer):
     def at(self):
         return self.settings.get("at", 72000)
 
     def execute(self, connection, event, extra, dbconn):
-        return [("announce", (self.where(), Util.wcstats(dbconn, 3)))]
+        today = datetime.date.today()
+        yesterday = today - datetime.timedelta(days=1)
+        return [("announce", (self.where(), Util.wcstats(dbconn, 3, yesterday)))]
 
 class WeChallSitesPoller(Poller):
     def initialize(self, dbconn):
