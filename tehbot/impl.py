@@ -725,7 +725,10 @@ class TehbotImpl:
             return "no such ircid: %s" % args.ircid
         v = args.value
         if args.key == "channels":
-            conns[args.ircid]["channel_options"][args.value] = { }
+            options = {}
+            if args.password is not None:
+                options["password"] = args.password
+            conns[args.ircid]["channel_options"][args.value] = options
         elif args.key == "operators":
             v = ("nickserv", v)
         if v in conns[args.ircid][args.key]:
@@ -829,6 +832,7 @@ class TehbotImpl:
         connection_unset_parser.set_defaults(func=self.connection_unset_value)
         connection_add_parser.add_argument("key", choices=connection_add_keys)
         connection_add_parser.add_argument("value")
+        connection_add_parser.add_argument("password", nargs="?")
         connection_add_parser.set_defaults(func=self.connection_add_value)
         connection_remove_parser.add_argument("key", choices=connection_add_keys)
         connection_remove_parser.add_argument("value")
@@ -840,7 +844,7 @@ class TehbotImpl:
         channel_set_parser = channel_cmds.add_parser("set")
         channel_unset_parser = channel_cmds.add_parser("unset")
         channel_show_parser = channel_cmds.add_parser("show")
-        channel_set_keys = ["logging"]
+        channel_set_keys = ["logging", "password"]
         channel_set_parser.add_argument("key", choices=channel_set_keys)
         channel_set_parser.add_argument("value")
         channel_set_parser.set_defaults(func=self.channel_set_value)
@@ -933,8 +937,12 @@ class Dispatcher:
 
         if channels_to_join:
             mchans = ",".join(channels_to_join)
+            mpasswords = ",".join(self.tehbot.settings.channel_options(connection, channel).get("password", "") for channel in channels_to_join)
+            multi = mchans
+            if len(mpasswords) > len(channels_to_join):
+                multi += " %s" % mpasswords
             self.tehbot.myprint("%s: joining %s" % (self.tehbot.settings.connection_name(connection), mchans))
-            connection.send_raw("JOIN %s" % mchans)
+            connection.send_raw("JOIN %s" % multi)
 
         if channels_to_part:
             mchans = ",".join(channels_to_part)

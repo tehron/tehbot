@@ -69,7 +69,7 @@ class CommandLine(cmd.Cmd):
                 handlers = ["set", "unset", "show"]
             elif len(arr) == 5:
                 if l.endswith(" set") or l.endswith(" unset") or l.endswith(" show"):
-                    handlers = ["logging"]
+                    handlers = ["logging", "password"]
         elif l.startswith("config plugin"):
             plugins = [p.__class__.__name__ for p in bot.plugins]
             if len(arr) == 2:
