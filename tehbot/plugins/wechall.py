@@ -41,9 +41,10 @@ class Util:
         prefix = "\x0303[WeChall Statistics]\x03 "
         today = datetime.date.today()
         yesterday = today - datetime.timedelta(days=1)
+        startdate = when - datetime.timedelta(days=1)
 
         topscorers = dict()
-        for row in dbconn.execute("select wcusername, sum(gainabs) as totalgain from WeChallActivityPoller where datestamp >= ? and type='gain' group by wcusername order by totalgain desc;", (when.strftime("%Y%m%d000000"), )):
+        for row in dbconn.execute("select wcusername, sum(gainabs) as totalgain from WeChallActivityPoller where datestamp > ?  and datestamp <= ? and type='gain' group by wcusername order by totalgain desc;", (startdate.strftime("%Y%m%d200000"), when.strftime("%Y%m%d200000"))):
             score = int(row[1])
             if not topscorers.has_key(score):
                 topscorers[score] = []
@@ -281,9 +282,16 @@ class WcStatsPlugin(StandardCommand):
     """Shows latest WeChall statistics."""
 
     def __init__(self):
+        def checkdate(s):
+            if s == "today":
+                return datetime.date.today()
+            if s == "yesterday":
+                return datetime.date.today() - datetime.timedelta(days=1)
+            return datetime.date.fromtimestamp(time.mktime(time.strptime(s, '%Y-%m-%d')))
+
         StandardCommand.__init__(self)
         self.parser.add_argument("-t", "--top", type=int, choices=range(1, 10 + 1))
-        self.parser.add_argument("-d", "--date", type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'))
+        self.parser.add_argument("-d", "--date", type=checkdate, help="format '%%Y-%%m-%%d'")
 
     def commands(self):
         return "wcstats"
@@ -307,8 +315,7 @@ class WeChallStatsAnnouncer(Announcer):
 
     def execute(self, connection, event, extra, dbconn):
         today = datetime.date.today()
-        yesterday = today - datetime.timedelta(days=1)
-        return [("announce", (self.where(), Util.wcstats(dbconn, 3, yesterday)))]
+        return [("announce", (self.where(), Util.wcstats(dbconn, 3, today)))]
 
 class WeChallSitesPoller(Poller):
     def initialize(self, dbconn):
