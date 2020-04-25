@@ -12,11 +12,30 @@ import datetime
 import json
 import importlib
 import inspect
-from dateutil import relativedelta
 from tehbot.impl import TehbotImpl
 
 __all__ = ["Plugin", "Command", "StandardCommand", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
         "ThrowingArgumentParser", "PluginError"]
+
+class TimeDelta:
+    def __init__(self, t1, t2):
+        self.delta = datetime.datetime.fromtimestamp(t1) - datetime.datetime.fromtimestamp(t2)
+
+        days = self.delta.days
+        self.years = days / 360
+        days -= self.years * 360
+        self.months = days / 30
+        days -= self.months * 30
+        self.weeks = days / 7
+        days -= self.weeks * 7
+        self.days = days
+
+        seconds = self.delta.seconds
+        self.hours = seconds / 3600
+        seconds -= self.hours * 3600
+        self.minutes = seconds / 60
+        seconds -= self.minutes * 60
+        self.seconds = seconds
 
 class ArgumentParserError(Exception):
     pass
@@ -249,7 +268,7 @@ class Plugin:
 
     @staticmethod
     def time2str(a, b, granularity=2):
-        diff = relativedelta.relativedelta(datetime.datetime.fromtimestamp(a), datetime.datetime.fromtimestamp(b))
+        diff = TimeDelta(a, b)
         avail = [ "years", "months", "weeks", "days", "hours", "minutes", "seconds" ]
         infos = []
 
