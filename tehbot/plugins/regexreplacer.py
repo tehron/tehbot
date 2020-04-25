@@ -30,7 +30,7 @@ class RegexReplaceHandler(ChannelHandler):
         except:
             return
 
-        c = dbconn.execute("select message from Messages where server=? and channel=? and nick=? order by ts desc limit 2", (connection.name, event.target, user))
+        c = dbconn.execute("select message from Messages where server=? and channel=? and nick=? order by ts desc limit 2", (connection.tehbot.ircid, event.target, user))
         res = c.fetchone()
 
         if user == event.source.nick:
