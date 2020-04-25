@@ -13,6 +13,7 @@ import re
 import ssl
 import os.path
 import tehbot
+import traceback
 
 class DefendTheWebOpener:
     def __init__(self):
@@ -110,7 +111,7 @@ class DefendTheWebForumPoller(Poller):
             anchor = thread.xpath(".//div[@class='feed-item-details']/a[contains(@class, 'feed-item-title')]")[0]
             url = anchor.xpath("@href")[0]
             title = anchor.text.strip()
-            id = int(re.search(r'/(\d+)[^/]*', url).group(1))
+            id = int(re.search(r'/[^/]*?(\d+)[^/]*', url).group(1))
             try:
                 latest = thread.xpath(".//div[@class='feed-item-details']//a[@data-text='update_by']")[0]
             except IndexError:
@@ -208,5 +209,10 @@ class DefendTheWebForumPlugin(StandardCommand):
             body = " ".join(filter(None, self.splitter.split(" ".join(body))))
             msg = Plugin.green(self.prefix()) + " %s: %s" % (user, body)
         except:
-            msg = Plugin.red(self.prefix()) + " unparsable HTML"
+            try:
+                errmsg = tree.xpath("//div[contains(@class, 'msg--error')]")[0].text_content().strip()
+                msg = Plugin.red(self.prefix()) + " %s" % errmsg
+            except:
+                traceback.print_exc()
+                msg = Plugin.red(self.prefix()) + " unparsable HTML"
         return Plugin.shorten(msg, 450)
