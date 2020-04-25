@@ -135,7 +135,7 @@ class RevelPoller(Poller):
                 c = dbconn.execute("select 1 from RevelPollerForum where forum=? and ts=? and title=?", (p[0], p[1], p[2]))
                 if not c.fetchone():
                     dbconn.execute("insert into RevelPollerForum values(null, ?, ?, ?, ?, ?)", p)
-                    msgs.append(Plugin.green("[Revolution Elite Forum]") + " " + ("New post in %s by %s" % (Plugin.bold(p[2]), Plugin.bold(p[4]))))
+                    msgs.append(Plugin.green("[Revolution Elite Forum]") + " " + ("New post in %s by %s - %s" % (Plugin.bold(p[2]), Plugin.bold(p[4]), p[3])))
 
             for p in solution_forum_posts[::-1]:
                 c = dbconn.execute("select 1 from RevelPollerForum where forum=? and ts=? and title=?", (p[0], p[1], p[2]))
