@@ -628,6 +628,26 @@ class TehbotImpl:
         for c, nicks in self.privusers.items():
             print " * %s: %r" % (self.settings.connection_name(c), sorted(nicks))
 
+    def kbd_users(self, args):
+        parser = argparse.ArgumentParser()
+        parser.add_argument("ircid")
+        parser.add_argument("channel")
+        pargs = parser.parse_args(shlex.split(args or ""))
+
+        try:
+            conn = [c for c in self.core.reactor.connections if c.tehbot.ircid == pargs.ircid][0]
+        except:
+            print "No such connection:", pargs.ircid
+            return
+
+        try:
+            users = conn.tehbot.users[pargs.channel]
+        except:
+            print "No such channel:", pargs.channel
+            return
+
+        print ", ".join(sorted(a for a, b in users))
+
     def kbd_config(self, args):
         arr = shlex.split(args or "")
         print self.config(arr, self.dbconn)

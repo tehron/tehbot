@@ -23,6 +23,9 @@ class CommandLine(cmd.Cmd):
     def do_reload(self, line):
         cliqueue.put(("kbd_reload", line))
 
+    def do_users(self, line):
+        cliqueue.put(("kbd_users", line))
+
     def do_EOF(self, line):
         self.do_quit(line)
 
