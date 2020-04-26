@@ -111,7 +111,7 @@ class StatsPlugin(StandardCommand):
         return u"%s %s" % (Plugin.green(site.prefix()), txt)
 
     def values_to_set(self):
-        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key" ]
+        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password" ]
 
     def execute(self, connection, event, extra, dbconn):
         self.parser.set_defaults(user_or_rank=event.source.nick)
@@ -200,9 +200,15 @@ class SolversPlugin(StandardCommand):
                 if solvers:
                     txt += u" Last by %s." % u", ".join(solvers[:5])
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return u"%s %s" % (Plugin.red(site.prefix()), Plugin.exc2str(e))
 
         return u"%s %s" % (Plugin.green(site.prefix()), txt)
+
+    def values_to_set(self):
+        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password" ]
+
 
     def execute(self, connection, event, extra, dbconn):
         self.parser.set_defaults(site=event.target[1:] if irc.client.is_channel(event.target) else event.target)
