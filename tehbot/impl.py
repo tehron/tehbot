@@ -1011,6 +1011,35 @@ class Dispatcher:
         for h in self.tehbot.channel_join_handlers:
             self.tehbot.queue.put((h, (connection, event, {})))
 
+    def on_kick(self, connection, event):
+        kicker = event.source.nick
+        channel = event.target
+        kicked = event.arguments[0]
+        reason = event.arguments[1]
+        self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), channel, None, "%s has kicked %s from %s (%s)" % (kicker, kicked, channel, reason), False, 0)
+        botname = connection.get_nickname()
+
+        try:
+            lst = connection.tehbot.users[channel]
+            idx = [u for u,m in lst].index(kicked)
+            del connection.tehbot.users[channel][idx]
+        except ValueError as e:
+            pass
+
+        if kicked == botname:
+            del connection.tehbot.users[channel]
+            connection.tehbot.channels.remove(channel.lower())
+
+        try:
+            self.tehbot.privusers[connection].remove(event.source.kicked)
+        except:
+            pass
+
+        try:
+            self.tehbot.authusers[connection].remove(event.source.kicked)
+        except:
+            pass
+
     def on_part(self, connection, event):
         self.tehbot.logmsg(time.time(), connection.tehbot.ircid, self.tehbot.settings.connection_name(connection), event.target, None, "%s left" % event.source.nick, False, 0)
         nick = event.source.nick
