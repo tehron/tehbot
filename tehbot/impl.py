@@ -307,7 +307,7 @@ class TehbotImpl:
 
     def start_workers(self):
         while len(self.workers) < self.settings.value("nr_worker_threads"):
-            worker = threading.Thread(target=self._process)
+            worker = threading.Thread(name="WorkerThread-%d" % len(self.workers), target=self._process)
             self.workers.append(worker)
             worker.start()
 

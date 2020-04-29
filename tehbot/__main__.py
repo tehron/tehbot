@@ -9,6 +9,7 @@ from tehbot import *
 import irc.client
 from Queue import Queue, Empty
 import cmd
+import time
 
 class CommandLine(cmd.Cmd):
     def do_config(self, line):
@@ -144,7 +145,7 @@ cli = CommandLine()
 cli.prompt = "tehbot> "
 signal.signal(signal.SIGABRT, sighandler)
 bot, restart = None, False
-botthread = threading.Thread(target=botloop)
+botthread = threading.Thread(name="BotThread", target=botloop)
 botthread.start()
 
 while True:
