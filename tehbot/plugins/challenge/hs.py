@@ -86,7 +86,7 @@ class Site(BaseSite):
 
     @staticmethod
     def solved(user, challenge_name):
-        tree = lxml.html.parse(url3 % Plugin.to_latin1(user))
+        tree = lxml.html.parse(urllib2.urlopen(url3 % Plugin.to_latin1(user), timeout=3))
         for cat in tree.xpath("//td[@class='middle']//table[@class='mtable']"):
             for row in cat.xpath("tr"):
                 chall_link = row.xpath("td[2]//a[1]")
