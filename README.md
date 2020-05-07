@@ -3,7 +3,7 @@ A Python IRC Bot
 
 ## Installation
 * Install Python >= 2.7.10 with pip
-* Run `pip install --upgrade irc lxml tmdbsimple wolframalpha prettytable psutil pony enum34`
+* Run `pip install --upgrade irc lxml tmdbsimple wolframalpha prettytable psutil pony enum34 requests`
 * Checkout the source to `$TEHBOTDIR`
 
 ## Running

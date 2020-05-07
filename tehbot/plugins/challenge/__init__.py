@@ -68,6 +68,9 @@ class ChallengesNotNumberedError(Exception):
 class UnknownReplyFormat(Exception):
     pass
 
+class InvalidLoginError(Exception):
+    pass
+
 
 class StatsPlugin(StandardCommand):
     """Shows current stats for a user on a challenge site."""
@@ -111,7 +114,7 @@ class StatsPlugin(StandardCommand):
         return u"%s %s" % (Plugin.green(site.prefix()), txt)
 
     def values_to_set(self):
-        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password" ]
+        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password", "cryptohack.user", "cryptohack.password" ]
 
     def execute(self, connection, event, extra, dbconn):
         self.parser.set_defaults(user_or_rank=event.source.nick)
@@ -207,7 +210,7 @@ class SolversPlugin(StandardCommand):
         return u"%s %s" % (Plugin.green(site.prefix()), txt)
 
     def values_to_set(self):
-        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password" ]
+        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password", "cryptohack.user", "cryptohack.password" ]
 
 
     def execute(self, connection, event, extra, dbconn):
