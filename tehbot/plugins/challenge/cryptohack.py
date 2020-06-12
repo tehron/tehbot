@@ -33,7 +33,8 @@ class Site(BaseSite):
     def userstats_api(self, user):
         url = "https://cryptohack.org/wechall/userscore/?username=%s&authkey=%s"
         authkey = self.settings["cryptohack_api_key"]
-        html = urllib2.urlopen(url % (Plugin.to_utf8(user), authkey), timeout=5).read()
+        r = self.sess.get(url % (Plugin.to_utf8(user), authkey), timeout=5)
+        html = r.text
         if html == "failed":
             return None
         user, rank, score, scoremax, challs_solved, challs_total, users_total = html.split(":")
