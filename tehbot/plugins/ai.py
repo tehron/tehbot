@@ -29,8 +29,8 @@ class AiHandler(ChannelHandler):
                 re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s\s*,\s*(?P<what>.+?)\s*\??$''' % botname, re.I),
                 ]
         solved_regex = [
-                re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s\s*,?\s*has\s+(?P<who>\S+)\s+solved\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % botname, re.I),
-                re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s\s*,?\s*did\s+(?P<who>\S+)\s+solve\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % botname, re.I)
+                re.compile(r'''^(?:(?:ok(?:ay)?|hey|hay)\s+%s|%s(?:,|:)?)\s*,?\s*has\s+(?P<who>\S+)\s+solved\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % (botname, botname), re.I),
+                re.compile(r'''^(?:(?:ok(?:ay)?|hey|hay)\s+%s|%s(?:,|:)?)\s*,?\s*did\s+(?P<who>\S+)\s+solve\s+(?P<chall>\S[\s\S]*?|"[^"]+"|'[^']+')(?:\s+on\s+(?P<site>\S[\s\S]*?|"[^"]+"|'[^']+'))?\s*\??$''' % (botname, botname), re.I)
                 ]
 
         backend = self.settings.get("backend", "WolframAlphaPlugin")
