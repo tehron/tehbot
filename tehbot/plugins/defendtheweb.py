@@ -198,7 +198,7 @@ class DefendTheWebForumPlugin(StandardCommand):
             fp = self.opener.open(url)
             tree = lxml.html.parse(fp)
         except (urllib2.URLError, ssl.SSLError) as e:
-            return Plugin.red(self.prefix()) + u" %s" % unicode(e)
+            return Plugin.red(self.prefix()) + u" %s" % u" ".join(unicode(e).split())
 
         try:
             last_post = tree.xpath("(//div[contains(concat(' ', normalize-space(@class), ' '), ' discussion-thread-message ')])[last()]")[0]
