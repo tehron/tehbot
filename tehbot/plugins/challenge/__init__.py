@@ -31,7 +31,9 @@ sitemap = {
     "pyramid" : "rankk",
     "247ctf" : "two47ctf",
     "cryptohack" : "cryptohack",
-    "ch" : "cryptohack"
+    "ch" : "cryptohack",
+    "py" : "py",
+    "pydefis" : "py"
 }
 
 class BaseSite:
@@ -114,7 +116,7 @@ class StatsPlugin(StandardCommand):
         return u"%s %s" % (Plugin.green(site.prefix()), txt)
 
     def values_to_set(self):
-        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password", "cryptohack.user", "cryptohack.password" ]
+        return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password", "cryptohack.user", "cryptohack.password", "pydefis_api_key" ]
 
     def execute(self, connection, event, extra, dbconn):
         self.parser.set_defaults(user_or_rank=event.source.nick)
