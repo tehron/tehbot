@@ -345,7 +345,7 @@ class WeChallSitesPoller(Poller):
                 insargs = (now, sitename, classname, status, url, profileurl, int(usercount), int(linkcount), int(challcount), int(basescore), float(average.replace("%", "")), int(score), now)
                 updargs = (now, sitename, status, url, profileurl, int(usercount), int(linkcount), int(challcount), int(basescore), float(average.replace("%", "")), int(score))
 
-                if not sites.has_key(classname):
+                if not sites.has_key(classname) and status == "up":
                     dbconn.execute("insert into WeChallSitesPoller values(null, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", insargs)
                     msgs.append(prefix + u"A new challenge site just spawned! Check out %s at %s" % (sitename, url))
                 else:
@@ -429,4 +429,10 @@ class WcSitePlugin(StandardCommand):
                 timestr = Plugin.time2str(time.time(), challts)
                 challstr = "The latest challenge is %s old." % timestr
 
-            return Plugin.green(self.prefix()) + "%s (%s) has %d challenges. %d users are registered to the site. The site is %s. %s" % (sitename, classname, challcount, usercount, status, challstr)
+            if linkcount == 0:
+                linkstr = "No user has"
+            elif linkcount == 1:
+                linkstr = "1 user has"
+            else:
+                linkstr = "%d users have" % linkcount
+            return Plugin.green(self.prefix()) + "%s (%s) has %d challenges. %d users are registered to the site. The site is %s. %s linked their account. WeChall score is %d. %s" % (sitename, classname, challcount, usercount, status, linkstr, score, challstr)
