@@ -6,13 +6,13 @@ import re
 import threading
 import argparse
 import irc.client
-import sqlite3
 import shlex
 import datetime
 import json
 import importlib
 import inspect
 from tehbot.impl import TehbotImpl
+from pony.orm import db_session
 
 __all__ = ["Plugin", "Command", "StandardCommand", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
         "ThrowingArgumentParser", "PluginError"]
@@ -83,33 +83,42 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
             pass
 
 class Plugin:
-    def __init__(self):
+    def __init__(self, db):
+        self.db = db
         self.pub_allowed = True
         self.priv_allowed = True
 
     def default_settings(self):
         return { }
 
-    def initialize(self, dbconn):
-        self.settings = {
-                "enabled" : inspect.getmodule(self).__name__ == "tehbot.plugins.core",
-                "channel_enabled" : { }
+    def settings(self):
+        with db_session:
+            n = __class__.__name__
+            s = self.db.Settings.get(n)
+
+            if s is None:
+                settings = {
+                        "enabled" : inspect.getmodule(self).__name__ == "tehbot.plugins.core",
+                        "channel_enabled" : { }
                 }
-        self.settings.update(self.default_settings())
+                settings.update(self.default_settings())
+                s = self.db.Settings(name=n, value=settings)
 
-        c = dbconn.execute("select value from Settings where key=?", (self.__class__.__name__, ))
-        res = c.fetchone()
-        stored_settings = { }
-        if res is not None:
-            stored_settings = json.loads(res[0])
+            return s.value
 
-        self.settings.update(stored_settings)
-
-        if stored_settings != self.settings:
-            self.save(dbconn)
-
-    def deinit(self, dbconn):
+    def init(self):
         pass
+
+    def deinit(self):
+        pass
+
+    def is_enabled(self, ircid=None, channel=None):
+        settings = self.settings()
+        if not settings["enabled"]:
+            return False
+        if ircid is None or channel is None:
+            return True
+        return settings["channel_enabled"].get("%s:%s" % (ircid, channel), True)
 
     def convert_value(self, key, value):
         if key in ["enabled"]:
@@ -141,13 +150,6 @@ class Plugin:
         show_parser.add_argument("key", choices=self.values_to_set())
         show_parser.set_defaults(func=self.show_value)
 
-    def is_enabled(self, ircid=None, channel=None):
-        if not self.settings["enabled"]:
-            return False
-        if ircid is None or channel is None:
-            return True
-        return self.settings["channel_enabled"].get("%s:%s" % (ircid, channel), True)
-
     def is_privileged(self, extra):
         return extra["priv"]
 
@@ -159,11 +161,6 @@ class Plugin:
 
     def request_auth(self, extra):
         return [("noauth", None)] if extra.has_key("auth_requested") else [("doauth", None)]
-
-    def save(self, dbconn):
-        value = json.dumps(self.settings)
-        with dbconn:
-            dbconn.execute("insert or replace into Settings values(?, ?)", (self.__class__.__name__, value))
 
     @staticmethod
     def grouped(val):
@@ -294,8 +291,8 @@ class Command(Plugin):
         return None
 
 class StandardCommand(Command):
-    def __init__(self):
-        Command.__init__(self)
+    def __init__(self, db):
+        Command.__init__(self, db)
         cmd = self.commands()
         mcmd = cmd if isinstance(cmd, basestring) else cmd[0]
         self.parser = ThrowingArgumentParser(prog=mcmd, description=self.__doc__)
@@ -321,8 +318,8 @@ class PrefixHandler(Plugin):
     pass
 
 class Announcer(Plugin):
-    def __init__(self):
-        Plugin.__init__(self)
+    def __init__(self, db):
+        Plugin.__init__(self, db)
         self.quit = False
 
     def default_settings(self):

@@ -1,5 +1,6 @@
 import sqlite3
 import json
+from pony.orm import *
 
 class Settings:
     def __getitem__(self, key):
@@ -9,7 +10,7 @@ class Settings:
         self.values[key] = value
 
     def init(self, dbconn):
-        with dbconn:
+        with db_session:
             dbconn.execute("create table if not exists Settings(key text primary key, value text)")
         self.upgrade_database(dbconn)
 

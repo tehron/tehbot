@@ -5,7 +5,7 @@ import time
 import irc.client
 import tehbot.plugins as plugins
 import tehbot.impl as impl
-import tehbot.settings as settings
+import tehbot.model as model
 
 class Tehbot:
     def __init__(self):
@@ -24,7 +24,7 @@ class Tehbot:
 
     def reload(self):
         try:
-            reload(settings)
+            reload(model)
             reload(impl)
             reload(plugins)
             self.newimpl = impl.TehbotImpl(self)

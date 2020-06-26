@@ -3,8 +3,8 @@ import threading
 import time
 
 class PrivPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("-p", "--password", nargs=1)
 
     def commands(self):
@@ -25,8 +25,8 @@ class ReloadPlugin(StandardCommand):
         return [("reload", None)]
 
 class QuitPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("msg", nargs="*")
         self.parser.add_argument("-r", "--restart", action="store_true")
 
@@ -43,8 +43,8 @@ class QuitPlugin(StandardCommand):
         return [("quit", msg)]
 
 class RawPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("args", nargs="+")
 
     def commands(self):
@@ -59,8 +59,8 @@ class RawPlugin(StandardCommand):
             connection.send_raw(u" ".join(args))
 
 class HelpPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("command", nargs="?")
         self.parser.add_argument("-a", "--list-all", action='store_true')
 
@@ -72,8 +72,8 @@ class HelpPlugin(StandardCommand):
         return [("help", (cmd, self.pargs.list_all))]
 
 class PluginsPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("-a", "--list-all", action='store_true')
 
     def commands(self):
@@ -87,8 +87,8 @@ class PluginsPlugin(StandardCommand):
         return [("plugins", (list_all,))]
 
 class ConfigPlugin(Command):
-    def __init__(self):
-        Command.__init__(self)
+    def __init__(self, db):
+        Command.__init__(self, db)
 
     def commands(self):
         return "config"
@@ -100,8 +100,8 @@ class ConfigPlugin(Command):
         return [("config", extra["args"])]
 
 class PingPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("-v", "--verbose", action="store_true")
 
     def commands(self):

@@ -1,6 +1,5 @@
 from tehbot.plugins import *
 import shlex
-import sqlite3
 import time
 import irc.client
 import threading
@@ -9,8 +8,8 @@ from tehbot.settings import Settings
 class SeenPlugin(StandardCommand):
     """Shows when a user was last seen."""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("user", nargs=1)
 
     def commands(self):
