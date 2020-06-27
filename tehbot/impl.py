@@ -389,9 +389,9 @@ class TehbotImpl:
         else:
             factory = SocketFactory(connect_timeout=3)
 
-        botname = pick(connection, "botname")
-        username = pick(connection, "username")
-        ircname = pick(connection, "ircname")
+        botname = self.pick(connection, "botname")
+        username = self.pick(connection, "username")
+        ircname = self.pick(connection, "ircname")
         nickservpw = params.get("password")
 
         try:
