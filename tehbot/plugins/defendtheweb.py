@@ -14,6 +14,8 @@ import ssl
 import os.path
 import tehbot
 import traceback
+from datetime import datetime
+from pony.orm import *
 
 class DefendTheWebOpener:
     def __init__(self):
@@ -50,8 +52,8 @@ class DefendTheWebOpener:
         return self.opener.open(url, data, timeout)
 
 class ConductPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.conducts = [
                 "Answers to all levels will be my own work, unless otherwise instructed.",
                 "I will not share answers to any level.",
@@ -74,7 +76,7 @@ class ConductPlugin(StandardCommand):
     def target_valid(self, name):
         return name in self.settings["where"]
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         if not self.target_valid(connection.tehbot.ircid+":"+event.target.lower()):
             return
 
@@ -84,16 +86,20 @@ class DefendTheWebForumPoller(Poller):
     def prefix(self):
         return u"[Defend the Web Forum]"
 
-    def initialize(self, dbconn):
-        Poller.initialize(self, dbconn)
-        with dbconn:
-            dbconn.execute("CREATE TABLE if not exists HackThisForumPoller(id integer primary key, url varchar unique, title text, replies integer, last_ts datetime, last_user text)")
+    def create_entities(self):
+        class DefendTheWebForumPollerData(self.db.Entity):
+            url = Required(str, unique=True)
+            title = Required(str)
+            replies = Required(int)
+            last_ts = Required(datetime)
+            last_user = Required(str)
 
+    def init(self):
         self.opener = DefendTheWebOpener()
         self.url = "https://defendtheweb.net/"
         self.forumurl = self.url + "discussions/all/latest"
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         if not self.opener.logged_in:
             self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
 
@@ -123,7 +129,7 @@ class DefendTheWebForumPoller(Poller):
 
         msgs = []
 
-        with dbconn:
+        with db_session:
             for e in entries:
                 id, url, title, replies, last_ts, last_user = e
                 c = dbconn.execute("select last_ts from HackThisForumPoller where id = ?", (id, ))
@@ -149,8 +155,8 @@ class DefendTheWebForumPoller(Poller):
             return [("announce", (self.where(), msg))]
 
 class DefendTheWebForumPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("what", nargs="?")
         self.opener = DefendTheWebOpener()
         self.splitter = re.compile("[\t\r\n ]*")
@@ -161,7 +167,7 @@ class DefendTheWebForumPlugin(StandardCommand):
     def prefix(self):
         return u"[Defend the Web Forum]"
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         self.parser.set_defaults(what="latest")
 
         try:

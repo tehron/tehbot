@@ -15,14 +15,14 @@ def wikify(title):
 class WikipediaPlugin(StandardCommand):
     """Looks up a search term on Wikipedia"""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("term", nargs="+")
 
     def commands(self):
         return "wiki"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         data = {
             "action" : "query",
             "list" : "search",

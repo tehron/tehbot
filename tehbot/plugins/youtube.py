@@ -16,7 +16,7 @@ class YoutubeHandler(ChannelHandler):
     def default_settings(self):
         return { "key" : None, "referer" : None }
 
-    def config(self, args, dbconn):
+    def config(self, args):
         if args[0] == "modify":
             if args[1] == "set":
                 if args[2] in ["key", "referer"]:
@@ -24,9 +24,9 @@ class YoutubeHandler(ChannelHandler):
                     self.save(dbconn)
                     return "Okay"
 
-        return ChannelHandler.config(self, args, dbconn)
+        return ChannelHandler.config(self, args)
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         match = None
         try:
             match = regex.search(extra["msg"])

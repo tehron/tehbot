@@ -4,14 +4,14 @@ import tmdbsimple as tmdb
 class MoviePlugin(StandardCommand):
     """Shows information about movies from themoviedb.org"""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("movie", nargs="+")
 
     def commands(self):
         return "movie"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         tmdb.API_KEY = self.settings["tmdb_api_key"]
 
         id = -1
@@ -41,14 +41,14 @@ class MoviePlugin(StandardCommand):
 class TvPlugin(StandardCommand):
     """Shows information about TV series from themoviedb.org"""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("show", nargs="+")
 
     def commands(self):
         return "tv"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         tmdb.API_KEY = self.settings["tmdb_api_key"]
 
         id = -1

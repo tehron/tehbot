@@ -23,7 +23,7 @@ class GreetingHandler(ChannelJoinHandler):
                 (10, "Hola %s"),
             ])
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         def enabled():
             for w in self.settings["where"]:
                 network, channel = w.split(":")
@@ -44,8 +44,8 @@ class GreetingHandler(ChannelJoinHandler):
             return res[0] % (event.source.nick)
 
 class GreetPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         group = self.parser.add_mutually_exclusive_group(required=True)
         group.add_argument("who", nargs="?")
         group.add_argument("-a", "--add", metavar="greeting")

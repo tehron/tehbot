@@ -5,8 +5,8 @@ import json
 import shlex
 
 class TranslatePlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("words", metavar='W', nargs="+")
         self.parser.add_argument("-f", "--from-lang", default="auto")
         self.parser.add_argument("-t", "--to-lang", default="en")
@@ -14,7 +14,7 @@ class TranslatePlugin(StandardCommand):
     def commands(self):
         return ["translate", "tr"]
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         if not self.pargs.words:
             return
 

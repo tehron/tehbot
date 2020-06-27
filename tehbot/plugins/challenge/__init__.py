@@ -77,8 +77,8 @@ class InvalidLoginError(Exception):
 class StatsPlugin(StandardCommand):
     """Shows current stats for a user on a challenge site."""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("user_or_rank", nargs="?")
         self.parser.add_argument("-n", "--numeric", action="store_true")
         group = self.parser.add_mutually_exclusive_group()
@@ -118,7 +118,7 @@ class StatsPlugin(StandardCommand):
     def values_to_set(self):
         return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password", "cryptohack.user", "cryptohack.password", "pydefis_api_key" ]
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         self.parser.set_defaults(user_or_rank=event.source.nick)
         self.parser.set_defaults(site=event.target[1:] if irc.client.is_channel(event.target) else event.target)
 
@@ -161,8 +161,8 @@ class StatsPlugin(StandardCommand):
 class SolversPlugin(StandardCommand):
     """Shows how many solved a challenge."""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("challenge_name_or_nr", nargs="+")
         self.parser.add_argument("-n", "--numeric", action="store_true")
         self.parser.add_argument("-s", "--site", choices=sorted(set(sitemap.keys())))
@@ -215,7 +215,7 @@ class SolversPlugin(StandardCommand):
         return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password", "cryptohack.user", "cryptohack.password" ]
 
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         self.parser.set_defaults(site=event.target[1:] if irc.client.is_channel(event.target) else event.target)
 
         try:

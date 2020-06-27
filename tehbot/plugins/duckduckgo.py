@@ -7,14 +7,14 @@ import urllib
 class DuckDuckGoPlugin(StandardCommand):
     """DuckDuckGo web search"""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("query", nargs="+")
 
     def commands(self):
         return ["duckduckgo", "ddg", "search"]
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         prefix = u"[DuckDuckGo] "
         return self.result(" ".join(self.pargs.query), prefix)
 

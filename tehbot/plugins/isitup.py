@@ -8,8 +8,8 @@ from socket import AF_INET, inet_pton, getaddrinfo
 class IsitupPlugin(StandardCommand):
     """Checks if a web server is up."""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("host", nargs="?", default="google.com")
         self.parser.add_argument("--no-follow", action="store_true")
 
@@ -68,7 +68,7 @@ class IsitupPlugin(StandardCommand):
             print e
         return False
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         parts = urlparse(self.pargs.host)
         no_follow = self.pargs.no_follow
 

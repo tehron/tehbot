@@ -74,15 +74,15 @@ class Util:
 class RemoteUpdatePlugin(StandardCommand):
     """Updates WeChall score for a user on a site."""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("user", nargs="?")
         self.parser.add_argument("-s", "--site")
 
     def commands(self):
         return "wcup"
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         self.parser.set_defaults(user=event.source.nick, site=Util.chan2wc(event.target))
 
         try:
@@ -103,14 +103,14 @@ class RemoteUpdatePlugin(StandardCommand):
 class HistoryPlugin(StandardCommand):
     """Shows latest activity for a user on WeChall."""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("user", nargs="?")
 
     def commands(self):
         return "wclast"
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         self.parser.set_defaults(user=event.source.nick)
 
         try:
@@ -152,14 +152,14 @@ class HistoryPlugin(StandardCommand):
 class WeChallInfoPlugin(StandardCommand):
     """Shows various information about a user on WeChall."""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("user", nargs="?")
 
     def commands(self):
         return "wcinfo"
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         self.parser.set_defaults(user=event.source.nick)
 
         try:
@@ -260,7 +260,7 @@ class WeChallActivityPoller(Poller):
             datestamp = int(res[0])
         return datestamp
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         prefix = "\x0303[WeChall Activity]\x03 "
         url = "http://www.wechall.net/index.php?mo=WeChall&me=API_History&no_session=1&datestamp=%d"
         msgs = []
@@ -281,7 +281,7 @@ class WeChallActivityPoller(Poller):
 class WcStatsPlugin(StandardCommand):
     """Shows latest WeChall statistics."""
 
-    def __init__(self):
+    def __init__(self, db):
         def checkdate(s):
             if s == "today":
                 return datetime.date.today()
@@ -289,7 +289,7 @@ class WcStatsPlugin(StandardCommand):
                 return datetime.date.today() - datetime.timedelta(days=1)
             return datetime.date.fromtimestamp(time.mktime(time.strptime(s, '%Y-%m-%d')))
 
-        StandardCommand.__init__(self)
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("-t", "--top", type=int, choices=range(1, 10 + 1))
         self.parser.add_argument("-d", "--date", type=checkdate, help="format '%%Y-%%m-%%d'")
 
@@ -311,9 +311,9 @@ class WcStatsPlugin(StandardCommand):
 
 class WeChallStatsAnnouncer(Announcer):
     def at(self):
-        return self.settings.get("at", 72000)
+        return self.settings().get("at", 72000)
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         today = datetime.date.today()
         return [("announce", (self.where(), Util.wcstats(dbconn, 3, today)))]
 
@@ -330,7 +330,7 @@ class WeChallSitesPoller(Poller):
                 sites[row[3]] = row
         return sites
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         prefix = "\x0303[WeChall Sites]\x03 "
         url = "https://www.wechall.net/index.php?mo=WeChall&me=API_Site&no_session=1"
         msgs = []
@@ -378,8 +378,8 @@ class WeChallSitesPoller(Poller):
 class WcSitePlugin(StandardCommand):
     """Shows information about a site on WeChall"""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("site", nargs="?")
         self.parser.add_argument("--last", action="store_true")
 
@@ -389,7 +389,7 @@ class WcSitePlugin(StandardCommand):
     def prefix(self):
         return "[WcSite] "
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         dbchange = 1566070200.0
         self.parser.set_defaults(site=event.target)
 

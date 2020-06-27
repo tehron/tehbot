@@ -186,8 +186,16 @@ class TehbotImpl:
     def set_setting(self, key, value):
         self.db.Settings.get(name="tehbot").value[key] = value
 
+    def pick(self, connection, what):
+        params = self.settings("connections")[connection.tehbot.ircid]
+        v = params.get(what)
+        return v if v else self.settings(what)
+
     def connection_name(self, conn):
         return self.settings("connections")[conn.tehbot.ircid].get("name", conn.tehbot.ircid)
+
+    def channel_options(self, connection, channel):
+        return self.settings("connections")[connection.tehbot.ircid]["channel_options"].get(channel, { })
 
     def myprint(self, s):
         s = self.regex.sub("", s)
@@ -214,8 +222,8 @@ class TehbotImpl:
     def load_plugins(self, modules):
         for p in modules:
             for name, clazz in inspect.getmembers(p, lambda x: inspect.isclass(x) and issubclass(x, tehbot.plugins.Plugin) and x.__module__ == p.__name__):
-                print ">>>", clazz
                 o = clazz(self.db)
+                o.create_entities()
 
                 if isinstance(o, tehbot.plugins.Command):
                     try:
@@ -381,16 +389,10 @@ class TehbotImpl:
         else:
             factory = SocketFactory(connect_timeout=3)
 
-        def pick(what):
-            v = params.get(what)
-            return v if v else self.settings(what)
-
-        botname = pick("botname")
-        username = pick("username")
-        ircname = pick("ircname")
+        botname = pick(connection, "botname")
+        username = pick(connection, "username")
+        ircname = pick(connection, "ircname")
         nickservpw = params.get("password")
-
-        print botname, username, ircname, nickservpw
 
         try:
             connection.connect(params["host"], params["port"], botname, nickservpw, username, ircname, factory)
@@ -798,7 +800,7 @@ class TehbotImpl:
         v = args.value
         if args.key in ["logging"]:
             v = Plugin.str2bool(v)
-        c["channel_options"][args.channel][args.key] = v
+            c["channel_options"][args.channel][args.key] = v
         self.set_setting("connections", conns)
 
     def channel_unset_value(self, args):
@@ -977,7 +979,7 @@ class Dispatcher:
 
         if channels_to_join:
             mchans = ",".join(channels_to_join)
-            mpasswords = ",".join(self.tehbot.settings.channel_options(connection, channel).get("password", "") for channel in channels_to_join)
+            mpasswords = ",".join(self.tehbot.channel_options(connection, channel).get("password", "") for channel in channels_to_join)
             multi = mchans
             if len(mpasswords) > len(channels_to_join):
                 multi += " %s" % mpasswords
@@ -1089,7 +1091,7 @@ class Dispatcher:
 
     def on_quit(self, connection, event):
         self.tehbot.logmsg(time.time(), "quit", 0, connection.tehbot.ircid, self.tehbot.connection_name(connection), None, None, "%s has quit (%s)" % (event.source.nick, event.arguments[0]))
-        botname = self.tehbot.settings.value("botname", connection)
+        botname = self.tehbot.pick(connection, "botname")
         nick = event.source.nick
 
         for channel in connection.tehbot.users.keys():
@@ -1123,7 +1125,7 @@ class Dispatcher:
         nick = event.source.nick
 
         if irc.client.is_channel(event.target):
-            typ = 0 if self.tehbot.settings.channel_options(connection, event.target).get("logging", True) else 2
+            typ = 0 if self.tehbot.channel_options(connection, event.target).get("logging", True) else 2
             target = event.target
             for h in self.tehbot.channel_handlers:
                 self.tehbot.queue.put((h, (connection, event, {"msg":msg})))
@@ -1149,9 +1151,9 @@ class Dispatcher:
     def on_pubmsg(self, connection, event):
         now = time.time()
         msg = event.arguments[0]
-        typ = 0 if self.tehbot.settings.channel_options(connection, event.target).get("logging", True) else 2
+        typ = 0 if self.tehbot.channel_options(connection, event.target).get("logging", True) else 2
         self.tehbot.logmsg(time.time(), "pubmsg", typ, connection.tehbot.ircid, self.tehbot.connection_name(connection), event.target, event.source.nick, msg)
-        cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
+        cmdprefix = self.tehbot.pick(connection, "cmdprefix")
 
         if msg:
             if msg[0] == cmdprefix:
@@ -1168,7 +1170,7 @@ class Dispatcher:
         now = time.time()
         msg = event.arguments[0]
         self.tehbot.logmsg(time.time(), "privmsg", 1, connection.tehbot.ircid, self.tehbot.connection_name(connection), event.source.nick, event.source.nick, msg)
-        cmdprefix = self.tehbot.settings.value("cmdprefix", connection)
+        cmdprefix = self.tehbot.pick(connection, "cmdprefix")
 
         if msg:
             if msg[0] == cmdprefix:
@@ -1182,7 +1184,7 @@ class Dispatcher:
         oldnick = event.source.nick
         newnick = event.target
         self.tehbot.logmsg(time.time(), "nick", 0, connection.tehbot.ircid, self.tehbot.connection_name(connection), None, None, "%s is now known as %s" % (oldnick, newnick))
-        botname = self.tehbot.settings.value("botname", connection)
+        botname = self.tehbot.pick(connection, "botname")
 
         for channel in connection.tehbot.users.keys():
             try:

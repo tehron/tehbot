@@ -4,8 +4,8 @@ import wolframalpha
 import prettytable
 
 class WolframAlphaPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("query", nargs="+")
 
     def commands(self):
@@ -84,6 +84,6 @@ class WolframAlphaPlugin(StandardCommand):
 
         return Plugin.shorten(fn(prefix) + txt, 450)
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         prefix = "[Wolfram|Alpha] "
         return self.result(" ".join(self.pargs.query), prefix)

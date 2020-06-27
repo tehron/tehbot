@@ -10,7 +10,7 @@ class PrivPlugin(StandardCommand):
     def commands(self):
         return "priv"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         pw = vars(self.pargs)["password"]
         return [("reqpriv", pw)]
 
@@ -18,7 +18,7 @@ class ReloadPlugin(StandardCommand):
     def commands(self):
         return "reload"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
 
@@ -33,7 +33,7 @@ class QuitPlugin(StandardCommand):
     def commands(self):
         return "quit"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
 
@@ -50,7 +50,7 @@ class RawPlugin(StandardCommand):
     def commands(self):
         return "raw"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
 
@@ -67,7 +67,7 @@ class HelpPlugin(StandardCommand):
     def commands(self):
         return "help"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         cmd = self.pargs.command
         return [("help", (cmd, self.pargs.list_all))]
 
@@ -79,7 +79,7 @@ class PluginsPlugin(StandardCommand):
     def commands(self):
         return "plugins"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
 
@@ -93,7 +93,7 @@ class ConfigPlugin(Command):
     def commands(self):
         return "config"
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
 
@@ -107,7 +107,7 @@ class PingPlugin(StandardCommand):
     def commands(self):
         return "ping"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         now = time.time()
         ts = extra["ts"]
         verbose = vars(self.pargs)["verbose"]

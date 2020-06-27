@@ -49,7 +49,7 @@ class SeenPlugin(StandardCommand):
             msg += " " + args
         return msg
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         user = self.pargs.user[0]
         requser = event.source.nick
         c = dbconn.cursor()
@@ -70,7 +70,7 @@ class SeenPlugin(StandardCommand):
         return [("say_nolog", msg)]
 
 class OpHandler(ChannelJoinHandler):
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         for network, channels in self.settings["where"].items():
             if connection.name != network or (event.target not in channels and channels != "__all__"):
                 return
@@ -83,8 +83,8 @@ class OpHandler(ChannelJoinHandler):
 
         connection.mode(event.target, "+o " + event.source.nick)
 
-    def config(self, args, dbconn):
-        res = ChannelJoinHandler.config(self, args, dbconn)
+    def config(self, args):
+        res = ChannelJoinHandler.config(self, args)
 
         if res:
             return res

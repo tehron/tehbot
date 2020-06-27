@@ -40,7 +40,7 @@ class BotStatsPlugin(StandardCommand):
         out, err = Popen(["git", "log", "-n", "1"], stdout=PIPE).communicate()
         return re.search(r'([0-9A-Fa-f]{40})', out).group(0)
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         txt = "\x0303[tehbot]\x03 "
 
         stats = []

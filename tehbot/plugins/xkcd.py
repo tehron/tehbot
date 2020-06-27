@@ -18,14 +18,14 @@ def toXPathStringLiteral(s):
     return "concat('%s')" % s.replace("'", "',\"'\",'")
 
 class XkcdPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("search_term", nargs="?")
 
     def commands(self):
         return "xkcd"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         txt = "\x0303[xkcd]\x03 "
 
         try:

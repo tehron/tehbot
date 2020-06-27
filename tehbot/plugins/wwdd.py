@@ -4,8 +4,8 @@ import random
 class WwddPlugin(StandardCommand):
     """What would dloser do?"""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("-a", "--add", metavar="what")
 
     def commands(self):
@@ -25,7 +25,7 @@ class WwddPlugin(StandardCommand):
                 (7, "%s says: so helpful"),
             ])
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         if self.pargs.add is None:
             c = dbconn.execute("select text from WwddPlugin order by random() limit 1")
             what = c.fetchone()

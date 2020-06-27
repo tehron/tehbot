@@ -7,8 +7,8 @@ import datetime
 import irc.client
 
 class SlapwarzPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("victim")
 
     def commands(self):
@@ -230,7 +230,7 @@ class SlapwarzPlugin(StandardCommand):
 
         return arg
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         who = event.source.nick
         if irc.client.is_channel(event.target):
             users = [u for u,m in connection.tehbot.users[event.target]]
@@ -277,5 +277,5 @@ class LivinSlapPlugin(StandardCommand):
     def commands(self):
         return "livinslap"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         return self.slap2("livinskull")

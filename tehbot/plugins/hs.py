@@ -8,13 +8,13 @@ import lxml.html
 import re
 
 class HsSolvedPoller(Poller):
-    def initialize(self, dbconn):
+    def initialize(self):
         Poller.initialize(self, dbconn)
         with dbconn:
             dbconn.execute("create table if not exists HsPollerLastSolves(id integer, ts datetime, user text, challenge text)")
             dbconn.execute("create table if not exists HsPollerForum(id integer, ts datetime, title text, url text, who text)")
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         url = "https://www.happy-security.de/index.php?modul=hacking-zone"
 
         try:

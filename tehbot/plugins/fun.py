@@ -5,12 +5,13 @@ from random import *
 import shlex
 import irc.client
 import re
+from pony.orm import *
 
 class BlamePlugin(StandardCommand):
     def commands(self):
         return "blame"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         two = [u for u,m in connection.tehbot.users[event.target] if u not in ["ChanServ, NickServ"]] if irc.client.is_channel(event.target) else [u"spaceone"]
         goats = zip((two for one in range(23)), 42 * [ reduce(random, [], two) ])
         shuffle(goats)
@@ -25,30 +26,31 @@ class FamPlugin(StandardCommand):
     def commands(self):
         return "fam"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         return ".quoet fom"
 
 class LiarsPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("-a", "--add", metavar="who")
 
     def commands(self):
         return "liars"
 
-    def initialize(self, dbconn):
-        StandardCommand.initialize(self, dbconn)
-        with dbconn:
-            dbconn.execute("create table if not exists LiarsPlugin(id integer primary key, liar varchar)")
-            dbconn.executemany("insert or ignore into LiarsPlugin values(?, ?)", [
-                (1, "roun"),
-                (2, "Nimda3"),
-                (3, "neoxquick"),
-                (4, "dloser"),
-                (5, "thefinder"),
-            ])
+    def create_entities(self):
+        class LiarsPluginData(self.db.Entity):
+            liar = Required(str, unique=True)
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def init(self):
+        with db_session:
+            if not self.db.LiarsPluginData.select():
+                self.db.LiarsPluginData(liar="roun")
+                self.db.LiarsPluginData(liar="Nimda3")
+                self.db.LiarsPluginData(liar="neoxquick")
+                self.db.LiarsPluginData(liar="dloser")
+                self.db.LiarsPluginData(liar="thefinder")
+
+    def execute_parsed(self, connection, event, extra):
         if self.pargs.add is None:
             c = dbconn.execute("select liar from LiarsPlugin order by id")
             return ", ".join(a for (a,) in c.fetchall())
@@ -68,8 +70,8 @@ class LiarsPlugin(StandardCommand):
         return "Okay"
 
 class PricksPlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("-a", "--add", metavar="who")
 
     def commands(self):
@@ -83,7 +85,7 @@ class PricksPlugin(StandardCommand):
                 (1, "dloser"),
             ])
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         if self.pargs.add is None:
             c = dbconn.execute("select prick from PricksPlugin order by id")
             return ", ".join(a for (a,) in c.fetchall())
@@ -105,8 +107,8 @@ class PricksPlugin(StandardCommand):
 class BeerPlugin(StandardCommand):
     """Serves the best beer on IRC (way better than Lamb3's!)"""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         group = self.parser.add_mutually_exclusive_group()
         group.add_argument("recipient", nargs="?")
         group.add_argument("--refill", action="store_true")
@@ -115,35 +117,32 @@ class BeerPlugin(StandardCommand):
     def commands(self):
         return "beer"
 
-    def initialize(self, dbconn):
-        StandardCommand.initialize(self, dbconn)
-        with dbconn:
-            dbconn.execute("CREATE TABLE if not exists BeerPlugin(id integer primary key, key varchar unique, value varchar)")
-            dbconn.executemany("insert or ignore into BeerPlugin values(?, ?, ?)", [
-                (1, "beers", 10),
-            ])
+    def create_entities(self):
+        class BeerPluginData(self.db.Entity):
+            key = Required(str, unique=True)
+            value = Required(int)
 
-    def beers(self, dbconn):
-        c = dbconn.execute("select value from BeerPlugin where key='beers'")
-        res = c.fetchone()
-        if res is None:
-            return 0
-        return int(res[0])
+    def init(self):
+        with db_session:
+            if self.db.BeerPluginData.get(key="beers") is None:
+                self.db.BeerPluginData(key="beers", value=10)
 
-    def get_beer(self, dbconn):
-        beers = self.beers(dbconn)
+    @db_session
+    def beers(self):
+        return self.db.BeerPluginData.get(key="beers").value
 
-        if beers > 0:
-            with dbconn:
-                dbconn.execute("update BeerPlugin set value=? where key='beers'", (str(beers - 1), ))
+    @db_session
+    def get_beer(self):
+        beers = self.db.BeerPluginData.get(key="beers")
+        cnt = beers.value
+        beers.value = max(0, beers.value - 1)
+        return cnt
 
-        return beers
+    @db_session
+    def refill(self, beers=10):
+        self.db.BeerPluginData.get(key="beers").value += beers
 
-    def refill(self, dbconn, beers=10):
-        with dbconn:
-            dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(beers), ))
-
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         self.parser.set_defaults(recipient=event.source.nick)
 
         try:
@@ -156,7 +155,7 @@ class BeerPlugin(StandardCommand):
             return msg % unicode(e)
 
         if pargs.status:
-            beers = self.beers(dbconn)
+            beers = self.beers()
             if beers < 1:
                 msg = u"has no beer left. :("
             elif beers == 1:
@@ -169,11 +168,11 @@ class BeerPlugin(StandardCommand):
             if not self.is_privileged(extra):
                 return self.request_priv(extra)
 
-            self.refill(dbconn)
+            self.refill()
             msg = u"Ok, beer refilled. That was easy, hu?"
             return msg
 
-        beers = self.get_beer(dbconn)
+        beers = self.get_beer()
         if beers == 0:
             msg = u"has no beer left. :("
             return [("me", msg)]
@@ -191,7 +190,7 @@ class BeerPlugin(StandardCommand):
         return [("me", msg)]
 
 class BeerGrabber(ChannelHandler):
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         match = re.search(r'and (\w+) pass (\d+) of \d+ bottles of cold beer around to (\w+)\.', extra["msg"])
         if match is None:
             return
@@ -201,28 +200,26 @@ class BeerGrabber(ChannelHandler):
         who = match.group(3)
 
         if cnt > 0 and who == connection.get_nickname():
-            with dbconn:
-                dbconn.execute("update BeerPlugin set value=value+? where key='beers'", (str(cnt), ))
+            with db_session:
+                beers = self.db.BeerPluginData.get(key="beers")
+                beers.value += cnt
+                total = beers.value
 
-            c = dbconn.execute("select value from BeerPlugin where key='beers'")
-            res = c.fetchone()
-            beers = int(res[0])
-
-            return u"Thanks, %s, I put it into my store! Beer count is %d now." % (donor, beers)
+            return u"Thanks, %s, I put it into my store! Beer count is %d now." % (donor, total)
 
 from socket import *
 import string
 import time
 class BOSPlugin(StandardCommand):
     """Can you solve The BrownOS? [WeChall]"""
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("data", nargs="+")
 
     def commands(self):
         return "bos"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         data = " ".join(self.pargs.data).lower()
 
         sock = socket()
@@ -257,8 +254,8 @@ class BOSPlugin(StandardCommand):
         return Plugin.shorten(ret, 450)
 
 class DecidePlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("choice", nargs="*")
         self.parser.add_argument("-o", "--or", action="store_true")
 
@@ -283,7 +280,7 @@ class DecidePlugin(StandardCommand):
 
         return parts
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         choices = ["Yes", "No"]
 
         if self.pargs.choice:
@@ -299,8 +296,8 @@ class DecidePlugin(StandardCommand):
 class HugPlugin(StandardCommand):
     """Use this command if you really like (or dislike) someone."""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("huggee")
         self.parser.add_argument("-l", "--long", action="store_true")
         self.parser.add_argument("-t", "--tight", action="store_true")
@@ -312,7 +309,7 @@ class HugPlugin(StandardCommand):
     def commands(self):
         return "hug"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         options = []
 
         if self.pargs.surprise_me:
@@ -346,7 +343,7 @@ class RoflcopterPlugin(Command):
     def commands(self):
         return "roflcopter"
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
 
@@ -364,14 +361,14 @@ LOL===__           \
 
 
 class DestinyHandler(ChannelJoinHandler):
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         if event.source.nick != "destiny":
             return
 
         return ">> https://www.youtube.com/watch?v=fNmDgRwNFsI <<"
 
 class RouletteHandler(ChannelHandler):
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         msg = extra["msg"]
         if msg.find("BANG") > -1 or msg.find("BOOM") > -1:
             return "!roulette"
@@ -380,7 +377,7 @@ class WixxerdPlugin(Command):
     def commands(self):
         return "wixxerd"
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
 
@@ -418,7 +415,7 @@ class DeadHourPlugin(Command):
                 "max_modes" : 20
                 }
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
 

@@ -21,7 +21,7 @@ class RevelSolvedPoller(Poller):
             ts = 0
         return ts
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         url = "https://www.revolutionelite.co.uk/w3ch4ll/solvers_revel.php?datestamp=%s"
 
         try:

@@ -17,10 +17,7 @@ class AiHandler(ChannelHandler):
                 "I haven't made up my mind yet."
                 ]
 
-    def initialize(self, dbconn):
-        ChannelHandler.initialize(self, dbconn)
-
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         botname = connection.get_nickname()
         decide_regex = [
                 re.compile(r'''^(?:ok(?:ay)?|hey|hay)\s+%s\s*,?\s*(?:is|are|can|has|was|were|should|do|does)\s+\S[\s\S]*\?''' % botname, re.I),

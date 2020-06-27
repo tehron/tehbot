@@ -4,7 +4,7 @@ import re
 class RegexReplaceHandler(ChannelHandler):
     regex = re.compile(r'^s/(.*?)/(.*?)(/(.+))?$', re.I)
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         match = None
         try:
             match = self.regex.match(extra["msg"])

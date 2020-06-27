@@ -6,8 +6,8 @@ import lxml.etree
 import json
 
 class UnicodePlugin(StandardCommand):
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
         self.parser.add_argument("search_term", nargs="+")
 
     @staticmethod
@@ -17,7 +17,7 @@ class UnicodePlugin(StandardCommand):
     def commands(self):
         return "uc"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         url = "https://emojipedia.org/search/?%s" % urllib.urlencode(
                 { "q" : Plugin.to_utf8(" ".join(self.pargs.search_term)) }
                 )

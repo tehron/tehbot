@@ -15,13 +15,13 @@ _ = lambda x: x
 class ShadowlambPlugin(StandardCommand):
     """What, you don't know what shadowlamb is??"""
 
-    def __init__(self):
-        StandardCommand.__init__(self)
+    def __init__(self, db):
+        StandardCommand.__init__(self, db)
 
     def commands(self):
         return "sl"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def execute_parsed(self, connection, event, extra):
         if not self.is_privileged(extra):
             return self.request_priv(extra)
 
@@ -32,8 +32,8 @@ class ShadowlambHandler(PrefixHandler):
         #return "+"
         return u'\u00a5';
 
-    def __init__(self):
-        PrefixHandler.__init__(self)
+    def __init__(self, db):
+        PrefixHandler.__init__(self, db)
         self.cmd2action = {
                 "start" : self.start,
                 "reset" : self.reset,
@@ -50,14 +50,14 @@ class ShadowlambHandler(PrefixHandler):
                 "party" : self.party_status,
                 }
 
-    def initialize(self, dbconn):
-        PrefixHandler.initialize(self, dbconn)
+    def init(self):
+        #PrefixHandler.initialize(self, dbconn)
         #model.init()
         self.quit = False
         self.thread = threading.Thread(target=self.timerfunc)
         #self.thread.start()
 
-    def deinit(self, dbconn):
+    def deinit(self):
         self.quit = True
         #self.thread.join()
 
@@ -68,7 +68,7 @@ class ShadowlambHandler(PrefixHandler):
         with model.db_session:
             return model.Shadowlamb[1].time
 
-    def announce(self, msg, dbconn):
+    def announce(self, msg):
         where = {"WeChall IRC" : ["#net-force"]}
 
         for network in where:
@@ -77,7 +77,7 @@ class ShadowlambHandler(PrefixHandler):
                     continue
                 for ch in where[network]:
                     if ch in conn.channels:
-                        plugins.say(conn, ch, msg, dbconn)
+                        plugins.say(conn, ch, msg)
 
     def player_age(self, player):
         d = self.sltime() - player.birthday
@@ -125,7 +125,7 @@ class ShadowlambHandler(PrefixHandler):
             with model.db_session:
                 model.Shadowlamb[1].time += 1
 
-    def start(self, connection, event, extra, dbconn, msg_type):
+    def start(self, connection, event, extra, msg_type):
         with model.db_session:
             genders = [to_utf8(g.name) for g in model.Gender.select()]
             races = [to_utf8(r.name) for r in model.Race.select(lambda x: not x.is_npc)]
@@ -220,14 +220,14 @@ class ShadowlambHandler(PrefixHandler):
         else:
             for m in msgs:
                 if irc.client.is_channel(event.target):
-                    plugins.say_nick(connection, event.target, event.source.nick, m, dbconn)
+                    plugins.say_nick(connection, event.target, event.source.nick, m)
                 else:
-                    plugins.say(connection, event.source.nick, m, dbconn)
+                    plugins.say(connection, event.source.nick, m)
 
         for m in notices:
-            plugins.notice(connection, event.source.nick, m, dbconn)
+            plugins.notice(connection, event.source.nick, m)
 
-        self.announce("Welcome a new player: %s the %s %s." % (p.fullname(), p.gender.name, p.race.name), dbconn)
+        self.announce("Welcome a new player: %s the %s %s." % (p.fullname(), p.gender.name, p.race.name))
         return None
 
     def reset(self, args, player):
@@ -319,7 +319,7 @@ class ShadowlambHandler(PrefixHandler):
 
         return "hu!? should never get here"
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         if not self.is_authed(extra):
             return self.request_auth(extra)
 
@@ -343,7 +343,7 @@ class ShadowlambHandler(PrefixHandler):
 
             try:
                 if cmd == "start":
-                    res = self.start(connection, event, extra, dbconn, msg_type)
+                    res = self.start(connection, event, extra, msg_type)
                 else:
                     res = self.cmd2action[cmd](extra["args"], p)
             except Exception as e:

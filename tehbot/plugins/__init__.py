@@ -88,13 +88,16 @@ class Plugin:
         self.pub_allowed = True
         self.priv_allowed = True
 
+    def create_entities(self):
+        pass
+
     def default_settings(self):
         return { }
 
     def settings(self):
         with db_session:
-            n = __class__.__name__
-            s = self.db.Settings.get(n)
+            n = self.__class__.__name__
+            s = self.db.Settings.get(name=n)
 
             if s is None:
                 settings = {
@@ -105,6 +108,11 @@ class Plugin:
                 s = self.db.Settings(name=n, value=settings)
 
             return s.value
+
+    @db_session
+    def set_setting(self, settings):
+        n = self.__class__.__name__
+        self.db.Settings.get(name=n).value = settings
 
     def init(self):
         pass
@@ -127,13 +135,14 @@ class Plugin:
             v = value
         return v
 
-    def set_value(self, args, dbconn):
+    def set_value(self, args):
         v = self.convert_value(args.key, args.value)
-        self.settings[args.key] = v
-        self.save(dbconn)
+        settings = self.settings()
+        settings[args.key] = v
+        self.set_setting(settings)
 
-    def show_value(self, args, dbconn):
-        v = self.settings[args.key]
+    def show_value(self, args):
+        v = self.settings()[args.key]
         return '%s["%s"] = %s' % (self.__class__.__name__, args.key, v)
 
     def values_to_set(self):
@@ -297,7 +306,7 @@ class StandardCommand(Command):
         mcmd = cmd if isinstance(cmd, basestring) else cmd[0]
         self.parser = ThrowingArgumentParser(prog=mcmd, description=self.__doc__)
 
-    def execute(self, connection, event, extra, dbconn):
+    def execute(self, connection, event, extra):
         try:
             self.pargs = self.parser.parse_args(extra["args"])
             m = self.parser.get_help_msg()
@@ -306,7 +315,7 @@ class StandardCommand(Command):
         except Exception as e:
             return u"Error: %s" % Plugin.exc2str(e)
 
-        return self.execute_parsed(connection, event, extra, dbconn)
+        return self.execute_parsed(connection, event, extra)
 
 class ChannelHandler(Plugin):
     pass
@@ -338,23 +347,25 @@ class Announcer(Plugin):
             at += int(datetime.timedelta(days=1).total_seconds())
         return at
 
-    def add_value(self, args, dbconn):
+    def add_value(self, args):
         arr = args.value.split(":")
         if len(arr) != 2 or not TehbotImpl.is_valid_id(arr[0]) or (not arr[1].startswith("#") and arr[1] != "__all__"):
             return "illegal value for %s: %s" % (args.key, args.value)
         if args.value in self.settings[args.key]:
             return "already added to %s: %s" (args.key, args.value)
-        self.settings[args.key].append(args.value)
-        self.save(dbconn)
+        settings = self.settings()
+        settings[args.key].append(args.value)
+        self.set_setting(settings)
 
-    def remove_value(self, args, dbconn):
+    def remove_value(self, args):
         arr = args.value.split(":")
         if len(arr) != 2 or not TehbotImpl.is_valid_id(arr[0]) or (not arr[1].startswith("#") and arr[1] != "__all__"):
             return "illegal value for %s: %s" % (args.key, args.value)
         if not args.value in self.settings[args.key]:
             return "not contained in %s: %s" (args.key, args.value)
-        self.settings[args.key].remove(args.value)
-        self.save(dbconn)
+        settings = self.settings()
+        settings[args.key].remove(args.value)
+        self.set_setting(settings)
 
     def values_to_set(self):
         return Plugin.values_to_set(self) + ["at"]
@@ -382,7 +393,7 @@ class Poller(Announcer):
         return { "timeout" : 10, "where" : [] }
 
     def timeout(self):
-        return self.settings["timeout"]
+        return self.settings()["timeout"]
 
     def next_at(self):
         at = time.time() + self.timeout()
