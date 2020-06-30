@@ -7,7 +7,7 @@ import re
 import datetime
 import functools
 import threading
-from pony.orm import Database, db_session
+from pony.orm import Database, db_session, set_sql_debug
 import model
 from collections import *
 import inspect
@@ -124,6 +124,7 @@ class TehbotImpl:
     def postinit(self):
         self.db.bind(provider='sqlite', filename="../data/tehbot_ponyorm.sqlite", create_db=True)
         self.db.generate_mapping(create_tables=True)
+        set_sql_debug(False)
 
         with db_session:
             if self.db.Settings.get(name="tehbot") is None:
