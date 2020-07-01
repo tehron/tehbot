@@ -410,7 +410,7 @@ class TehbotImpl:
 
         while True:
             try:
-                actions, plugin, connection, event, extra = self.actionqueue.get(False)
+                actions, plugin, connection, event, extra = self.actionqueue.get(timeout=0.1)
             except Empty:
                 break
 
