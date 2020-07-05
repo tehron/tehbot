@@ -121,23 +121,41 @@ class TehbotImpl:
         pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
         self.regex = re.compile(pattern, re.UNICODE)
 
+    def default_settings(self):
+        return {
+                "botname" : "tehbot",
+                "username" : "tehbot",
+                "ircname" : "tehbot",
+                "cmdprefix" : "?",
+                "privpassword" : None,
+                "nr_worker_threads" : 10,
+                "connections" : { }
+        }
+
+    @db_session
+    def set_setting(self, key, value):
+        self.settings[key] = value
+        self.save_settings()
+
+    @db_session
+    def save_settings(self):
+        self.db.Settings.get(name="tehbot").value = self.settings
+
     def postinit(self):
         self.db.bind(provider='sqlite', filename="../data/tehbot_ponyorm.sqlite", create_db=True)
         self.db.generate_mapping(create_tables=True)
         set_sql_debug(False)
 
+        self.settings = self.default_settings()
+
         with db_session:
-            if self.db.Settings.get(name="tehbot") is None:
-                default_values = {
-                        "botname" : "tehbot",
-                        "username" : "tehbot",
-                        "ircname" : "tehbot",
-                        "cmdprefix" : "?",
-                        "privpassword" : None,
-                        "nr_worker_threads" : 10,
-                        "connections" : { }
-                }
-                self.db.Settings(name="tehbot", value=default_values)
+            s = self.db.Settings.get(name="tehbot")
+
+            if s is None:
+                s = self.db.Settings(name="tehbot", value=self.settings)
+
+            self.settings.update(s.value)
+            self.save_settings()
 
         for p in self.plugins:
             p.init()
@@ -178,25 +196,16 @@ class TehbotImpl:
         self.stop_workers = True
         self.stop_logthread = True
 
-    @db_session
-    def settings(self, key=None):
-        v = self.db.Settings.get(name="tehbot").value
-        return v[key] if key else v
-
-    @db_session
-    def set_setting(self, key, value):
-        self.db.Settings.get(name="tehbot").value[key] = value
-
     def pick(self, connection, what):
-        params = self.settings("connections")[connection.tehbot.ircid]
+        params = self.settings["connections"][connection.tehbot.ircid]
         v = params.get(what)
-        return v if v else self.settings(what)
+        return v if v else self.settings[what]
 
     def connection_name(self, conn):
-        return self.settings("connections")[conn.tehbot.ircid].get("name", conn.tehbot.ircid)
+        return self.settings["connections"][conn.tehbot.ircid].get("name", conn.tehbot.ircid)
 
     def channel_options(self, connection, channel):
-        return self.settings("connections")[connection.tehbot.ircid]["channel_options"].get(channel, { })
+        return self.settings["connections"][connection.tehbot.ircid]["channel_options"].get(channel, { })
 
     def myprint(self, s):
         s = self.regex.sub("", s)
@@ -330,7 +339,7 @@ class TehbotImpl:
             self.queue.task_done()
 
     def start_workers(self):
-        while len(self.workers) < self.settings("nr_worker_threads"):
+        while len(self.workers) < self.settings["nr_worker_threads"]:
             worker = threading.Thread(name="WorkerThread-%d" % len(self.workers), target=self._process)
             self.workers.append(worker)
             worker.start()
@@ -354,7 +363,7 @@ class TehbotImpl:
         return None
 
     def connect(self):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
 
         for ircid in conns:
             conn = self._get_connection(ircid)
@@ -375,7 +384,7 @@ class TehbotImpl:
                 self.dispatcher.join_channels(conn)
 
     def reconnect(self, connection):
-        params = self.settings("connections")[connection.tehbot.ircid]
+        params = self.settings["connections"][connection.tehbot.ircid]
 
         if not params.get("enabled", True):
             self.myprint("%s: giving up reconnect attempt: network has been disabled" % self.connection_name(connection))
@@ -489,7 +498,7 @@ class TehbotImpl:
                 elif action == "doauth":
                     extra["auth_requested"] = True
 
-                    params = self.settings("connections")[connection.tehbot.ircid]
+                    params = self.settings["connections"][connection.tehbot.ircid]
                     for t, s in params["operators"]:
                         if t == "host" and s == event.source.host:
                             self.privusers[connection].add(event.source.nick)
@@ -534,7 +543,7 @@ class TehbotImpl:
                     self.say(connection, target, typ, msg)
                 elif action == "reqpriv":
                     pw = args
-                    if pw is not None and pw[0] == self.settings("privpassword"):
+                    if pw is not None and pw[0] == self.settings["privpassword"]:
                         self.priv_override(connection, event)
                     elif not self.privileged(connection, event) and not extra.has_key("auth_requested"):
                         self.actionqueue.put(([("doauth", None)], plugin, connection, event, extra))
@@ -700,13 +709,13 @@ class TehbotImpl:
         self.set_setting(args.key, None)
 
     def show_value(self, args):
-        v = self.settings(args.key)
+        v = self.settings[args.key]
         if v is not None and args.key == "privpassword":
             v = len(v) * "*"
         return 'tehbot["%s"] = %s' % (args.key, "None" if v is None else v)
 
     def add_connection(self, args):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
         if args.ircid in conns:
             return "duplicate ircid: %s" % args.ircid
 
@@ -725,14 +734,14 @@ class TehbotImpl:
         self.set_setting("connections", conns)
 
     def remove_connection(self, args):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
         if args.ircid not in conns:
             return "no such ircid: %s" % args.ircid
         del conns[args.ircid]
         self.set_setting("connections", conns)
 
     def connection_set_value(self, args):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
         if args.ircid not in conns:
             return "no such ircid: %s" % args.ircid
         if args.key == "port":
@@ -745,7 +754,7 @@ class TehbotImpl:
         self.set_setting("connections", conns)
 
     def connection_unset_value(self, args):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
         if args.ircid not in conns:
             return "no such ircid: %s" % args.ircid
         if args.key not in ["botname", "password"]:
@@ -754,7 +763,7 @@ class TehbotImpl:
         self.set_setting("connections", conns)
 
     def connection_show_value(self, args):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
         if args.ircid not in conns:
             return "no such ircid: %s" % args.ircid
         v = conns[args.ircid][args.key]
@@ -763,7 +772,7 @@ class TehbotImpl:
         return 'connections["%s"]["%s"] = %s' % (args.ircid, args.key, "None" if v is None else v)
 
     def connection_add_value(self, args):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
         if args.ircid not in conns:
             return "no such ircid: %s" % args.ircid
         v = args.value
@@ -780,7 +789,7 @@ class TehbotImpl:
         self.set_setting("connections", conns)
 
     def connection_remove_value(self, args):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
         if args.ircid not in conns:
             return "no such ircid: %s" % args.ircid
         v = args.value
@@ -792,7 +801,7 @@ class TehbotImpl:
         self.set_setting("connections", conns)
 
     def channel_set_value(self, args):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
         if args.ircid not in conns:
             return "no such ircid: %s" % args.ircid
         c = conns[args.ircid]
@@ -805,7 +814,7 @@ class TehbotImpl:
         self.set_setting("connections", conns)
 
     def channel_unset_value(self, args):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
         if args.ircid not in conns:
             return "no such ircid: %s" % args.ircid
         c = conns[args.ircid]
@@ -815,7 +824,7 @@ class TehbotImpl:
         self.set_setting("connections", conns)
 
     def channel_show_value(self, args):
-        conns = self.settings("connections")
+        conns = self.settings["connections"]
         if args.ircid not in conns:
             return "no such ircid: %s" % args.ircid
         c = conns[args.ircid]
@@ -929,7 +938,7 @@ class Dispatcher:
     def on_whoisaccount(self, connection, event):
         nick = event.arguments[0]
         account = event.arguments[1]
-        params = self.tehbot.settings("connections")[connection.tehbot.ircid]
+        params = self.tehbot.settings["connections"][connection.tehbot.ircid]
 
         for t, s in params["operators"]:
             if t == "nickserv" and s == account:
@@ -964,7 +973,7 @@ class Dispatcher:
     def on_welcome(self, connection, event):
         self.tehbot.logmsg(time.time(), "welcome", 0, connection.tehbot.ircid, self.tehbot.connection_name(connection), None, None, "connected to %s" % connection.server)
 
-        params = self.tehbot.settings("connections")[connection.tehbot.ircid]
+        params = self.tehbot.settings["connections"][connection.tehbot.ircid]
         nickservpw = params.get("password", None)
         if nickservpw:
             connection.privmsg("NickServ", "IDENTIFY %s" % nickservpw)
@@ -972,7 +981,7 @@ class Dispatcher:
         self.tehbot.core.reactor.scheduler.execute_after(2, functools.partial(self.join_channels, connection))
 
     def join_channels(self, connection):
-        params = self.tehbot.settings("connections")[connection.tehbot.ircid]
+        params = self.tehbot.settings["connections"][connection.tehbot.ircid]
         channels = set(params.get("channels", []))
 
         channels_to_join = channels.difference(connection.tehbot.channels)
@@ -996,7 +1005,7 @@ class Dispatcher:
         if self.tehbot.quit_called:
             return
 
-        if not self.tehbot.settings("connections")[connection.tehbot.ircid].get("enabled", True):
+        if not self.tehbot.settings["connections"][connection.tehbot.ircid].get("enabled", True):
             return
 
         self.tehbot.logmsg(time.time(), "disconnect", 0, connection.tehbot.ircid, self.tehbot.connection_name(connection), None, None, "lost connection")
@@ -1020,7 +1029,7 @@ class Dispatcher:
             connection.tehbot.users[channel] = []
             connection.tehbot.channels.add(channel.lower())
 
-            params = self.tehbot.settings("connections")[connection.tehbot.ircid]
+            params = self.tehbot.settings["connections"][connection.tehbot.ircid]
             channels = set(params.get("channels", []))
 
             if channel.lower() not in channels:
