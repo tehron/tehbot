@@ -95,6 +95,7 @@ class DefendTheWebForumPoller(Poller):
             last_user = Required(str)
 
     def init(self):
+        Poller.init(self)
         self.opener = DefendTheWebOpener()
         self.url = "https://defendtheweb.net/"
         self.forumurl = self.url + "discussions/all/latest"

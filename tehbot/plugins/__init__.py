@@ -94,39 +94,39 @@ class Plugin:
     def default_settings(self):
         return { }
 
-    def settings(self):
+    def init(self):
+        self.settings = {
+                "enabled" : inspect.getmodule(self).__name__ == "tehbot.plugins.core",
+                "channel_enabled" : { }
+        }
+        self.settings.update(self.default_settings())
+
+        n = self.__class__.__name__
+
         with db_session:
-            n = self.__class__.__name__
             s = self.db.Settings.get(name=n)
 
             if s is None:
-                settings = {
-                        "enabled" : inspect.getmodule(self).__name__ == "tehbot.plugins.core",
-                        "channel_enabled" : { }
-                }
-                settings.update(self.default_settings())
-                s = self.db.Settings(name=n, value=settings)
+                s = self.db.Settings(name=n, value=self.settings)
 
-            return s.value
-
-    @db_session
-    def set_setting(self, settings):
-        n = self.__class__.__name__
-        self.db.Settings.get(name=n).value = settings
-
-    def init(self):
-        pass
+            self.settings.update(s.value)
+            self.save_settings()
 
     def deinit(self):
         pass
 
+    @db_session
+    def save_settings(self):
+        n = self.__class__.__name__
+        self.db.Settings.get(name=n).value = self.settings
+
+    @db_session
     def is_enabled(self, ircid=None, channel=None):
-        settings = self.settings()
-        if not settings["enabled"]:
+        if not self.settings["enabled"]:
             return False
         if ircid is None or channel is None:
             return True
-        return settings["channel_enabled"].get("%s:%s" % (ircid, channel), True)
+        return self.settings["channel_enabled"].get("%s:%s" % (ircid, channel), True)
 
     def convert_value(self, key, value):
         if key in ["enabled"]:
@@ -137,12 +137,11 @@ class Plugin:
 
     def set_value(self, args):
         v = self.convert_value(args.key, args.value)
-        settings = self.settings()
-        settings[args.key] = v
-        self.set_setting(settings)
+        self.settings[args.key] = v
+        self.save_settings()
 
     def show_value(self, args):
-        v = self.settings()[args.key]
+        v = self.settings[args.key]
         return '%s["%s"] = %s' % (self.__class__.__name__, args.key, v)
 
     def values_to_set(self):
@@ -353,9 +352,8 @@ class Announcer(Plugin):
             return "illegal value for %s: %s" % (args.key, args.value)
         if args.value in self.settings[args.key]:
             return "already added to %s: %s" (args.key, args.value)
-        settings = self.settings()
-        settings[args.key].append(args.value)
-        self.set_setting(settings)
+        self.settings[args.key].append(args.value)
+        self.save_settings()
 
     def remove_value(self, args):
         arr = args.value.split(":")
@@ -363,9 +361,8 @@ class Announcer(Plugin):
             return "illegal value for %s: %s" % (args.key, args.value)
         if not args.value in self.settings[args.key]:
             return "not contained in %s: %s" (args.key, args.value)
-        settings = self.settings()
-        settings[args.key].remove(args.value)
-        self.set_setting(settings)
+        self.settings[args.key].remove(args.value)
+        self.save_settings()
 
     def values_to_set(self):
         return Plugin.values_to_set(self) + ["at"]
@@ -393,7 +390,7 @@ class Poller(Announcer):
         return { "timeout" : 10, "where" : [] }
 
     def timeout(self):
-        return self.settings()["timeout"]
+        return self.settings["timeout"]
 
     def next_at(self):
         at = time.time() + self.timeout()

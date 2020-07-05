@@ -42,6 +42,7 @@ class LiarsPlugin(StandardCommand):
             liar = Required(str, unique=True)
 
     def init(self):
+        StandardCommand.init(self)
         with db_session:
             if not self.db.LiarsPluginData.select():
                 self.db.LiarsPluginData(liar="roun")
@@ -123,6 +124,7 @@ class BeerPlugin(StandardCommand):
             value = Required(int)
 
     def init(self):
+        StandardCommand.init(self)
         with db_session:
             if self.db.BeerPluginData.get(key="beers") is None:
                 self.db.BeerPluginData(key="beers", value=10)

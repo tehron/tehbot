@@ -311,7 +311,7 @@ class WcStatsPlugin(StandardCommand):
 
 class WeChallStatsAnnouncer(Announcer):
     def at(self):
-        return self.settings().get("at", 72000)
+        return self.settings.get("at", 72000)
 
     def execute(self, connection, event, extra):
         today = datetime.date.today()
