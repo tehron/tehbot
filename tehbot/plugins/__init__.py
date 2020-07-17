@@ -365,7 +365,7 @@ class Announcer(Plugin):
         self.save_settings()
 
     def values_to_set(self):
-        return Plugin.values_to_set(self) + ["at"]
+        return Plugin.values_to_set(self) + ["at", "where"]
 
     def convert_value(self, key, value):
         if key in ["at"]:
