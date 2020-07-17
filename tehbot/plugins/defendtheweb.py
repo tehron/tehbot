@@ -7,7 +7,6 @@ import lxml.html
 import cookielib
 import json
 import re
-import datetime
 import time
 import re
 import ssl
@@ -70,7 +69,7 @@ class ConductPlugin(StandardCommand):
 
     def default_settings(self):
         return {
-                "where" : ["macak:#hackthis" ]
+                "where" : ["wcirc:#defendtheweb" ]
                 }
 
     def target_valid(self, name):
@@ -88,6 +87,7 @@ class DefendTheWebForumPoller(Poller):
 
     def create_entities(self):
         class DefendTheWebForumPollerData(self.db.Entity):
+            id = PrimaryKey(int)
             url = Required(str, unique=True)
             title = Required(str)
             replies = Required(int)
@@ -100,9 +100,12 @@ class DefendTheWebForumPoller(Poller):
         self.url = "https://defendtheweb.net/"
         self.forumurl = self.url + "discussions/all/latest"
 
+    def values_to_set(self):
+        return Poller.values_to_set(self) + [ "dtw.user", "dtw.password" ]
+
     def execute(self, connection, event, extra):
         if not self.opener.logged_in:
-            self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
+            self.opener.login(self.settings["dtw.user"], self.settings["dtw.password"])
 
         try:
             fp = self.opener.open(self.forumurl)
@@ -125,7 +128,7 @@ class DefendTheWebForumPoller(Poller):
                 latest = thread.xpath(".//div[@class='feed-item-details']//a[@data-text='author']")[0]
             last_user = latest.xpath("@data-profile-card")[0]
             timestr = latest.xpath("following-sibling::span/@title")[0]
-            last_ts = time.mktime(time.strptime(timestr, "%d/%m/%Y %H:%M (UTC)"))
+            last_ts = datetime.strptime(timestr, "%d/%m/%Y %H:%M (UTC)")
             entries.append((id, url, title, replies, last_ts, last_user))
 
         msgs = []
@@ -133,17 +136,17 @@ class DefendTheWebForumPoller(Poller):
         with db_session:
             for e in entries:
                 id, url, title, replies, last_ts, last_user = e
-                c = dbconn.execute("select last_ts from HackThisForumPoller where id = ?", (id, ))
-                res = c.fetchone()
                 announce, newthread = False, False
-                if res is None:
-                    dbconn.execute("insert into HackThisForumPoller values(?, ?, ?, ?, ?, ?)", e)
-                    announce = True
-                    newthread = replies == 0
-                elif res[0] < last_ts:
-                    dbconn.execute("update HackThisForumPoller set url=?, last_ts=?, last_user=? where id=?", (url, last_ts, last_user, id))
-                    announce = True
-                    newthread = False
+                try:
+                    data = self.db.DefendTheWebForumPollerData[id]
+                    if data.last_ts < last_ts:
+                        data.url = url
+                        data.last_ts = last_ts
+                        data.last_user = last_user
+                        announce, newthread = True, False
+                except ObjectNotFound:
+                    self.db.DefendTheWebForumPollerData(id=id, url=url, title=title, replies=replies, last_ts=last_ts, last_user=last_user)
+                    announce, newthread = True, replies == 0
 
                 if announce:
                     if newthread:
@@ -168,6 +171,9 @@ class DefendTheWebForumPlugin(StandardCommand):
     def prefix(self):
         return u"[Defend the Web Forum]"
 
+    def values_to_set(self):
+        return StandardCommand.values_to_set(self) + [ "dtw.user", "dtw.password" ]
+
     def execute(self, connection, event, extra):
         self.parser.set_defaults(what="latest")
 
@@ -186,18 +192,17 @@ class DefendTheWebForumPlugin(StandardCommand):
             except:
                 return Plugin.red(self.prefix()) + " Illegal id: %s" % what
 
-        with dbconn:
-            if what == "latest":
-                c = dbconn.execute("select url from HackThisForumPoller order by last_ts desc limit 1")
-            else:
-                c = dbconn.execute("select url from HackThisForumPoller where id=?", (what,))
-            res = c.fetchone()
-            if res is None:
+        with db_session:
+            try:
+                if what == "latest":
+                    url = self.db.DefendTheWebForumPollerData.select().order_by(desc(self.db.DefendTheWebForumPollerData.last_ts)).first().url
+                else:
+                    url = self.db.DefendTheWebForumPollerData[what].url
+            except:
                 return Plugin.red(self.prefix()) + " No such id: %s" % what
-            url = res[0]
 
         if not self.opener.logged_in:
-            self.opener.login(self.settings["hackthis.user"], self.settings["hackthis.password"])
+            self.opener.login(self.settings["dtw.user"], self.settings["dtw.password"])
 
         try:
             if not url.startswith("http"):
