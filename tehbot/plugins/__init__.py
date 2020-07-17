@@ -351,7 +351,7 @@ class Announcer(Plugin):
         if len(arr) != 2 or not TehbotImpl.is_valid_id(arr[0]) or (not arr[1].startswith("#") and arr[1] != "__all__"):
             return "illegal value for %s: %s" % (args.key, args.value)
         if args.value in self.settings[args.key]:
-            return "already added to %s: %s" (args.key, args.value)
+            return "already added to %s: %s" % (args.key, args.value)
         self.settings[args.key].append(args.value)
         self.save_settings()
 
@@ -360,7 +360,7 @@ class Announcer(Plugin):
         if len(arr) != 2 or not TehbotImpl.is_valid_id(arr[0]) or (not arr[1].startswith("#") and arr[1] != "__all__"):
             return "illegal value for %s: %s" % (args.key, args.value)
         if not args.value in self.settings[args.key]:
-            return "not contained in %s: %s" (args.key, args.value)
+            return "not contained in %s: %s" % (args.key, args.value)
         self.settings[args.key].remove(args.value)
         self.save_settings()
 
