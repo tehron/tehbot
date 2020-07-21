@@ -29,81 +29,75 @@ class FamPlugin(StandardCommand):
     def execute_parsed(self, connection, event, extra):
         return ".quoet fom"
 
-class LiarsPlugin(StandardCommand):
-    def __init__(self, db):
+class ListPlugin(StandardCommand):
+    def __init__(self, db, what="item"):
         StandardCommand.__init__(self, db)
+        self.what = what
         self.parser.add_argument("-a", "--add", metavar="who")
+
+    def commands(self):
+        return "list"
+
+    def create_entities(self):
+        if self.__class__.__name__ != ListPlugin.__name__:
+            return
+
+        class ListPluginData(self.db.Entity):
+            what = Required(str)
+            who = Required(str)
+            composite_key(what, who)
+
+    def execute_parsed(self, connection, event, extra):
+        if self.pargs.add is None:
+            with db_session:
+                data = select(d for d in self.db.ListPluginData if d.what == self.what).order_by(self.db.ListPluginData.id)
+                return ", ".join(d.who for d in data)
+
+        who = self.pargs.add
+
+        if not self.is_privileged(extra):
+            return self.request_priv(extra)
+
+        with db_session:
+            if self.db.ListPluginData.exists(lambda d: d.who.lower() == who.lower()):
+                return "Error: That %s has already been added!" % self.what
+
+            try:
+                self.db.ListPluginData(what=self.what, who=who)
+            except:
+                return "Error: Query failed. :("
+
+        return "Okay"
+
+class LiarsPlugin(ListPlugin):
+    def __init__(self, db):
+        ListPlugin.__init__(self, db, "liar")
 
     def commands(self):
         return "liars"
 
-    def create_entities(self):
-        class LiarsPluginData(self.db.Entity):
-            liar = Required(str, unique=True)
-
     def init(self):
-        StandardCommand.init(self)
+        ListPlugin.init(self)
         with db_session:
-            if not self.db.LiarsPluginData.select():
-                self.db.LiarsPluginData(liar="roun")
-                self.db.LiarsPluginData(liar="Nimda3")
-                self.db.LiarsPluginData(liar="neoxquick")
-                self.db.LiarsPluginData(liar="dloser")
-                self.db.LiarsPluginData(liar="thefinder")
+            if not self.db.ListPluginData.select(lambda x: x.what == self.what):
+                self.db.ListPluginData(what=self.what, who="roun")
+                self.db.ListPluginData(what=self.what, who="Nimda3")
+                self.db.ListPluginData(what=self.what, who="neoxquick")
+                self.db.ListPluginData(what=self.what, who="dloser")
+                self.db.ListPluginData(what=self.what, who="thefinder")
 
-    def execute_parsed(self, connection, event, extra):
-        if self.pargs.add is None:
-            c = dbconn.execute("select liar from LiarsPlugin order by id")
-            return ", ".join(a for (a,) in c.fetchall())
-
-        who = self.pargs.add
-
-        if not self.is_privileged(extra):
-            return self.request_priv(extra)
-
-        if dbconn.execute("select 1 from LiarsPlugin where liar = ?", (who,)).fetchone() is not None:
-            return "Error: That liar has already been added!"
-
-        with dbconn:
-            if dbconn.execute("insert into LiarsPlugin values(null, ?)", (who,)).rowcount != 1:
-                return "Error: Query failed. :("
-
-        return "Okay"
-
-class PricksPlugin(StandardCommand):
+class PricksPlugin(ListPlugin):
     def __init__(self, db):
-        StandardCommand.__init__(self, db)
-        self.parser.add_argument("-a", "--add", metavar="who")
+        ListPlugin.__init__(self, db, "prick")
 
     def commands(self):
         return "pricks"
 
-    def initialize(self, dbconn):
-        StandardCommand.initialize(self, dbconn)
-        with dbconn:
-            dbconn.execute("create table if not exists PricksPlugin(id integer primary key, prick varchar)")
-            dbconn.executemany("insert or ignore into PricksPlugin values(?, ?)", [
-                (1, "dloser"),
-            ])
-
-    def execute_parsed(self, connection, event, extra):
-        if self.pargs.add is None:
-            c = dbconn.execute("select prick from PricksPlugin order by id")
-            return ", ".join(a for (a,) in c.fetchall())
-
-        who = self.pargs.add
-
-        if not self.is_privileged(extra):
-            return self.request_priv(extra)
-
-        if dbconn.execute("select 1 from PricksPlugin where prick = ?", (who,)).fetchone() is not None:
-            return "Error: That prick has already been added!"
-
-        with dbconn:
-            if dbconn.execute("insert into PricksPlugin values(null, ?)", (who,)).rowcount != 1:
-                return "Error: Query failed. :("
-
-        return "Okay"
+    def init(self):
+        ListPlugin.init(self)
+        with db_session:
+            if not self.db.ListPluginData.select(lambda x: x.what == self.what):
+                self.db.ListPluginData(what=self.what, who="dloser")
 
 class BeerPlugin(StandardCommand):
     """Serves the best beer on IRC (way better than Lamb3's!)"""
