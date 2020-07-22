@@ -171,7 +171,10 @@ class Plugin:
         self.save_settings()
 
     def values_to_set(self):
-        return ["enabled", "where"]
+        return [ "enabled" ]
+
+    def values_to_add(self):
+        return [ "where" ]
 
     def integrate_parser(self, parseraction):
         p = parseraction.add_parser(self.__class__.__name__)
@@ -183,12 +186,12 @@ class Plugin:
         set_parser.add_argument("key", choices=self.values_to_set())
         set_parser.add_argument("value")
         set_parser.set_defaults(func=self.set_value)
-        show_parser.add_argument("key", choices=self.values_to_set())
+        show_parser.add_argument("key", choices=self.values_to_set() + self.values_to_add())
         show_parser.set_defaults(func=self.show_value)
-        add_parser.add_argument("key", choices=["where"])
+        add_parser.add_argument("key", choices=self.values_to_add())
         add_parser.add_argument("value")
         add_parser.set_defaults(func=self.add_value)
-        remove_parser.add_argument("key", choices=["where"])
+        remove_parser.add_argument("key", choices=self.values_to_add())
         remove_parser.add_argument("value")
         remove_parser.set_defaults(func=self.remove_value)
 
