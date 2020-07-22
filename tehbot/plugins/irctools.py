@@ -1,9 +1,7 @@
 from tehbot.plugins import *
-import shlex
 import time
-import irc.client
-import threading
-from tehbot.settings import Settings
+from pony.orm import *
+from datetime import datetime
 
 class SeenPlugin(StandardCommand):
     """Shows when a user was last seen."""
@@ -15,9 +13,9 @@ class SeenPlugin(StandardCommand):
     def commands(self):
         return ["seen", "last"]
 
-    def ircid2name(self, ircid, dbconn):
-        settings = Settings()
-        settings.load(dbconn)
+    @db_session
+    def ircid2name(self, ircid):
+        settings = select(s for s in self.db.Settings if s.name == "tehbot").first()
         try:
             return settings.value("connections")[ircid]["name"]
         except:
@@ -49,53 +47,39 @@ class SeenPlugin(StandardCommand):
             msg += " " + args
         return msg
 
+    @db_session
     def execute_parsed(self, connection, event, extra):
         user = self.pargs.user[0]
         requser = event.source.nick
-        c = dbconn.cursor()
-        c.execute(u"select * from Messages where nick=? and type=0 order by ts desc limit 1", (user,))
-        res = c.fetchone()
-
-        if res is None:
+        msgs = select(m for m in self.db.Message if m.nick == user and m.type == 0).order_by(desc(self.db.Message.ts))[:1]
+        if not msgs:
             return [("say_nolog", u"I've never seen %s." % user)]
 
-        _, ts, server, channel, nick, _, message, is_action = res
-        timestr = Plugin.time2str(time.time(), ts)
-        name = self.ircid2name(server, dbconn)
-        action = self.get_action(message)
-        if is_action and action is not None:
-            msg = u"I saw %s %s ago on %s in %s %s." % (user, timestr, name, channel, action)
+        m = msgs[0]
+        timestr = Plugin.time2str(time.time(), time.mktime(m.ts.timetuple()))
+        name = self.ircid2name(m.ircid)
+        action = self.get_action(m.message)
+        if m.event == "action" and action is not None:
+            msg = u"I saw %s %s ago on %s in %s %s." % (user, timestr, name, m.target, action)
         else:
-            msg =  u"I saw %s %s ago on %s in %s saying '%s'." % (user, timestr, name, channel, message)
+            msg =  u"I saw %s %s ago on %s in %s saying '%s'." % (user, timestr, name, m.target, m.message)
         return [("say_nolog", msg)]
 
 class OpHandler(ChannelJoinHandler):
+    def default_settings(self):
+        return { "who" : [], "whonot" : [] }
+
     def execute(self, connection, event, extra):
-        for network, channels in self.settings["where"].items():
-            if connection.name != network or (event.target not in channels and channels != "__all__"):
-                return
+        who = event.source.nick
 
-        if event.source.nick not in self.settings["who"] and self.settings["who"] != "__all__":
+        if self.settings["who"] and who not in self.settings["who"]:
             return
 
-        if event.source.nick in self.settings["whonot"]:
+        if self.settings["whonot"] and who in self.settings["whonot"]:
             return
 
-        connection.mode(event.target, "+o " + event.source.nick)
+        connection.mode(event.target, "+o " + who)
+        print "ok"
 
-    def config(self, args):
-        res = ChannelJoinHandler.config(self, args)
-
-        if res:
-            return res
-
-        if args[0] == "modify":
-            if args[1] == "add":
-                if args[2] == "whonot":
-                    nick = args[3]
-                    if not self.settings.has_key("whonot"):
-                        self.settings["whonot"] = []
-                    self.settings["whonot"].append(nick)
-                    print self.settings
-                    self.save(dbconn)
-                    return "Okay"
+    def values_to_add(self):
+        return ChannelJoinHandler.values_to_add(self) + [ "who", "whonot" ]
