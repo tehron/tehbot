@@ -97,7 +97,7 @@ class Plugin:
     def init(self):
         self.settings = {
                 "enabled" : inspect.getmodule(self).__name__ == "tehbot.plugins.core",
-                "channel_enabled" : { }
+                "where" : []
         }
         self.settings.update(self.default_settings())
 
@@ -120,13 +120,21 @@ class Plugin:
         n = self.__class__.__name__
         self.db.Settings.get(name=n).value = self.settings
 
-    @db_session
     def is_enabled(self, ircid=None, channel=None):
         if not self.settings["enabled"]:
             return False
-        if ircid is None or channel is None:
+
+        if ircid is None or channel is None or not self.settings["where"]:
             return True
-        return self.settings["channel_enabled"].get("%s:%s" % (ircid, channel), True)
+
+        for w in self.settings["where"]:
+            n, c = w.split(":")
+            if n == "__all__":
+                return True
+            if n == ircid and (c == "__all__" or c == channel):
+                return True
+
+        return False
 
     def convert_value(self, key, value):
         if key in ["enabled"]:
@@ -144,19 +152,45 @@ class Plugin:
         v = self.settings[args.key]
         return '%s["%s"] = %s' % (self.__class__.__name__, args.key, v)
 
+    def add_value(self, args):
+        arr = args.value.split(":")
+        if len(arr) != 2 or not TehbotImpl.is_valid_id(arr[0]) or (not arr[1].startswith("#") and arr[1] != "__all__"):
+            return "illegal value for %s: %s" % (args.key, args.value)
+        if args.value in self.settings[args.key]:
+            return "already added to %s: %s" % (args.key, args.value)
+        self.settings[args.key].append(args.value)
+        self.save_settings()
+
+    def remove_value(self, args):
+        arr = args.value.split(":")
+        if len(arr) != 2 or not TehbotImpl.is_valid_id(arr[0]) or (not arr[1].startswith("#") and arr[1] != "__all__"):
+            return "illegal value for %s: %s" % (args.key, args.value)
+        if not args.value in self.settings[args.key]:
+            return "not contained in %s: %s" % (args.key, args.value)
+        self.settings[args.key].remove(args.value)
+        self.save_settings()
+
     def values_to_set(self):
-        return ["enabled"]
+        return ["enabled", "where"]
 
     def integrate_parser(self, parseraction):
         p = parseraction.add_parser(self.__class__.__name__)
         self.parser_cmds = p.add_subparsers(title="commands", help="additional help")
         set_parser = self.parser_cmds.add_parser("set")
         show_parser = self.parser_cmds.add_parser("show")
+        add_parser = self.parser_cmds.add_parser("add")
+        remove_parser = self.parser_cmds.add_parser("remove")
         set_parser.add_argument("key", choices=self.values_to_set())
         set_parser.add_argument("value")
         set_parser.set_defaults(func=self.set_value)
         show_parser.add_argument("key", choices=self.values_to_set())
         show_parser.set_defaults(func=self.show_value)
+        add_parser.add_argument("key", choices=["where"])
+        add_parser.add_argument("value")
+        add_parser.set_defaults(func=self.add_value)
+        remove_parser.add_argument("key", choices=["where"])
+        remove_parser.add_argument("value")
+        remove_parser.set_defaults(func=self.remove_value)
 
     def is_privileged(self, extra):
         return extra["priv"]
@@ -331,7 +365,7 @@ class Announcer(Plugin):
         self.quit = False
 
     def default_settings(self):
-        return { "at" : 0, "where" : [] }
+        return { "at" : 0 }
 
     def at(self):
         return self.settings["at"]
@@ -346,26 +380,8 @@ class Announcer(Plugin):
             at += int(datetime.timedelta(days=1).total_seconds())
         return at
 
-    def add_value(self, args):
-        arr = args.value.split(":")
-        if len(arr) != 2 or not TehbotImpl.is_valid_id(arr[0]) or (not arr[1].startswith("#") and arr[1] != "__all__"):
-            return "illegal value for %s: %s" % (args.key, args.value)
-        if args.value in self.settings[args.key]:
-            return "already added to %s: %s" % (args.key, args.value)
-        self.settings[args.key].append(args.value)
-        self.save_settings()
-
-    def remove_value(self, args):
-        arr = args.value.split(":")
-        if len(arr) != 2 or not TehbotImpl.is_valid_id(arr[0]) or (not arr[1].startswith("#") and arr[1] != "__all__"):
-            return "illegal value for %s: %s" % (args.key, args.value)
-        if not args.value in self.settings[args.key]:
-            return "not contained in %s: %s" % (args.key, args.value)
-        self.settings[args.key].remove(args.value)
-        self.save_settings()
-
     def values_to_set(self):
-        return Plugin.values_to_set(self) + ["at", "where"]
+        return Plugin.values_to_set(self) + ["at"]
 
     def convert_value(self, key, value):
         if key in ["at"]:
@@ -374,20 +390,9 @@ class Announcer(Plugin):
             v = Plugin.convert_value(self, key, value)
         return v
 
-    def integrate_parser(self, parseraction):
-        Plugin.integrate_parser(self, parseraction)
-        add_parser = self.parser_cmds.add_parser("add")
-        remove_parser = self.parser_cmds.add_parser("remove")
-        add_parser.add_argument("key", choices=["where"])
-        add_parser.add_argument("value")
-        add_parser.set_defaults(func=self.add_value)
-        remove_parser.add_argument("key", choices=["where"])
-        remove_parser.add_argument("value")
-        remove_parser.set_defaults(func=self.remove_value)
-
 class Poller(Announcer):
     def default_settings(self):
-        return { "timeout" : 10, "where" : [] }
+        return { "timeout" : 10 }
 
     def timeout(self):
         return self.settings["timeout"]
