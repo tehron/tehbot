@@ -1,4 +1,5 @@
 from tehbot.plugins import *
+from pony.orm import *
 
 class GreetingHandler(ChannelJoinHandler):
     def default_settings(self):
@@ -6,42 +7,21 @@ class GreetingHandler(ChannelJoinHandler):
                 "no_greet" : [ ]
                 }
 
-    def initialize(self, dbconn):
-        ChannelJoinHandler.initialize(self, dbconn)
-        with dbconn:
-            dbconn.execute("create table if not exists Greetings(id integer primary key, text varchar)")
-            dbconn.executemany("insert or ignore into Greetings values(?, ?)", [
-                (1, "Konnichiwa %s"),
-                (2, "Welcome %s"),
-                (3, "Hi %s"),
-                (4, "Salut %s"),
-                (5, "Salam aleikum, %s"),
-                (6, "Hello %s"),
-                (7, "Ciao %s"),
-                (8, "Hei %s"),
-                (9, "Ahoj %s"),
-                (10, "Hola %s"),
-            ])
+    @db_session
+    def greet(self, who):
+        g = self.db.GreetingPluginData.select_random(1)
+
+        if g:
+            return g[0].greeting % who
 
     def execute(self, connection, event, extra):
-        def enabled():
-            for w in self.settings["where"]:
-                network, channel = w.split(":")
-                if connection.tehbot.ircid == network and event.target.lower() == channel.lower():
-                    return True
-            return False
-
-        if not enabled() or event.source.nick in self.settings["no_greet"]:
+        if event.source.nick in self.settings["no_greet"]:
             return
 
         if event.source.nick == "RichardBrook":
             return "Oh look, it's RichardBrook!"
 
-        c = dbconn.execute("select text from Greetings order by random() limit 1")
-        res = c.fetchone()
-
-        if res is not None:
-            return res[0] % (event.source.nick)
+        return self.greet(event.source.nick)
 
 class GreetPlugin(StandardCommand):
     def __init__(self, db):
@@ -53,7 +33,34 @@ class GreetPlugin(StandardCommand):
     def commands(self):
         return "greet"
 
-    def execute_parsed(self, connection, event, extra, dbconn):
+    def create_entities(self):
+        class GreetingPluginData(self.db.Entity):
+            greeting = Required(str, unique=True)
+
+    def init(self):
+        StandardCommand.init(self)
+        with db_session:
+            if not self.db.GreetingPluginData.select():
+                self.db.GreetingPluginData(greeting="Konnichiwa %s")
+                self.db.GreetingPluginData(greeting="Welcome %s")
+                self.db.GreetingPluginData(greeting="Hi %s")
+                self.db.GreetingPluginData(greeting="Salut %s")
+                self.db.GreetingPluginData(greeting="Salam aleikum, %s")
+                self.db.GreetingPluginData(greeting="Hello %s")
+                self.db.GreetingPluginData(greeting="Ciao %s")
+                self.db.GreetingPluginData(greeting="Hei %s")
+                self.db.GreetingPluginData(greeting="Ahoj %s")
+                self.db.GreetingPluginData(greeting="Hola %s")
+
+    @db_session
+    def greet(self, who):
+        g = self.db.GreetingPluginData.select_random(1)
+
+        if g:
+            return g[0].greeting % who
+
+    @db_session
+    def execute_parsed(self, connection, event, extra):
         if self.pargs.add:
             if not self.is_privileged(extra):
                 return self.request_priv(extra)
@@ -62,16 +69,14 @@ class GreetPlugin(StandardCommand):
             if greeting.find("%s") < 0:
                 return "Error: You forgot to add %s."
 
-            if dbconn.execute("select 1 from Greetings where text like ?", ("%%%s%%" % greeting,)).fetchone() is not None:
+            if select(g for g in self.db.GreetingPluginData if greeting in g.greeting):
                 return "Error: That greeting has already been added!"
 
-            with dbconn:
-                if dbconn.execute("insert into Greetings values(null, ?)", (greeting,)).rowcount != 1:
-                    return "Error: Query failed. :("
-            return "Okay"
-        else:
-            c = dbconn.execute("select text from Greetings order by random() limit 1")
-            res = c.fetchone()
+            try:
+                self.db.GreetingPluginData(greeting=greeting)
+            except:
+                return "Error: Query failed. :("
 
-            if res is not None:
-                return res[0] % (self.pargs.who)
+            return "Okay"
+
+        return self.greet(self.pargs.who)
