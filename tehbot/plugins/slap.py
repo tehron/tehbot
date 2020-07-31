@@ -15,12 +15,12 @@ class SlapwarzPlugin(StandardCommand):
         return "slap"
 
     def create_entities(self):
-        class SlapwarzWords(self.db.Entity):
+        class SlapwarzWord(self.db.Entity):
             word = Required(str, unique=True)
             type = Required(int)
             damage = Required(float)
 
-        class SlapwarzSlaps(self.db.Entity):
+        class SlapwarzSlap(self.db.Entity):
             ts = Required(datetime.datetime)
             who = Required(str)
             victim = Required(str)
@@ -228,11 +228,11 @@ class SlapwarzPlugin(StandardCommand):
         ]
 
         with db_session:
-            if self.db.SlapwarzWords.select():
+            if self.db.SlapwarzWord.select():
                 return
 
             for id, type, word, damage in words:
-                self.db.SlapwarzWords(word=word, type=type, damage=damage)
+                self.db.SlapwarzWord(word=word, type=type, damage=damage)
 
     def timeout(self):
         return 24 * 60 * 60
@@ -259,11 +259,11 @@ class SlapwarzPlugin(StandardCommand):
         words = []
         damages = []
         with db_session:
-            ts = select(s.ts for s in self.db.SlapwarzSlaps if s.who == who and s.victim == victim).order_by(desc(1)).first()
+            ts = select(s.ts for s in self.db.SlapwarzSlap if s.who == who and s.victim == victim).order_by(desc(1)).first()
             last_slap = time.mktime(ts.timetuple()) if ts else 0
 
             for i in range(4):
-                slapword = select(w for w in self.db.SlapwarzWords if w.type == i).random(1)[0]
+                slapword = select(w for w in self.db.SlapwarzWord if w.type == i).random(1)[0]
                 words.append(slapword.word)
                 damages.append(slapword.damage)
 
@@ -276,7 +276,7 @@ class SlapwarzPlugin(StandardCommand):
                 else:
                     dmg = round(reduce(lambda x,y: x * (y-10)/100, damages, 10000.0))
                     msg = "%s (%.0f damage)." % (slaptext, dmg)
-                    self.db.SlapwarzSlaps(ts=datetime.datetime.fromtimestamp(when), who=who, victim=victim, damage=dmg)
+                    self.db.SlapwarzSlap(ts=datetime.datetime.fromtimestamp(when), who=who, victim=victim, damage=dmg)
             else:
                 msg = slaptext + "."
 
