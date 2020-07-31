@@ -139,7 +139,7 @@ class TehbotImpl:
 
     @db_session
     def save_settings(self):
-        self.db.Settings.get(name="tehbot").value = self.settings
+        self.db.Setting.get(name="tehbot").value = self.settings
 
     def postinit(self):
         self.db.bind(provider='sqlite', filename="../data/tehbot_ponyorm.sqlite", create_db=True)
@@ -149,10 +149,10 @@ class TehbotImpl:
         self.settings = self.default_settings()
 
         with db_session:
-            s = self.db.Settings.get(name="tehbot")
+            s = self.db.Setting.get(name="tehbot")
 
             if s is None:
-                s = self.db.Settings(name="tehbot", value=self.settings)
+                s = self.db.Setting(name="tehbot", value=self.settings)
 
             self.settings.update(s.value)
             self.save_settings()

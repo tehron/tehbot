@@ -15,7 +15,7 @@ class SeenPlugin(StandardCommand):
 
     @db_session
     def ircid2name(self, ircid):
-        settings = select(s for s in self.db.Settings if s.name == "tehbot").first()
+        settings = select(s for s in self.db.Setting if s.name == "tehbot").first()
         try:
             return settings.value("connections")[ircid]["name"]
         except:

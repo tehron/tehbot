@@ -104,10 +104,10 @@ class Plugin:
         n = self.__class__.__name__
 
         with db_session:
-            s = self.db.Settings.get(name=n)
+            s = self.db.Setting.get(name=n)
 
             if s is None:
-                s = self.db.Settings(name=n, value=self.settings)
+                s = self.db.Setting(name=n, value=self.settings)
 
             self.settings.update(s.value)
             self.save_settings()
@@ -118,7 +118,7 @@ class Plugin:
     @db_session
     def save_settings(self):
         n = self.__class__.__name__
-        self.db.Settings.get(name=n).value = self.settings
+        self.db.Setting.get(name=n).value = self.settings
 
     def is_enabled(self, ircid=None, channel=None):
         if not self.settings["enabled"]:

@@ -2,7 +2,7 @@ from pony.orm import *
 from datetime import datetime
 
 def define_entities(db):
-    class Settings(db.Entity):
+    class Setting(db.Entity):
         name = Required(str, unique=True)
         value = Optional(Json)
 
