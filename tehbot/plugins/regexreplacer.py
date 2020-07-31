@@ -1,15 +1,12 @@
 from tehbot.plugins import *
 import re
+from pony.orm import *
 
 class RegexReplaceHandler(ChannelHandler):
     regex = re.compile(r'^s/(.*?)/(.*?)(/(.+))?$', re.I)
 
     def execute(self, connection, event, extra):
-        match = None
-        try:
-            match = self.regex.match(extra["msg"])
-        except:
-            pass
+        match = self.regex.match(extra["msg"])
 
         if match is None:
             return
@@ -30,16 +27,21 @@ class RegexReplaceHandler(ChannelHandler):
         except:
             return
 
-        c = dbconn.execute("select message from Messages where server=? and channel=? and nick=? order by ts desc limit 2", (connection.tehbot.ircid, event.target, user))
-        res = c.fetchone()
+        with db_session:
+            msgs = select(m for m in self.db.Message if m.ircid == connection.tehbot.ircid and m.target == event.target and m.nick == user).order_by(desc(self.db.Message.ts))[:2]
 
-        if user == event.source.nick:
-            res = c.fetchone()
-
-        if res is None:
+        if not msgs:
             return
 
-        msg = res[0]
+        if user == event.source.nick:
+            m = msgs[1] if len(msgs) == 2 else None
+        else:
+            m = msgs[0]
+
+        if m is None:
+            return
+
+        msg = m.message
         msg = regex.sub(replace, msg)
         msg = Plugin.myfilter(msg)
         msg = Plugin.shorten(msg, 450)
