@@ -1020,7 +1020,7 @@ class Dispatcher:
         self.tehbot.core.reactor.scheduler.execute_after(delay, functools.partial(self.tehbot.reconnect, connection))
 
     def on_join(self, connection, event):
-        self.tehbot.logmsg(time.time(), "join", 0, connection.tehbot.ircid, self.tehbot.connection_name(connection), event.target, None, "%s: %s joined" % (event.target, event.source.nick))
+        self.tehbot.logmsg(time.time(), "join", 0, connection.tehbot.ircid, self.tehbot.connection_name(connection), event.target, None, "%s joined" % event.source.nick)
         nick = event.source.nick
         channel = event.target
         botname = connection.get_nickname()
