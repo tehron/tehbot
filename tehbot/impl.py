@@ -906,7 +906,7 @@ class TehbotImpl:
         channel_show_parser.set_defaults(func=self.channel_show_value)
 
         plugin_cmds = plugin_parser.add_subparsers(title="plugins", help="additional help")
-        for p in self.plugins:
+        for p in sorted(self.plugins, key=lambda x: x.__class__.__name__):
             p.integrate_parser(plugin_cmds)
 
         try:
