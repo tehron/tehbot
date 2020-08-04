@@ -11,12 +11,15 @@ class WolframAlphaPlugin(StandardCommand):
     def commands(self):
         return ["wolframalpha", "wa"]
 
-    def initialize(self, dbconn):
-        StandardCommand.initialize(self, dbconn)
+    def init(self):
+        StandardCommand.init(self)
         try:
             self.client = wolframalpha.Client(self.settings["wolframalpha_app_id"])
         except:
             self.settings["enabled"] = False
+
+    def values_to_set(self):
+        return StandardCommand.values_to_set(self) + [ "wolframalpha_app_id" ]
 
     @staticmethod
     def remove_empty_columns(table, nr_cols):
