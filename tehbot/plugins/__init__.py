@@ -309,7 +309,16 @@ class Plugin:
         return modules
 
     @staticmethod
+    def to_seconds(dt):
+        return time.mktime(dt.timetuple())
+
+    @staticmethod
     def time2str(a, b, granularity=2):
+        if type(a) == datetime.datetime:
+            a = Plugin.to_seconds(a)
+        if type(b) == datetime.datetime:
+            b = Plugin.to_seconds(b)
+
         diff = TimeDelta(a, b)
         avail = [ "years", "months", "weeks", "days", "hours", "minutes", "seconds" ]
         infos = []
