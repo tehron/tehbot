@@ -1,5 +1,6 @@
 from tehbot.plugins import *
 import random
+from pony.orm import *
 
 class WwddPlugin(StandardCommand):
     """What would dloser do?"""
@@ -11,27 +12,29 @@ class WwddPlugin(StandardCommand):
     def commands(self):
         return "wwdd"
 
-    def initialize(self, dbconn):
-        StandardCommand.initialize(self, dbconn)
-        with dbconn:
-            dbconn.execute("create table if not exists WwddPlugin(id integer primary key, text varchar)")
-            dbconn.executemany("insert or ignore into WwddPlugin values(?, ?)", [
-                (1, "%s says: ... (can you feel the silence?)"),
-                (2, "%s says: you're a moron!"),
-                (3, "%s says: i really like this (in a really high voice)"),
-                (4, "%s says: i love you (and dies)"),
-                (5, "%s pukes"),
-                (6, "%s says: i will give it. (but i won't)"),
-                (7, "%s says: so helpful"),
-            ])
+    def create_entities(self):
+        class WwddPluginData(self.db.Entity):
+            text = Required(str)
 
+    def init(self):
+        StandardCommand.init(self)
+        with db_session:
+            if not self.db.WwddPluginData.select():
+                self.db.WwddPluginData(text="%s says: ... (can you feel the silence?)")
+                self.db.WwddPluginData(text="%s says: you're a moron!")
+                self.db.WwddPluginData(text="%s says: i really like this (in a really high voice)")
+                self.db.WwddPluginData(text="%s says: i love you (and dies)")
+                self.db.WwddPluginData(text="%s pukes")
+                self.db.WwddPluginData(text="%s says: i will give it. (but i won't)")
+                self.db.WwddPluginData(text="%s says: so helpful")
+
+    @db_session
     def execute_parsed(self, connection, event, extra):
         if self.pargs.add is None:
-            c = dbconn.execute("select text from WwddPlugin order by random() limit 1")
-            what = c.fetchone()
+            what = self.db.WwddPluginData.select_random(1)
 
-            if what is not None:
-                return what[0] % "dloser"
+            if what:
+                return what[0].text % "dloser"
             return
 
         what = self.pargs.add
@@ -42,11 +45,8 @@ class WwddPlugin(StandardCommand):
         if what.find("%s") < 0:
             return "Error: You forgot to add %s. that wouldn't have happened to dloser..."
 
-        if dbconn.execute("select 1 from WwddPlugin where text like ?", ("%%%s%%" % what,)).fetchone() is not None:
+        if select(t for t in self.db.WwddPluginData if what.lower() in t.text.lower()):
             return "Error: That what has already been added!"
 
-        with dbconn:
-            if dbconn.execute("insert into WwddPlugin values(null, ?)", (what,)).rowcount != 1:
-                return "Error: Query failed. :("
-
+        self.db.WwddPluginData(text=what)
         return "Okay"
