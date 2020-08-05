@@ -16,15 +16,8 @@ class YoutubeHandler(ChannelHandler):
     def default_settings(self):
         return { "key" : None, "referer" : None }
 
-    def config(self, args):
-        if args[0] == "modify":
-            if args[1] == "set":
-                if args[2] in ["key", "referer"]:
-                    self.settings[args[2]] = args[3]
-                    self.save(dbconn)
-                    return "Okay"
-
-        return ChannelHandler.config(self, args)
+    def values_to_set(self):
+        return ChannelHandler.values_to_set(self) + [ "key", "referer" ]
 
     def execute(self, connection, event, extra):
         match = None
