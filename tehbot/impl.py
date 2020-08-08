@@ -142,7 +142,7 @@ class TehbotImpl:
         self.db.Setting.get(name="tehbot").value = self.settings
 
     def postinit(self):
-        self.db.bind(provider='sqlite', filename="../data/tehbot_ponyorm.sqlite", create_db=True)
+        self.db.bind(provider='sqlite', filename="../data/tehbot.sqlite", create_db=True)
         self.db.generate_mapping(create_tables=True)
         set_sql_debug(False)
 
