@@ -12,7 +12,9 @@ class BlamePlugin(StandardCommand):
         return "blame"
 
     def execute_parsed(self, connection, event, extra):
-        two = [u for u,m in connection.tehbot.users[event.target] if u not in ["ChanServ, NickServ"]] if irc.client.is_channel(event.target) else [u"spaceone"]
+        botname = connection.get_nickname()
+        forbidden = ["ChanServ", "NickServ", botname]
+        two = [u for u,m in connection.tehbot.users[event.target] if u not in forbidden] if irc.client.is_channel(event.target) else [u"spaceone"]
         goats = zip((two for one in range(23)), 42 * [ reduce(random, [], two) ])
         shuffle(goats)
         goats.sort(key=lambda x: random())
