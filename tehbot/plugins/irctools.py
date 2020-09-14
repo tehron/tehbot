@@ -58,7 +58,7 @@ class SeenPlugin(StandardCommand):
     def execute_parsed(self, connection, event, extra):
         user = self.pargs.user[0]
         ircid = self.pargs.ircid
-        msgs = select(m for m in self.db.Message if m.nick == user and m.type == 0 and (ircid is None or m.ircid == ircid)).order_by(desc(self.db.Message.ts))[:1]
+        msgs = select(m for m in self.db.Message if m.nick.lower() == user.lower() and m.type == 0 and (ircid is None or m.ircid == ircid)).order_by(desc(self.db.Message.ts))[:1]
         if not msgs:
             wherestr = " on %s" % self.ircid2name(ircid) if ircid else ""
             return [("say_nolog", u"I've never seen %s%s." % (user, wherestr))]
