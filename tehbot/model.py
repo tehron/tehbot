@@ -7,10 +7,11 @@ def define_entities(db):
         value = Optional(Json)
 
     class Message(db.Entity):
-        ts = Required(datetime, index=True)
+        ts = Required(datetime)
         event = Required(str)
         type = Required(int)
         ircid = Required(str)
         target = Optional(str, nullable=True)
-        nick = Optional(str, index=True, nullable=True)
+        nick = Optional(str, nullable=True)
         message = Optional(str, nullable=True)
+        composite_index(ts, nick, ircid)

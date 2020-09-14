@@ -9,6 +9,7 @@ class SeenPlugin(StandardCommand):
     def __init__(self, db):
         StandardCommand.__init__(self, db)
         self.parser.add_argument("user", nargs=1)
+        self.ircid_arg = self.parser.add_argument("-i", "--ircid")
 
     def commands(self):
         return ["seen", "last"]
@@ -17,7 +18,7 @@ class SeenPlugin(StandardCommand):
     def ircid2name(self, ircid):
         settings = select(s for s in self.db.Setting if s.name == "tehbot").first()
         try:
-            return settings.value("connections")[ircid]["name"]
+            return settings.value["connections"][ircid]["name"]
         except:
             return ircid
 
@@ -48,12 +49,19 @@ class SeenPlugin(StandardCommand):
         return msg
 
     @db_session
+    def execute(self, connection, event, extra):
+        ircids = select(m.ircid for m in self.db.Message)[:]
+        self.ircid_arg.choices = sorted(ircids)
+        return StandardCommand.execute(self, connection, event, extra)
+
+    @db_session
     def execute_parsed(self, connection, event, extra):
         user = self.pargs.user[0]
-        requser = event.source.nick
-        msgs = select(m for m in self.db.Message if m.nick == user and m.type == 0).order_by(desc(self.db.Message.ts))[:1]
+        ircid = self.pargs.ircid
+        msgs = select(m for m in self.db.Message if m.nick == user and m.type == 0 and (ircid is None or m.ircid == ircid)).order_by(desc(self.db.Message.ts))[:1]
         if not msgs:
-            return [("say_nolog", u"I've never seen %s." % user)]
+            wherestr = " on %s" % self.ircid2name(ircid) if ircid else ""
+            return [("say_nolog", u"I've never seen %s%s." % (user, wherestr))]
 
         m = msgs[0]
         timestr = Plugin.time2str(time.time(), time.mktime(m.ts.timetuple()))
