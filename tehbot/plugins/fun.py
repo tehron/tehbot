@@ -430,10 +430,15 @@ class DeadHourPlugin(Command):
 
         skip_users = ["Lamb3", "ChanServ", botname]
 
+        try:
+            max_modes = connection.features.modes
+        except AttributeError:
+            max_modes = self.settings["max_modes"]
+
         def modelist(users):
             def check(ulist, mlist):
                 s = "-" + "".join(mlist) + " " + " ".join(ulist)
-                return len(s) <= 450 and len(ulist) <= self.settings["max_modes"]
+                return len(s) <= 450 and len(ulist) <= max_modes
 
             mlist = []
             ulist = []
