@@ -32,7 +32,9 @@ class SeenPlugin(StandardCommand):
         verb = verb[:-1]
         v = verb.lower()
 
-        if v[-2:] == "ie":
+        if v == "i":
+            verb = "be"
+        elif v[-2:] == "ie":
             verb = verb[:-2] + "y"
         elif v[-1] == "e":
             if not v.endswith("ee"):
