@@ -224,7 +224,7 @@ class PlayerItem(db.Entity):
 class Item(db.Entity):
     id = PrimaryKey(int, auto=True)
     player_item = Set(PlayerItem)
-    name = Required(str, unique=True)
+    name = Required(str, unique=True, max_len=64)
     description = Optional(str)
     level = Required(int, default=-1)
     weight = Required(float)
@@ -315,13 +315,13 @@ class PlayerStats(db.Entity):
 class Gender(db.Entity):
     id = PrimaryKey(int, auto=True)
     players = Set("Player")
-    name = Required(str, unique=True)
+    name = Required(str, unique=True, max_len=20)
     attributes = Required(Attributes)
 
 class Race(db.Entity):
     id = PrimaryKey(int, auto=True)
     players = Set("Player")
-    name = Required(str, unique=True)
+    name = Required(str, unique=True, max_len=64)
     is_npc = Required(bool, default=False)
     base_hp = Required(float)
     base_mp = Required(float)
@@ -346,17 +346,17 @@ class Knowledge(db.Entity):
 class Word(db.Entity):
     id = PrimaryKey(int, auto=True)
     players = Set("Player")
-    name = Required(str, unique=True)
+    name = Required(str, unique=True, max_len=64)
 
 class Place(db.Entity):
     id = PrimaryKey(int, auto=True)
     players = Set("Player")
-    name = Required(str, unique=True)
+    name = Required(str, unique=True, max_len=64)
 
 class Spell(db.Entity):
     id = PrimaryKey(int, auto=True)
     players = Set("Player")
-    name = Required(str, unique=True)
+    name = Required(str, unique=True, max_len=64)
 
 class Party(db.Entity):
     id = PrimaryKey(int, auto=True)

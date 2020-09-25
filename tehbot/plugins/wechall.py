@@ -335,7 +335,7 @@ class WeChallSitesPoller(Poller):
         class WeChallSitesPoller(self.db.Entity):
             ts = Required(datetime.datetime)
             sitename = Required(str)
-            classname = PrimaryKey(str)
+            classname = PrimaryKey(str, max_len=20)
             status = Required(str)
             url = Optional(str)
             profileurl = Optional(str)

@@ -16,7 +16,7 @@ class SlapwarzPlugin(StandardCommand):
 
     def create_entities(self):
         class SlapwarzWord(self.db.Entity):
-            word = Required(str, unique=True)
+            word = Required(str, unique=True, max_len=128)
             type = Required(int)
             damage = Required(float)
 

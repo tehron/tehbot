@@ -4,7 +4,7 @@ import json
 
 def define_entities(db):
     class Setting(db.Entity):
-        name = Required(str, unique=True)
+        name = Required(str, unique=True, max_len=128)
         value = Optional(str, max_len=2048)
 
         def get_value(self):
@@ -17,8 +17,8 @@ def define_entities(db):
         ts = Required(datetime)
         event = Required(str)
         type = Required(int)
-        ircid = Required(str)
+        ircid = Required(str, max_len=32)
         target = Optional(str, nullable=True)
-        nick = Optional(str, nullable=True)
+        nick = Optional(str, nullable=True, max_len=32)
         message = Optional(str, nullable=True, max_len=510)
         composite_index(ts, nick, ircid)

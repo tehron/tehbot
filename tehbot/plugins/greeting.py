@@ -35,7 +35,7 @@ class GreetPlugin(StandardCommand):
 
     def create_entities(self):
         class GreetingPluginData(self.db.Entity):
-            greeting = Required(str, unique=True)
+            greeting = Required(str, unique=True, max_len=128)
 
     def init(self):
         StandardCommand.init(self)

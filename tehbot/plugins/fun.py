@@ -45,8 +45,8 @@ class ListPlugin(StandardCommand):
             return
 
         class ListPluginData(self.db.Entity):
-            what = Required(str)
-            who = Required(str)
+            what = Required(str, max_len=32)
+            who = Required(str, max_len=32)
             composite_key(what, who)
 
     def execute_parsed(self, connection, event, extra):
@@ -116,7 +116,7 @@ class BeerPlugin(StandardCommand):
 
     def create_entities(self):
         class BeerPluginData(self.db.Entity):
-            key = Required(str, unique=True)
+            key = Required(str, unique=True, max_len=32)
             value = Required(int)
 
     def init(self):

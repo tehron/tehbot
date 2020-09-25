@@ -88,7 +88,7 @@ class DefendTheWebForumPoller(Poller):
     def create_entities(self):
         class DefendTheWebForumPollerData(self.db.Entity):
             id = PrimaryKey(int)
-            url = Required(str, unique=True)
+            url = Required(str)
             title = Required(str)
             replies = Required(int)
             last_ts = Required(datetime)
