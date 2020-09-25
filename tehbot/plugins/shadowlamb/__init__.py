@@ -51,7 +51,7 @@ class ShadowlambHandler(PrefixHandler):
                 }
 
     def init(self):
-        #PrefixHandler.initialize(self, dbconn)
+        PrefixHandler.init(self)
         #model.init()
         self.quit = False
         self.thread = threading.Thread(target=self.timerfunc)
