@@ -26,6 +26,8 @@ import locale
 encoding = locale.getdefaultlocale()[1] or "ascii"
 import random
 import socket
+from ConfigParser import SafeConfigParser
+import json
 
 def _terminate_thread(thread):
     """Terminates a python thread from another thread.
@@ -114,6 +116,8 @@ class TehbotImpl:
         self.quit_called = False
         self.restart_called = False
         self.db = Database()
+        self.pconfig = SafeConfigParser()
+        self.configfile = os.path.join(os.path.dirname(__file__), "..", "data", "tehbot.cfg")
         model.define_entities(self.db)
         self.privusers = defaultdict(set)
         self.authusers = defaultdict(set)
@@ -139,10 +143,20 @@ class TehbotImpl:
 
     @db_session
     def save_settings(self):
-        self.db.Setting.get(name="tehbot").value = self.settings
+        self.db.Setting.get(name="tehbot").set_value(self.settings)
 
     def postinit(self):
-        self.db.bind(provider='sqlite', filename="../data/tehbot.sqlite", create_db=True)
+        if not os.path.exists(self.configfile):
+            self.pconfig.add_section("database")
+            self.pconfig.set("database", "provider", "sqlite")
+            with open(self.configfile, "wb") as fp:
+                self.pconfig.write(fp)
+        self.pconfig.read("data/tehbot.cfg")
+        p = self.pconfig.get("database", "provider")
+        if p == "sqlite":
+            self.db.bind(provider='sqlite', filename="../data/tehbot.sqlite", create_db=True)
+        else:
+            self.db.bind(provider=p, host=self.pconfig.get("database", "host"), user=self.pconfig.get("database", "user"), passwd=self.pconfig.get("database", "password"), db=self.pconfig.get("database", "db"))
         self.db.generate_mapping(create_tables=True)
         set_sql_debug(False)
 
@@ -152,9 +166,9 @@ class TehbotImpl:
             s = self.db.Setting.get(name="tehbot")
 
             if s is None:
-                s = self.db.Setting(name="tehbot", value=self.settings)
+                s = self.db.Setting(name="tehbot", value=json.dumps(self.settings))
 
-            self.settings.update(s.value)
+            self.settings.update(s.get_value())
             self.save_settings()
 
         for p in self.plugins:

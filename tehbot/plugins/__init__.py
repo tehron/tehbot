@@ -107,9 +107,9 @@ class Plugin:
             s = self.db.Setting.get(name=n)
 
             if s is None:
-                s = self.db.Setting(name=n, value=self.settings)
+                s = self.db.Setting(name=n, value=json.dumps(self.settings))
 
-            self.settings.update(s.value)
+            self.settings.update(s.get_value())
             self.save_settings()
 
     def deinit(self):
@@ -118,7 +118,7 @@ class Plugin:
     @db_session
     def save_settings(self):
         n = self.__class__.__name__
-        self.db.Setting.get(name=n).value = self.settings
+        self.db.Setting.get(name=n).set_value(self.settings)
 
     def is_enabled(self, ircid=None, channel=None):
         if not self.settings["enabled"]:

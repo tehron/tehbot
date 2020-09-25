@@ -42,7 +42,7 @@ class Shadowlamb(db.Entity):
     id = PrimaryKey(int)
     db_version = Required(int)
     time = Required(float)
-    settings = Required(Json)
+    settings = Required(str)
 
 class Attributes(db.Entity):
     id = PrimaryKey(int, auto=True)
@@ -369,7 +369,7 @@ class Party(db.Entity):
     last_action = Required(PartyAction, default=PartyAction.delete)
     last_target = Optional(str)
     last_eta = Required(float, default=0)
-    options = Required(Json)
+    options = Required(str)
     ban = Optional(str)
     distance = Optional(str)
     xp = Required(int, default=0)
@@ -389,7 +389,7 @@ class Player(db.Entity):
     birthday = Required(float)
     height = Required(float)
     own_weight = Required(float)
-    options = Required(Json)
+    options = Required(str)
     distance = Required(float)
 
     level = Required(int)
