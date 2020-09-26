@@ -71,13 +71,9 @@ class WolframAlphaPlugin(StandardCommand):
         fn = Plugin.green
         try:
             inp, res, misc = self.query(what)
-            txt = inp + "\n"
-
-            if res:
-                txt += res + "\n"
-            elif misc:
-                txt += "\n".join(misc)
-            else:
+            lst = [inp or "", res or "", "\n".join(misc) or ""]
+            txt = "\n".join(lst)
+            if not txt:
                 raise NameError
         except (NameError, AttributeError):
             txt = "No results."
