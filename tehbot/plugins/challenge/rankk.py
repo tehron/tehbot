@@ -5,9 +5,6 @@ import urlparse
 import lxml.html
 import re
 
-challurl = "https://www.rankk.org/stats.py"
-userurl = "https://www.rankk.org/user/%s"
-
 class Site(BaseSite):
     def prefix(self):
         return u"[Rankk]"
@@ -15,8 +12,14 @@ class Site(BaseSite):
     def siteurl(self):
         return "https://www.rankk.org"
 
+    def statsurl(self):
+        return "https://www.rankk.org/stats.py"
+
+    def profileurl(self):
+        return "https://www.rankk.org/user/%s"
+
     def userstats(self, user):
-        url = userurl % urllib.quote_plus(Plugin.to_utf8(user))
+        url = self.profileurl() % urllib.quote_plus(Plugin.to_utf8(user))
         tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
 
         content = tree.xpath("//div[@id='main']")
@@ -65,7 +68,7 @@ class Site(BaseSite):
         return match.group(1).replace("\\'", "'") if match else ""
 
     def solvers(self, challname, challnr, user):
-        tree = lxml.html.parse(urllib2.urlopen(challurl, timeout=5))
+        tree = lxml.html.parse(urllib2.urlopen(self.statsurl(), timeout=5))
         escript = tree.xpath("//div[@id='page']/script")
 
         if not escript:
@@ -103,13 +106,25 @@ class Site(BaseSite):
             raise NoSuchChallengeError
 
         nr, name, cnt = res
-        solvers = None
-        solved = Site.user_solved(user, name) if user else False
+        cnt, solvers = self.chall_stats(nr)
+        solved = self.user_solved(user, name) if user else False
         return user, nr, name, cnt, solvers, solved
 
-    @staticmethod
-    def user_solved(user, challname):
-        url = userurl % urllib.quote_plus(Plugin.to_utf8(user))
+    def chall_stats(self, challnr):
+        a, b = challnr
+        tree = lxml.html.parse(urllib2.urlopen(self.siteurl(), timeout=5))
+        linkstr = tree.xpath("//div[@id='hofs']/ul/li[%d]/ul/li[%d]/a[%d]/@href" % (a, (b+1)/2, 1 if b%2 else 2))
+        tree = lxml.html.parse(urllib2.urlopen(urlparse.urljoin(self.siteurl(), linkstr[0]), timeout=5))
+        last_solvers = []
+        cnt = 0
+        for row in tree.xpath("//div[@id='hof']/table/tr"):
+            if cnt == 0:
+                cnt = int(row.xpath("td[1]")[0].text_content().strip())
+            last_solvers.append(row.xpath("td[2]")[0].text_content().strip())
+        return cnt, last_solvers
+
+    def user_solved(self, user, challname):
+        url = self.profileurl() % urllib.quote_plus(Plugin.to_utf8(user))
         tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
 
         content = tree.xpath("//div[@id='main']")
@@ -140,30 +155,3 @@ class Site(BaseSite):
                 return True
 
         return False
-
-    @staticmethod
-    def get_last5_solvers(nr):
-        url = solversurl % (nr, "dummy", 1)
-        tree = lxml.html.parse(urllib2.urlopen(url))
-        pages = tree.xpath("//div[@id='page']/div[@class='gwf_pagemenu']//a")
-        solvers = []
-
-        if not pages:
-            for row in tree.xpath("//div[@id='page']/table//tr"):
-                e = row.xpath("td[2]/a[1]")
-                if e:
-                    n = e[0].text_content()
-                    solvers.append(n)
-        else:
-            lastpage = int(pages[-1].text_content())
-            for p in [lastpage - 1, lastpage]:
-                url = solversurl % (nr, "dummy", p)
-                tree = lxml.html.parse(urllib2.urlopen(url))
-
-                for row in tree.xpath("//div[@id='page']/table//tr"):
-                    e = row.xpath("td[2]/a[1]")
-                    if e:
-                        n = e[0].text_content()
-                        solvers.append(n)
-
-        return solvers[::-1][:5]
