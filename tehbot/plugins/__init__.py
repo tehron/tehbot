@@ -13,6 +13,7 @@ import importlib
 import inspect
 from tehbot.impl import TehbotImpl
 from pony.orm import db_session
+from codecs import encode, decode
 
 __all__ = ["Plugin", "Command", "StandardCommand", "ChannelHandler", "ChannelJoinHandler", "Poller", "Announcer", "PrefixHandler",
         "ThrowingArgumentParser", "PluginError"]
@@ -337,6 +338,11 @@ class Plugin:
     @staticmethod
     def str2bool(s):
         return s.lower() in ("true", "yes", "t", "1")
+
+    @staticmethod
+    def backslash_unescape(s):
+        return decode(encode(s, 'latin-1', 'backslashreplace'), 'unicode-escape')
+
 
 class Command(Plugin):
     """This is where the help text goes."""

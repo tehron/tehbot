@@ -4,6 +4,7 @@ import lxml.html
 import re
 from datetime import datetime
 from pony.orm import *
+from ast import literal_eval
 
 class RankkSolvedPoller(Poller):
     def __init__(self, db):
@@ -28,7 +29,7 @@ class RankkSolvedPoller(Poller):
         match = re.search(r'Solved: ([^ ]+) (\d+/\d+)', last_solve[0].text_content())
         user, chall_nr = match.groups()
         match = re.search(r'<tr><td class="td">%s</td><td class="td">([^<]+)</td><td class="td">\d*</td></tr' % chall_nr, r.text)
-        chall_name = match.group(1) if match else None
+        chall_name = Plugin.backslash_unescape(match.group(1)) if match else None
 
         with db_session:
             if not select(x for x in self.db.RankkSolvedPollerData if x.user == user and x.chall_nr == chall_nr):
