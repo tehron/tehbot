@@ -60,7 +60,7 @@ class RankkPoller(Poller):
                 msgs.append(Plugin.green(self.solvers_prefix()) + msg)
             if not select(x for x in self.db.RankkPollerUser if x.user == latest_user):
                 self.db.RankkPollerUser(ts=datetime.now(), user=latest_user)
-                msg = "%s just joined." % (Plugin.bold(user))
+                msg = "%s just joined." % (Plugin.bold(latest_user))
                 msgs.append(Plugin.green(self.users_prefix()) + msg)
             if not select(x for x in self.db.RankkPollerForum if x.user == forum_user and x.topic == forum_topic):
                 self.db.RankkPollerForum(ts=datetime.now(), user=forum_user, topic=forum_topic)
