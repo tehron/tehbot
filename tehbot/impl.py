@@ -156,7 +156,7 @@ class TehbotImpl:
         if p == "sqlite":
             self.db.bind(provider='sqlite', filename="../data/tehbot.sqlite", create_db=True)
         else:
-            self.db.bind(provider=p, host=self.pconfig.get("database", "host"), user=self.pconfig.get("database", "user"), passwd=self.pconfig.get("database", "password"), db=self.pconfig.get("database", "db"))
+            self.db.bind(provider=p, host=self.pconfig.get("database", "host"), user=self.pconfig.get("database", "user"), passwd=self.pconfig.get("database", "password"), db=self.pconfig.get("database", "db"), charset="utf8mb4")
         self.db.generate_mapping(create_tables=True)
         set_sql_debug(False)
 
