@@ -186,7 +186,7 @@ class WeChallInfoPlugin(StandardCommand):
 
         try:
             tree = lxml.html.parse(urllib2.urlopen(profileurl % urllib.quote_plus(Plugin.to_utf8(user))))
-            user, score, rank, regdate, lastlogin, views, email, lastact = None, None, None, None, None, None, None, None
+            user, score, rank, regdate, lastlogin, views, email, lastact, birthdate = None, None, None, None, None, None, None, None, None
             lastacttxt = None
             country = None
 
@@ -212,6 +212,8 @@ class WeChallInfoPlugin(StandardCommand):
                         views = int(v)
                     elif s == "email":
                         email = v
+                    elif s == "birthdate":
+                        birthdate = datetime.datetime.strptime(v, "%a, %b %d, %Y").date()
 
             for row in tree.xpath(xpactivity):
                 ev1 = row.xpath("td[1]")
@@ -245,6 +247,12 @@ class WeChallInfoPlugin(StandardCommand):
             res += " The user %s %s ago." % (lastacttxt, timestr2)
         if rank is not None:
             res += " %s is %son page 1." % (user, "\x02not\x02 " if rank > 50 else "")
+        if birthdate is not None:
+            today = datetime.date.today()
+            age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+            res += " The user is %d years old." % age
+            if today.month == birthdate.month and today.day == birthdate.day:
+                res += " Happy birthday, %s!" % user
         return prefix + res
 
 
