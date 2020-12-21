@@ -41,7 +41,7 @@ class Site(BaseSite):
     def userstats(self, user):
         url = "https://www.wixxerd.com/challenges/userScore.cfm?username=%s&authkey=%s"
 
-        page = urllib2.urlopen(url % (urllib.quote_plus(user), self.settings["wixxerd_api_key"])).read()
+        page = urllib2.urlopen(url % (urllib.quote_plus(user), self.settings["wixxerd_api_key"]), timeout=5).read()
 
         match = page.split(":")
         if len(match) != 6:
