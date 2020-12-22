@@ -135,7 +135,7 @@ class ShadowlambHandler(PrefixHandler):
         parser.add_argument("race", metavar="race", choices=races, help=", ".join(races))
 
         try:
-            pargs = parser.parse_args(extra["args"], decode=False)
+            pargs = parser.parse_args(extra["args"])
             m = parser.get_help_msg()
             if m:
                 return m.strip()

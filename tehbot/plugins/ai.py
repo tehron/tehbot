@@ -1,6 +1,7 @@
 from tehbot.plugins import *
 import re
 import random
+import shlex
 
 class AiHandler(ChannelHandler):
     @staticmethod
@@ -39,9 +40,9 @@ class AiHandler(ChannelHandler):
                 chall = match.group(2)
                 site = match.group(3)
 
-                chall = " ".join(Plugin.mysplit(chall))
+                chall = " ".join(shlex.split(chall))
                 if site is not None:
-                    site = " ".join(Plugin.mysplit(site))
+                    site = " ".join(shlex.split(site))
 
                 return [("solvers", (site, chall, False, user))]
 

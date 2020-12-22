@@ -73,10 +73,10 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
     def print_help(self, file=None):
         self.help_msg = self.format_help()
 
-    def parse_args(self, args=None, namespace=None, decode=True):
+    def parse_args(self, args=None, namespace=None):
         self.help_msg = None
         if isinstance(args, str):
-            args = Plugin.mysplit(args, decode)
+            args = shlex.split(args)
 
         try:
             return argparse.ArgumentParser.parse_args(self, args, namespace)
@@ -232,13 +232,6 @@ class Plugin:
     @staticmethod
     def myfilter(s):
         return "".join([c if ord(c) >= 0x20 else "?" for c in s])
-
-    @staticmethod
-    def mysplit(s, decode=True):
-        res = shlex.split(Plugin.to_utf8(s))
-        if decode:
-            res = list(map(Plugin.from_utf8, res))
-        return res
 
     @staticmethod
     def split(s, mx=450):

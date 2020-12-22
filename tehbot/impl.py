@@ -22,8 +22,6 @@ import pipes
 
 import tehbot.plugins
 from tehbot.plugins import *
-import locale
-encoding = locale.getdefaultlocale()[1] or "ascii"
 import random
 import socket
 from configparser import SafeConfigParser
@@ -223,7 +221,7 @@ class TehbotImpl:
 
     def myprint(self, s):
         s = self.regex.sub("", s)
-        print(time.strftime("%H:%M:%S"), s.encode(encoding, "backslashreplace"))
+        print(time.strftime("%H:%M:%S"), s)
 
     def logmsg(self, when, event, typ, ircid, network, target, nick, msg):
         msg = self.regex.sub("", msg)
@@ -240,7 +238,7 @@ class TehbotImpl:
             s = "%s %s: %s" % (ts, network, s)
         else:
             s = "%s %s: %s: %s" % (ts, network, target, s)
-        print(s.encode(encoding, "backslashreplace"))
+        print(s)
         self.logqueue.put((datetime.datetime.fromtimestamp(when), event, typ, ircid, target, nick, msg))
 
     def load_plugins(self, modules):
@@ -652,10 +650,17 @@ class TehbotImpl:
         self.finalize()
 
     def kbd_quit(self, args):
-        parser = argparse.ArgumentParser()
+        parser = ThrowingArgumentParser(prog="quit")
         parser.add_argument("msg", nargs="*")
         parser.add_argument("-r", "--restart", action="store_true")
-        pargs = parser.parse_args(shlex.split(args or ""))
+
+        try:
+            pargs = parser.parse_args(shlex.split(args or ""))
+            m = parser.get_help_msg()
+            if m:
+                return m.strip()
+        except Exception as e:
+            print("Error: %s" % Plugin.exc2str(e))
 
         msg = " ".join(pargs.msg)
         if pargs.restart:
@@ -677,10 +682,18 @@ class TehbotImpl:
             print(" * %s: %r" % (self.connection_name(c), sorted(nicks)))
 
     def kbd_users(self, args):
-        parser = argparse.ArgumentParser()
+        parser = ThrowingArgumentParser(prog="users")
         parser.add_argument("ircid")
         parser.add_argument("channel")
-        pargs = parser.parse_args(shlex.split(args or ""))
+
+        try:
+            pargs = parser.parse_args(shlex.split(args or ""))
+            m = parser.get_help_msg()
+            if m:
+                return m.strip()
+        except Exception as e:
+            print("Error: %s" % Plugin.exc2str(e))
+            return
 
         try:
             conn = [c for c in self.core.reactor.connections if c.tehbot.ircid == pargs.ircid][0]
@@ -932,7 +945,6 @@ class TehbotImpl:
 
         try:
             pargs = parser.parse_args(args)
-            print(pargs)
             m = parser.get_help_msg()
             if m:
                 return m.strip()
@@ -1188,12 +1200,12 @@ class Dispatcher:
         cmdprefix = self.tehbot.pick(connection, "cmdprefix")
 
         if msg:
-            if msg[0] == cmdprefix:
-                self.react_to_command(connection, event, msg[1:], now)
+            if msg.startswith(cmdprefix):
+                self.react_to_command(connection, event, msg[len(cmdprefix):], now)
             else:
                 for ph in self.tehbot.prefix_handlers:
                     if msg[0] == ph.command_prefix():
-                        self.react_to_command(connection, event, msg[1:], now, ph)
+                        self.react_to_command(connection, event, msg[len(cmdprefix):], now, ph)
 
             for h in self.tehbot.channel_handlers:
                 self.tehbot.queue.put((h, (connection, event, {"msg":msg})))
@@ -1205,12 +1217,12 @@ class Dispatcher:
         cmdprefix = self.tehbot.pick(connection, "cmdprefix")
 
         if msg:
-            if msg[0] == cmdprefix:
-                self.react_to_command(connection, event, msg[1:], now)
+            if msg.startswith(cmdprefix):
+                self.react_to_command(connection, event, msg[len(cmdprefix):], now)
             else:
                 for ph in self.tehbot.prefix_handlers:
                     if msg[0] == ph.command_prefix():
-                        self.react_to_command(connection, event, msg[1:], now, ph)
+                        self.react_to_command(connection, event, msg[len(cmdprefix):], now, ph)
 
     def on_nick(self, connection, event):
         oldnick = event.source.nick
