@@ -37,7 +37,7 @@ class BotStatsPlugin(StandardCommand):
     def get_git_version():
         from subprocess import Popen, PIPE
         import re
-        out, err = Popen(["git", "log", "-n", "1"], stdout=PIPE).communicate()
+        out, err = Popen(["git", "log", "-n", "1"], stdout=PIPE, text=True).communicate()
         return re.search(r'([0-9A-Fa-f]{40})', out).group(0)
 
     def execute_parsed(self, connection, event, extra):
