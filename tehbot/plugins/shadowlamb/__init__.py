@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from tehbot.plugins import *
 import irc.client
-import model
+from . import model
 import threading
 import time
 from random import randint, random
@@ -30,7 +30,7 @@ class ShadowlambPlugin(StandardCommand):
 class ShadowlambHandler(PrefixHandler):
     def command_prefix(self):
         #return "+"
-        return u'\u00a5';
+        return '\u00a5';
 
     def __init__(self, db):
         PrefixHandler.__init__(self, db)
@@ -62,7 +62,7 @@ class ShadowlambHandler(PrefixHandler):
         #self.thread.join()
 
     def cmd(self, args):
-        return u"\x02%s%s\x02" % (self.command_prefix(), args)
+        return "\x02%s%s\x02" % (self.command_prefix(), args)
 
     def sltime(self):
         with model.db_session:
@@ -140,7 +140,7 @@ class ShadowlambHandler(PrefixHandler):
             if m:
                 return m.strip()
         except Exception as e:
-            return u"Error: %s" % exc2str(e)
+            return "Error: %s" % exc2str(e)
 
         def random_birthday(s):
             tm = time.gmtime(s)
@@ -239,7 +239,7 @@ class ShadowlambHandler(PrefixHandler):
             if parser.help_requested:
                 return parser.format_help().strip()
         except Exception as e:
-            return u"Error: %s" % exc2str(e)
+            return "Error: %s" % exc2str(e)
 
         if not pargs.confirmation:
             player.set_option("deletion_started", True)
@@ -261,8 +261,8 @@ class ShadowlambHandler(PrefixHandler):
         # male gremlin L0(0). HP:30/30, Atk:20.6, Def:0.8, Dmg:1-5.5, Arm(M/F):0/0, XP:0, Karma:0, ¥:0, Weight:50g/12.5kg.
         attack, defense, min_dmg, max_dmg, marm, farm = player.combat_stats()
         return "%s %s L%d(%d): \x02HP\x02:%.2f/%.2f, \x02MP\x02:%.2f/%.2f, \x02Atk\x02:%.2f, " \
-                u"\x02Def\x02:%.2f, \x02Dmg\x02:%.2f–%.2f, \x02Arm\x02(M/F):%.2f/%.2f, " \
-                u"\x02XP\x02:%.2f, \x02Karma\x02:%d, \x02¥\x02:%.2f, \x02Weight\x02:%.2f/%.2fkg" % (
+                "\x02Def\x02:%.2f, \x02Dmg\x02:%.2f–%.2f, \x02Arm\x02(M/F):%.2f/%.2f, " \
+                "\x02XP\x02:%.2f, \x02Karma\x02:%d, \x02¥\x02:%.2f, \x02Weight\x02:%.2f/%.2fkg" % (
                 player.gender.name,
                 player.race.name,
                 player.level,
@@ -332,7 +332,7 @@ class ShadowlambHandler(PrefixHandler):
             if p is not None and not irc.client.is_channel(event.target):
                 msg_type = p.option("msg_type", msg_type)
 
-            if not self.cmd2action.has_key(cmd):
+            if cmd not in self.cmd2action:
                 return [(msg_type, "The command is not available for your current action or location. Try %s to see all currently available commands." % self.cmd("commands [--long]"))]
 
             if cmd == "start" and p:
@@ -349,9 +349,9 @@ class ShadowlambHandler(PrefixHandler):
             except Exception as e:
                 import traceback
                 traceback.print_exc()
-                return [(msg_type, u"Error: %s" % exc2str(e))]
+                return [(msg_type, "Error: %s" % exc2str(e))]
 
             if isinstance(res, list):
                 return [(msg_type, m) for m in res]
-            if isinstance(res, basestring):
+            if isinstance(res, str):
                 return [(msg_type, res)]

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from tehbot.plugins import *
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 import ssl
 import lxml.html
 import re
@@ -26,8 +26,8 @@ class HsPoller(Poller):
         url = "https://www.happy-security.de/index.php?modul=hacking-zone"
 
         try:
-            reply = urllib2.urlopen(url, timeout=5)
-        except (urllib2.URLError, ssl.SSLError):
+            reply = urllib.request.urlopen(url, timeout=5)
+        except (urllib.error.URLError, ssl.SSLError):
             # ignore stupid SSL errors
             return
 
@@ -35,7 +35,7 @@ class HsPoller(Poller):
 
         last_solves = []
         for si in tree.xpath("//table[@class='mtable']/tr/td[2]"):
-            match = re.search(ur'(.*?) eingesendet von .* zuletzt gelöst von (.*?) am (\d+\.\d+\.\d+ \d+:\d+) Uhr', " ".join(si.text_content().split()))
+            match = re.search(r'(.*?) eingesendet von .* zuletzt gelöst von (.*?) am (\d+\.\d+\.\d+ \d+:\d+) Uhr', " ".join(si.text_content().split()))
             if match is not None:
                 ts = datetime.strptime(match.group(3).strip(), "%d.%m.%Y %H:%M")
                 who = match.group(2).strip()
@@ -50,6 +50,6 @@ class HsPoller(Poller):
                     if datetime.now() - ts < timedelta(days=2):
                         msgs.append(Plugin.green("[Happy-Security Solutions]") + " %s has just solved %s." % (Plugin.bold(who), Plugin.bold(chall)))
 
-        msg = u"\n".join(msgs)
+        msg = "\n".join(msgs)
         if msg:
             return [("announce", (self.where(), msg))]

@@ -1,6 +1,6 @@
 from tehbot.plugins import *
-import urllib2
-import urllib
+import urllib.request, urllib.error, urllib.parse
+import urllib.request, urllib.parse, urllib.error
 import lxml.html
 import lxml.etree
 import json
@@ -29,7 +29,7 @@ class XkcdPlugin(StandardCommand):
         txt = "\x0303[xkcd]\x03 "
 
         try:
-            tree = lxml.html.parse(urllib2.urlopen(url % "/archive/"))
+            tree = lxml.html.parse(urllib.request.urlopen(url % "/archive/"))
             res = [(e.text_content(), e.attrib["href"]) for e in tree.xpath("//a[contains(lower-case(.), %s)]" % toXPathStringLiteral(self.pargs.search_term))]
 
             if not res:
@@ -37,7 +37,7 @@ class XkcdPlugin(StandardCommand):
             else:
                 txt += ", ".join("%s (%s)" % (a, url % b) for a, b in res[:3])
         except:
-            info = json.load(urllib2.urlopen(url % "/info.0.json"))
+            info = json.load(urllib.request.urlopen(url % "/info.0.json"))
             p = "/%d/" % info["num"]
             txt += "%s - %s" % (url % p, info["safe_title"])
 

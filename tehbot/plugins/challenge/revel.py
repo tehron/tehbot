@@ -1,13 +1,13 @@
 from tehbot.plugins.challenge import *
-import urllib2
-import urllib
-import urlparse
+import urllib.request, urllib.error, urllib.parse
+import urllib.request, urllib.parse, urllib.error
+import urllib.parse
 import lxml.html
 import re
 
 class Site(BaseSite):
     def prefix(self):
-        return u"[Revolution Elite]"
+        return "[Revolution Elite]"
 
     def siteurl(self):
         return "https://www.revolutionelite.co.uk"
@@ -22,7 +22,7 @@ class Site(BaseSite):
 
     def userstats(self, user):
         url = "https://www.revolutionelite.co.uk/w3ch4ll/userscore.php?username=%s"
-        page = urllib2.urlopen(url % (Plugin.to_utf8(user)), timeout=5).read()
+        page = urllib.request.urlopen(url % (Plugin.to_utf8(user)), timeout=5).read()
 
         if page == "0":
             return None
@@ -47,7 +47,7 @@ class Site(BaseSite):
         url = "https://www.revolutionelite.co.uk/rank.php?page=%d"
         scores = []
 
-        tree = lxml.html.parse(urllib2.urlopen(url % page, timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(url % page, timeout=5))
         for e in tree.xpath("//div[@class='content']/center/table/tr"):
             e2 = e.xpath("td[2]")
             if not e2:
@@ -67,18 +67,18 @@ class Site(BaseSite):
     def updateranks(scores):
         sc = dict()
         for s, name in scores:
-            if not sc.has_key(s):
+            if s not in sc:
                 sc[s] = []
             sc[s].append(name)
 
-        keys = sorted(sc.keys(), reverse=True)
+        keys = sorted(list(sc.keys()), reverse=True)
         ranks = dict([(i + 1, (k, sc[k])) for i, k in enumerate(keys)])
         return ranks
 
     @staticmethod
     def maxscore():
         url = "https://www.revolutionelite.co.uk/credits.php"
-        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=5))
 
         return len(tree.xpath("//div[@class='content']/center/table/tr")) - 1
 
@@ -101,9 +101,9 @@ class Site(BaseSite):
     @staticmethod
     def fixurl(url):
         # damn sabre still hasn't fixed url encoding in query string?
-        scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-        query = urllib.urlencode(urlparse.parse_qsl(query))
-        return urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+        scheme, netloc, path, query, fragment = urllib.parse.urlsplit(url)
+        query = urllib.parse.urlencode(urllib.parse.parse_qsl(query))
+        return urllib.parse.urlunsplit((scheme, netloc, path, query, fragment))
 
     @staticmethod
     def get_solvers(page):
@@ -129,7 +129,7 @@ class Site(BaseSite):
             xpsolved = "/foobar"
             xpuser = "/foobar"
 
-        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=5))
         rows = tree.xpath(xp)
 
         if not rows:
@@ -150,7 +150,7 @@ class Site(BaseSite):
 
             nr = int(enr[0].text_content().strip())
             name = ename[0].text_content().strip()
-            u = urlparse.urljoin(url, ename[0].xpath(".//a/@href")[0])
+            u = urllib.parse.urljoin(url, ename[0].xpath(".//a/@href")[0])
             u = Site.fixurl(u)
             solved = esolved and esolved[0].text_content().strip().lower() == "solved"
             if euser:
@@ -171,7 +171,7 @@ class Site(BaseSite):
         solvers = None
         
         if not user:
-            page = urllib2.urlopen(u, timeout=5).read()
+            page = urllib.request.urlopen(u, timeout=5).read()
             match = re.search(r'\((\d+) solvers\) \(latest first\)', page)
             cnt, solvers = 0, []
 

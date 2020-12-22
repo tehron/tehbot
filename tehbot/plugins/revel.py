@@ -1,6 +1,6 @@
 from tehbot.plugins import *
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 import time
 import ssl
 import lxml.html
@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 class RevelSolvedPoller(Poller):
     def prefix(self):
-        return u"[Revolution Elite]"
+        return "[Revolution Elite]"
 
     def datestamp(self, ts):
         return time.strftime('%Y%m%d%H%M%S', time.localtime(ts))
@@ -32,8 +32,8 @@ class RevelSolvedPoller(Poller):
             ts = 0
 
         try:
-            reply = urllib2.urlopen(url % self.datestamp(ts), timeout=3)
-        except (urllib2.URLError, ssl.SSLError):
+            reply = urllib.request.urlopen(url % self.datestamp(ts), timeout=3)
+        except (urllib.error.URLError, ssl.SSLError):
             # ignore stupid SSL errors for RevEl
             return
 
@@ -41,7 +41,7 @@ class RevelSolvedPoller(Poller):
 
         for entry in reply.readlines():
             try:
-                uid, cid, solvedate, firstdate, views, options, timetaken, tries, username, challname, solvercount, challurl = map(lambda x: x.replace(r"\:", ":"), entry.split("::"))
+                uid, cid, solvedate, firstdate, views, options, timetaken, tries, username, challname, solvercount, challurl = [x.replace(r"\:", ":") for x in entry.split("::")]
                 uid = int(uid)
                 cid = int(cid)
                 tssolve = self.timestamp(solvedate)
@@ -63,12 +63,12 @@ class RevelSolvedPoller(Poller):
             else:
                 msg += " This challenge has been solved %d time%s before." % (solvercount, "" if solvercount == 1 else "s")
 
-            msgs.append(u"%s %s" % (Plugin.green(self.prefix()), msg))
+            msgs.append("%s %s" % (Plugin.green(self.prefix()), msg))
 
         self.settings["ts"] = ts
         self.save_settings()
 
-        msg = u"\n".join(msgs)
+        msg = "\n".join(msgs)
         if msg:
             return [("announce", (self.where(), msg))]
 
@@ -100,8 +100,8 @@ class RevelPoller(Poller):
         url = "https://www.revolutionelite.co.uk/index.php"
 
         try:
-            reply = urllib2.urlopen(url, timeout=5)
-        except (urllib2.URLError, ssl.SSLError):
+            reply = urllib.request.urlopen(url, timeout=5)
+        except (urllib.error.URLError, ssl.SSLError):
             # ignore stupid SSL errors for RevEl
             return
 
@@ -150,6 +150,6 @@ class RevelPoller(Poller):
                     forumstr = "solution " if forum == 1 else ""
                     msgs.append(Plugin.green("[Revolution Elite Forum]") + " " + ("New %spost in %s by %s - %s" % (forumstr, Plugin.bold(title), Plugin.bold(who), url)))
 
-        msg = u"\n".join(msgs)
+        msg = "\n".join(msgs)
         if msg:
             return [("announce", (self.where(), msg))]

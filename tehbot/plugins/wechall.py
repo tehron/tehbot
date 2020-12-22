@@ -1,7 +1,7 @@
 from tehbot.plugins import *
 import shlex
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 import re
 import lxml.html
 import datetime
@@ -26,8 +26,8 @@ class Util:
 
     @staticmethod
     def remote_update(site, user):
-        print "remote_update(%s, %s)" % (site, user)
-        page = urllib2.urlopen(url % (urllib.quote(site), urllib.quote(user))).read()
+        print("remote_update(%s, %s)" % (site, user))
+        page = urllib.request.urlopen(url % (urllib.parse.quote(site), urllib.parse.quote(user))).read()
         page = page.decode("utf-8")
         match = re.search(r'<li>(.*)</li>', page)
         if match:
@@ -48,12 +48,12 @@ class Util:
         mindt = datetime.datetime.combine(startdate, datetime.time(20, 0))
         maxdt = datetime.datetime.combine(when, datetime.time(20, 0))
 
-        print mindt, maxdt
+        print(mindt, maxdt)
 
         topscorers = dict()
         query = select((x.wcusername, sum(x.gainabs)) for x in db.WeChallActivityPoller if x.datestamp > mindt and x.datestamp <= maxdt and x.type == "gain").order_by(lambda name, totalgain: desc(totalgain))
         for name, score in query:
-            if not topscorers.has_key(score):
+            if score not in topscorers:
                 topscorers[score] = []
             topscorers[score].append(name)
 
@@ -76,7 +76,7 @@ class Util:
                 a += " and "
             return a + lst[-1]
 
-        return prefix + u"Top Scorer of %s: %s" % (whenstr, " | ".join("%s (%d)" % (names(topscorers[score]), score) for score in sorted(topscorers, reverse=True)))
+        return prefix + "Top Scorer of %s: %s" % (whenstr, " | ".join("%s (%d)" % (names(topscorers[score]), score) for score in sorted(topscorers, reverse=True)))
 
 class RemoteUpdatePlugin(StandardCommand):
     """Updates WeChall score for a user on a site."""
@@ -103,9 +103,9 @@ class RemoteUpdatePlugin(StandardCommand):
             if not site:
                 raise Exception("Unknown site: %s" % event.target)
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return "Error: %s" % str(e)
 
-        return u"\x0303[WeChall Update]\x03 " + Util.remote_update(site, user)
+        return "\x0303[WeChall Update]\x03 " + Util.remote_update(site, user)
 
 class HistoryPlugin(StandardCommand):
     """Shows latest activity for a user on WeChall."""
@@ -127,14 +127,14 @@ class HistoryPlugin(StandardCommand):
                 return m.strip()
             user = pargs.user
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return "Error: %s" % str(e)
 
         url = "http://www.wechall.net/en/history/for/%s/by/userhist_date/DESC/page-1"
-        query = urllib.quote_plus(Plugin.to_utf8(user))
+        query = urllib.parse.quote_plus(Plugin.to_utf8(user))
         prefix = "\x0303[WeChall History]\x03 "
 
         try:
-            req = urllib2.urlopen(url % query)
+            req = urllib.request.urlopen(url % query)
         except:
             return "Network Error"
 
@@ -150,10 +150,10 @@ class HistoryPlugin(StandardCommand):
             what = what[0].lower() + what[1:]
 
             if when.lower() == "unknown":
-                return prefix + u"%s %s some unknown time ago." % (user, what)
-            return prefix + u"%s %s on %s." % (user, what, when)
+                return prefix + "%s %s some unknown time ago." % (user, what)
+            return prefix + "%s %s on %s." % (user, what, when)
         except Exception as e:
-            print e
+            print(e)
             return "Parse Error"
 
 class WeChallInfoPlugin(StandardCommand):
@@ -176,7 +176,7 @@ class WeChallInfoPlugin(StandardCommand):
                 return m.strip()
             user = pargs.user
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return "Error: %s" % str(e)
 
         profileurl = "http://www.wechall.net/en/profile/%s"
         xpuser = "//div[@id='page']/div[@class='fl']/table/tr"
@@ -185,7 +185,7 @@ class WeChallInfoPlugin(StandardCommand):
         timefmt = "%b %d, %Y - %H:%M:%S"
 
         try:
-            tree = lxml.html.parse(urllib2.urlopen(profileurl % urllib.quote_plus(Plugin.to_utf8(user))))
+            tree = lxml.html.parse(urllib.request.urlopen(profileurl % urllib.parse.quote_plus(Plugin.to_utf8(user))))
             user, score, rank, regdate, lastlogin, views, email, lastact, birthdate = None, None, None, None, None, None, None, None, None
             lastacttxt = None
             country = None
@@ -227,7 +227,7 @@ class WeChallInfoPlugin(StandardCommand):
                         break
 
         except Exception as e:
-            print e
+            print(e)
             return "Parse Error"
 
         if user is None:
@@ -282,7 +282,7 @@ class WeChallActivityPoller(Poller):
         prefix = "\x0303[WeChall Activity]\x03 "
         url = "http://www.wechall.net/index.php?mo=WeChall&me=API_History&no_session=1&datestamp=%s"
         msgs = []
-        page = urllib2.urlopen(url % self.lastDatestamp().strftime("%Y%m%d%H%M%S"))
+        page = urllib.request.urlopen(url % self.lastDatestamp().strftime("%Y%m%d%H%M%S"))
 
         with db_session:
             for line in page.readlines()[1:]:
@@ -291,9 +291,9 @@ class WeChallActivityPoller(Poller):
                 self.db.WeChallActivityPoller(datestamp=datetime.datetime.strptime(datestamp, "%Y%m%d%H%M%S"), type=typ, wcusername=wcusername, sitename=sitename, siteusername=siteusername, siterank=int(siterank), sitescore=int(sitescore), sitemaxscore=int(sitemaxscore), sitepercent=sitepercent, gainpercent=gainpercent, score=int(score), gainabs=int(gainabs))
 
                 if 0 < int(siterank) <= 10 and (typ == "gain" or typ == "lost"):
-                    msgs.append(prefix + u"%s just %s %s on %s totaling %s." % (Plugin.bold(wcusername), "gained" if typ == "gain" else "lost", gainpercent, Plugin.bold(sitename), sitepercent))
+                    msgs.append(prefix + "%s just %s %s on %s totaling %s." % (Plugin.bold(wcusername), "gained" if typ == "gain" else "lost", gainpercent, Plugin.bold(sitename), sitepercent))
 
-        msg = u"\n".join(msgs)
+        msg = "\n".join(msgs)
         if msg:
             return [("announce", (self.where(), msg))]
 
@@ -309,7 +309,7 @@ class WcStatsPlugin(StandardCommand):
             return datetime.date.fromtimestamp(time.mktime(time.strptime(s, '%Y-%m-%d')))
 
         StandardCommand.__init__(self, db)
-        self.parser.add_argument("-t", "--top", type=int, choices=range(1, 10 + 1))
+        self.parser.add_argument("-t", "--top", type=int, choices=list(range(1, 10 + 1)))
         self.parser.add_argument("-d", "--date", type=checkdate, help="format '%%Y-%%m-%%d'")
 
     def commands(self):
@@ -324,7 +324,7 @@ class WcStatsPlugin(StandardCommand):
             if m:
                 return m.strip()
         except Exception as e:
-            return u"Error: %s" % str(e)
+            return "Error: %s" % str(e)
 
         with db_session:
             return Util.wcstats(self.db, pargs.top, pargs.date)
@@ -362,20 +362,20 @@ class WeChallSitesPoller(Poller):
         prefix = "\x0303[WeChall Sites]\x03 "
         url = "https://www.wechall.net/index.php?mo=WeChall&me=API_Site&no_session=1"
         msgs = []
-        page = urllib2.urlopen(url)
+        page = urllib.request.urlopen(url)
         now = datetime.datetime.now()
 
         with db_session:
             for line in page.readlines():
                 line = Plugin.from_utf8(line)
-                sitename, classname, status, url, profileurl, usercount, linkcount, challcount, basescore, average, score = map(lambda x: x.replace("\\:", ":").replace("\\n", "\n"), line.strip().split("::", 10))
+                sitename, classname, status, url, profileurl, usercount, linkcount, challcount, basescore, average, score = [x.replace("\\:", ":").replace("\\n", "\n") for x in line.strip().split("::", 10)]
                 usercount, linkcount, challcount, basescore, score = int(usercount), int(linkcount), int(challcount), int(basescore), int(score)
                 average = float(average.replace("%", ""))
                 site = self.db.WeChallSitesPoller.get(classname=classname)
 
                 if not site and status == "up":
                     self.db.WeChallSitesPoller(ts=now, sitename=sitename, classname=classname, status=status, url=url, profileurl=profileurl, usercount=usercount, linkcount=linkcount, challcount=challcount, basescore=basescore, average=average, score=score, challts=now)
-                    msgs.append(prefix + u"A new challenge site just spawned! Check out %s at %s" % (sitename, url))
+                    msgs.append(prefix + "A new challenge site just spawned! Check out %s at %s" % (sitename, url))
 
                 if site and site.needs_update(sitename, status, url, profileurl, usercount, linkcount, challcount, basescore, average, score):
                     diff = challcount - site.challcount
@@ -397,18 +397,18 @@ class WeChallSitesPoller(Poller):
                             site.challts = now
 
                         if diff == 1:
-                            msgs.append(prefix + u"There is 1 new challenge on %s" % sitename)
+                            msgs.append(prefix + "There is 1 new challenge on %s" % sitename)
                         elif diff > 1:
-                            msgs.append(prefix + u"There are %d new challenges on %s" % (diff, sitename))
+                            msgs.append(prefix + "There are %d new challenges on %s" % (diff, sitename))
                         else:
-                            msgs.append(prefix + u"%s just deleted %d of their challenges" % (sitename, -diff))
+                            msgs.append(prefix + "%s just deleted %d of their challenges" % (sitename, -diff))
                     elif status_changed:
                         if status == "down":
-                            msgs.append(prefix + u"Another one bites the dust: %s just vanished." % sitename)
+                            msgs.append(prefix + "Another one bites the dust: %s just vanished." % sitename)
                         elif status == "up":
-                            msgs.append(prefix + u"Uh!? %s is online again! wb" % sitename)
+                            msgs.append(prefix + "Uh!? %s is online again! wb" % sitename)
 
-        msg = u"\n".join(msgs)
+        msg = "\n".join(msgs)
         if msg:
             return [("announce", (self.where(), msg))]
 
@@ -438,7 +438,7 @@ class WcSitePlugin(StandardCommand):
                 return m.strip()
             sitename = pargs.site
         except Exception as e:
-            return Plugin.red(self.prefix()) + u"Error: %s" % str(e)
+            return Plugin.red(self.prefix()) + "Error: %s" % str(e)
 
         if sitename.startswith("#"):
             site = Util.chan2wc(sitename)
@@ -451,7 +451,7 @@ class WcSitePlugin(StandardCommand):
             data = select(s for s in self.db.WeChallSitesPoller if s.classname.lower() == site.lower())
 
             if not data:
-                return Plugin.red(self.prefix()) + u"Unknown site: %s" % sitename
+                return Plugin.red(self.prefix()) + "Unknown site: %s" % sitename
 
             site = data.first()
 

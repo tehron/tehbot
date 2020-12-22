@@ -1,7 +1,7 @@
 from tehbot.plugins import *
 import importlib
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 import irc.client
 
 __all__ = [ "BaseSite", "NoSuchChallengeError", "NoSuchUserError", "ChallengesNotNumberedError", "UnknownReplyFormat", "Plugin" ]
@@ -38,7 +38,7 @@ sitemap = {
 
 class BaseSite:
     def prefix(self):
-        return u"[Challenge]"
+        return "[Challenge]"
 
     def siteurl(self):
         return "https://www.google.com"
@@ -93,27 +93,27 @@ class StatsPlugin(StandardCommand):
             if user:
                 res = site.userstats(user)
                 if res is None:
-                    txt = u"The requested user was not found. You can register at %s." % site.siteurl()
+                    txt = "The requested user was not found. You can register at %s." % site.siteurl()
                 else:
                     user, solved, solvedmax, rank, usercount, score, scoremax, extra = res
                     if rank is not None:
-                        ranktext = u" and is on rank %s (of %d)" % (rank, usercount) if usercount is not None else u" and is on rank %s" % rank
+                        ranktext = " and is on rank %s (of %d)" % (rank, usercount) if usercount is not None else " and is on rank %s" % rank
                     else:
-                        ranktext = u""
+                        ranktext = ""
                     if score is not None:
-                        ranktext += u" scoring %d (of %d) points" % (score, scoremax) if scoremax is not None else u" scoring %d points" % (score)
-                    txt = u"%s solved %s (of %d) challenges%s.%s"% (user, solved, solvedmax, ranktext, extra or "")
+                        ranktext += " scoring %d (of %d) points" % (score, scoremax) if scoremax is not None else " scoring %d points" % (score)
+                    txt = "%s solved %s (of %d) challenges%s.%s"% (user, solved, solvedmax, ranktext, extra or "")
             else:
                 res = site.rankstats(rank)
                 if res is None:
-                    txt = u"No user is at rank %d." % rank
+                    txt = "No user is at rank %d." % rank
                 else:
                     solved, who, solvedmax = res
                     txt = ", ".join(who) + (" is" if len(who) == 1 else " are") + " at rank %d with %s (of %d) challenge%s solved." % (rank, solved, solvedmax, "s" if solved else "")
         except Exception as e:
-            return u"%s %s" % (Plugin.red(site.prefix()), Plugin.exc2str(e))
+            return "%s %s" % (Plugin.red(site.prefix()), Plugin.exc2str(e))
 
-        return u"%s %s" % (Plugin.green(site.prefix()), txt)
+        return "%s %s" % (Plugin.green(site.prefix()), txt)
 
     def values_to_set(self):
         return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password", "cryptohack.user", "cryptohack.password", "pydefis_api_key" ]
@@ -135,26 +135,26 @@ class StatsPlugin(StandardCommand):
             site = pargs.site.lower()
             glob = vars(pargs)["global"]
         except Exception as e:
-            return u"Error: %s" % unicode(e)
+            return "Error: %s" % str(e)
 
         if glob:
             wcurl = "https://www.wechall.net/wechall.php?%s"
             username = str(rank) if rank else user
-            query = urllib.urlencode({"username" : Plugin.to_utf8(username)})
-            res = Plugin.from_utf8(urllib2.urlopen(wcurl % query).read())
+            query = urllib.parse.urlencode({"username" : Plugin.to_utf8(username)})
+            res = Plugin.from_utf8(urllib.request.urlopen(wcurl % query).read())
             return "\x0303[WeChall Global]\x03 " + res
 
-        if not sitemap.has_key(site):
-            return u"Unknown site: %s" % site
+        if site not in sitemap:
+            return "Unknown site: %s" % site
 
         try:
             module = importlib.import_module("tehbot.plugins.challenge.%s" % sitemap[site])
-            reload(module)
+            importlib.reload(module)
             site = module.Site()
             site.settings = self.settings
         except Exception as e:
-            print e
-            return u"SiteImportError: %s" % site
+            print(e)
+            return "SiteImportError: %s" % site
 
         return self.stats(site, user, rank)
 
@@ -172,17 +172,17 @@ class SolversPlugin(StandardCommand):
         return "solvers"
 
     def solvers(self, sitename, challenge_name_or_nr, numeric, user):
-        if not sitemap.has_key(sitename):
-            return u"Unknown site: %s" % sitename
+        if sitename not in sitemap:
+            return "Unknown site: %s" % sitename
 
         try:
             module = importlib.import_module("tehbot.plugins.challenge.%s" % sitemap[sitename])
-            reload(module)
+            importlib.reload(module)
             site = module.Site()
             site.settings = self.settings
         except Exception as e:
-            print e
-            return u"SiteImportError: %s" % sitename
+            print(e)
+            return "SiteImportError: %s" % sitename
 
         try:
             if numeric:
@@ -190,26 +190,26 @@ class SolversPlugin(StandardCommand):
             else:
                 challname, challnr = challenge_name_or_nr, None
         except Exception as e:
-            return u"Error: %s" % unicode(e)
+            return "Error: %s" % str(e)
 
         try:
             user, nr, name, cnt, solvers, solved = site.solvers(challname, challnr, user)
-            pre = u"Challenge Nr. %s, %s, " % (site.nr2str(nr), name) if nr is not None else u"Challenge '%s' " % name
+            pre = "Challenge Nr. %s, %s, " % (site.nr2str(nr), name) if nr is not None else "Challenge '%s' " % name
 
             if user is not None:
-                txt = pre + u"has%s been solved by %s." % ("" if solved else " \x02not\x02", user)
+                txt = pre + "has%s been solved by %s." % ("" if solved else " \x02not\x02", user)
             elif cnt == 0:
-                txt = pre + u"hasn't been solved by anyone yet."
+                txt = pre + "hasn't been solved by anyone yet."
             else:
-                txt = pre + u"has been solved by %d user%s." % (cnt, "" if cnt == 1 else "s")
+                txt = pre + "has been solved by %d user%s." % (cnt, "" if cnt == 1 else "s")
                 if solvers:
-                    txt += u" Last by %s." % u", ".join(solvers[:5])
+                    txt += " Last by %s." % ", ".join(solvers[:5])
         except Exception as e:
             import traceback
             traceback.print_exc()
-            return u"%s %s" % (Plugin.red(site.prefix()), Plugin.exc2str(e))
+            return "%s %s" % (Plugin.red(site.prefix()), Plugin.exc2str(e))
 
-        return u"%s %s" % (Plugin.green(site.prefix()), txt)
+        return "%s %s" % (Plugin.green(site.prefix()), txt)
 
     def values_to_set(self):
         return Plugin.values_to_set(self) + [ "securitytraps_api_key", "247ctf_api_key", "defendtheweb_auth_key", "cryptohack_api_key", "tbs.user", "tbs.password", "cryptohack.user", "cryptohack.password" ]
@@ -228,6 +228,6 @@ class SolversPlugin(StandardCommand):
             user = pargs.user
             numeric = pargs.numeric
         except Exception as e:
-            return u"Error: %s" % unicode(e)
+            return "Error: %s" % str(e)
 
         return self.solvers(site, challenge_name_or_nr, numeric, user)

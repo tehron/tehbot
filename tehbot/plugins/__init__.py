@@ -63,7 +63,7 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
             return self.help_msg
 
         for a in self.subparseractions:
-            for p in a.choices.values():
+            for p in list(a.choices.values()):
                 h = p.get_help_msg()
                 if h is not None:
                     return h
@@ -75,7 +75,7 @@ class ThrowingArgumentParser(argparse.ArgumentParser):
 
     def parse_args(self, args=None, namespace=None, decode=True):
         self.help_msg = None
-        if isinstance(args, basestring):
+        if isinstance(args, str):
             args = Plugin.mysplit(args, decode)
 
         try:
@@ -179,7 +179,8 @@ class Plugin:
 
     def integrate_parser(self, parseraction):
         p = parseraction.add_parser(self.__class__.__name__)
-        self.parser_cmds = p.add_subparsers(title="commands", help="additional help")
+        self.parser_cmds = p.add_subparsers(title="commands", help="additional help", dest="command")
+        self.parser_cmds.required = True
         set_parser = self.parser_cmds.add_parser("set")
         show_parser = self.parser_cmds.add_parser("show")
         add_parser = self.parser_cmds.add_parser("add")
@@ -203,10 +204,10 @@ class Plugin:
         return extra["auth"]
 
     def request_priv(self, extra):
-        return [("nopriv", None)] if extra.has_key("auth_requested") else [("doauth", None)]
+        return [("nopriv", None)] if "auth_requested" in extra else [("doauth", None)]
 
     def request_auth(self, extra):
-        return [("noauth", None)] if extra.has_key("auth_requested") else [("doauth", None)]
+        return [("noauth", None)] if "auth_requested" in extra else [("doauth", None)]
 
     @staticmethod
     def grouped(val):
@@ -236,7 +237,7 @@ class Plugin:
     def mysplit(s, decode=True):
         res = shlex.split(Plugin.to_utf8(s))
         if decode:
-            res = map(Plugin.from_utf8, res)
+            res = list(map(Plugin.from_utf8, res))
         return res
 
     @staticmethod
@@ -247,7 +248,7 @@ class Plugin:
         l = []
         for word in s.split():
             if len(word) > mx:
-                word = [word[i:i+mx] for i in xrange(0, len(word), mx)]
+                word = [word[i:i+mx] for i in range(0, len(word), mx)]
                 ret += word
             else:
                 l.append(word)
@@ -287,8 +288,8 @@ class Plugin:
     @staticmethod
     def exc2str(ex):
         cls = ex.__class__.__name__
-        msg = unicode(ex)
-        return u"%s: %s" % (cls, msg) if msg else cls
+        msg = str(ex)
+        return "%s: %s" % (cls, msg) if msg else cls
 
     @staticmethod
     def collect():
@@ -354,7 +355,7 @@ class StandardCommand(Command):
     def __init__(self, db):
         Command.__init__(self, db)
         cmd = self.commands()
-        mcmd = cmd if isinstance(cmd, basestring) else cmd[0]
+        mcmd = cmd if isinstance(cmd, str) else cmd[0]
         self.parser = ThrowingArgumentParser(prog=mcmd, description=self.__doc__)
 
     def execute(self, connection, event, extra):
@@ -364,7 +365,7 @@ class StandardCommand(Command):
             if m:
                 return m.strip()
         except Exception as e:
-            return u"Error: %s" % Plugin.exc2str(e)
+            return "Error: %s" % Plugin.exc2str(e)
 
         return self.execute_parsed(connection, event, extra)
 

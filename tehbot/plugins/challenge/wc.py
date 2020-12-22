@@ -1,7 +1,7 @@
 from tehbot.plugins.challenge import *
-import urllib
-import urllib2
-import urlparse
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
+import urllib.parse
 import lxml.html
 import re
 
@@ -13,20 +13,20 @@ solversurl = "https://www.wechall.net/challenge_solvers_for/%d/%s/page-%d"
 
 class Site(BaseSite):
     def prefix(self):
-        return u"[WeChall]"
+        return "[WeChall]"
 
     def siteurl(self):
         return "https://www.wechall.net"
 
     def userstats(self, user):
-        page = urllib2.urlopen(url2 % urllib.urlencode({"username" : Plugin.to_utf8(user)})).read()
+        page = urllib.request.urlopen(url2 % urllib.parse.urlencode({"username" : Plugin.to_utf8(user)})).read()
 
         match = re.search(r'(\w+) solved (\d+) of (\d+) Challenges with (\d+) of (\d+) possible points \(\d+\.\d\d%\). Rank for the site WeChall: (\d+)', page)
         if not match:
             return None
 
         # ugly wechall parsing, thx a lot gizmore! ;PP
-        tree = lxml.html.parse(urllib2.urlopen(profileurl % urllib.quote_plus(Plugin.to_utf8(user))))
+        tree = lxml.html.parse(urllib.request.urlopen(profileurl % urllib.parse.quote_plus(Plugin.to_utf8(user))))
         users_total = int(tree.xpath("//div[@id='wc_sidebar']//div[@class='wc_side_content']//div/a[@href='/users']")[0].text_content().split()[0])
 
         real_user, challs_solved, challs_total, score, scoremax, rank = match.groups()
@@ -38,7 +38,7 @@ class Site(BaseSite):
         if page < 1:
             return None
 
-        tree = lxml.html.parse(urllib2.urlopen(rankurl % page))
+        tree = lxml.html.parse(urllib.request.urlopen(rankurl % page))
 
         for row in tree.xpath("//div[@id='page']/div[@class='gwf_table']/table//tr"):
             r = row.xpath("td[1]")
@@ -63,7 +63,7 @@ class Site(BaseSite):
             xp = "//table[@class='wc_chall_table']/tr"
             xpuser = "/foobar"
 
-        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=5))
         rows = tree.xpath(xp)
 
         if not rows:
@@ -112,7 +112,7 @@ class Site(BaseSite):
     @staticmethod
     def get_last5_solvers(nr):
         url = solversurl % (nr, "dummy", 1)
-        tree = lxml.html.parse(urllib2.urlopen(url))
+        tree = lxml.html.parse(urllib.request.urlopen(url))
         pages = tree.xpath("//div[@id='page']/div[@class='gwf_pagemenu']//a")
         solvers = []
 
@@ -126,7 +126,7 @@ class Site(BaseSite):
             lastpage = int(pages[-1].text_content())
             for p in [lastpage - 1, lastpage]:
                 url = solversurl % (nr, "dummy", p)
-                tree = lxml.html.parse(urllib2.urlopen(url))
+                tree = lxml.html.parse(urllib.request.urlopen(url))
 
                 for row in tree.xpath("//div[@id='page']/table//tr"):
                     e = row.xpath("td[2]/a[1]")

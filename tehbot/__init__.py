@@ -2,6 +2,7 @@ import sys
 import traceback
 import inspect
 import time
+import importlib
 import irc.client
 import tehbot.plugins as plugins
 import tehbot.impl as impl
@@ -16,7 +17,7 @@ class Tehbot:
 
         if res is not None:
             mod, lineno, exc = res
-            msg = u"Error in %s(%d): %s" % (mod, lineno, plugins.Plugin.exc2str(exc))
+            msg = "Error in %s(%d): %s" % (mod, lineno, plugins.Plugin.exc2str(exc))
             raise exc
 
     def __getattr__(self, attr):
@@ -24,14 +25,14 @@ class Tehbot:
 
     def reload(self):
         try:
-            reload(model)
-            reload(impl)
-            reload(plugins)
+            importlib.reload(model)
+            importlib.reload(impl)
+            importlib.reload(plugins)
             self.newimpl = impl.TehbotImpl(self)
             modules = self.newimpl.gather_modules()
             for m in modules:
                 try:
-                    reload(m)
+                    importlib.reload(m)
                 except ImportError:
                     pass
             self.newimpl.load_plugins(modules)
@@ -67,7 +68,7 @@ class Tehbot:
     @staticmethod
     def print_exc(handler="GLOBAL"):
         exctype, value = sys.exc_info()[:2]
-        print u"%s %s: %s" % (handler, Tehbot.ts(), exctype)
+        print("%s %s: %s" % (handler, Tehbot.ts(), exctype))
         traceback.print_exc()
 
     @staticmethod

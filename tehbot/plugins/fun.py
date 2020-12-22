@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 from tehbot.plugins import *
-import urllib
+import urllib.request, urllib.parse, urllib.error
 from random import *
 import shlex
 import irc.client
 import re
 from pony.orm import *
+from functools import reduce
 
 class BlamePlugin(StandardCommand):
     def commands(self):
@@ -14,13 +15,13 @@ class BlamePlugin(StandardCommand):
     def execute_parsed(self, connection, event, extra):
         botname = connection.get_nickname()
         forbidden = ["ChanServ", "NickServ", botname]
-        two = [u for u,m in connection.tehbot.users[event.target] if u not in forbidden] if irc.client.is_channel(event.target) else [u"spaceone"]
-        goats = zip((two for one in range(23)), 42 * [ reduce(random, [], two) ])
+        two = [u for u,m in connection.tehbot.users[event.target] if u not in forbidden] if irc.client.is_channel(event.target) else ["spaceone"]
+        goats = list(zip((two for one in range(23)), 42 * [ reduce(random, [], two) ]))
         shuffle(goats)
         goats.sort(key=lambda x: random())
         shuffle(goats)
         scapegoat = choice(goats[goats[randint(0, len(goats) - 1)][int(1337 * random()) % 2].index(choice(two))][1])
-        return u"I blame %s." % scapegoat
+        return "I blame %s." % scapegoat
 
 class FamPlugin(StandardCommand):
     """This help at fam"""
@@ -149,17 +150,17 @@ class BeerPlugin(StandardCommand):
             if m:
                 return m.strip()
         except Exception as e:
-            msg = u"Error: %s"
-            return msg % unicode(e)
+            msg = "Error: %s"
+            return msg % str(e)
 
         if pargs.status:
             beers = self.beers()
             if beers < 1:
-                msg = u"has no beer left. :("
+                msg = "has no beer left. :("
             elif beers == 1:
-                msg = u"has one beer left."
+                msg = "has one beer left."
             else:
-                msg = u"has %d beers left." % beers
+                msg = "has %d beers left." % beers
             return [("me", msg)]
 
         if pargs.refill:
@@ -167,24 +168,24 @@ class BeerPlugin(StandardCommand):
                 return self.request_priv(extra)
 
             self.refill()
-            msg = u"Ok, beer refilled. That was easy, hu?"
+            msg = "Ok, beer refilled. That was easy, hu?"
             return msg
 
         beers = self.get_beer()
         if beers == 0:
-            msg = u"has no beer left. :("
+            msg = "has no beer left. :("
             return [("me", msg)]
 
         if pargs.recipient == event.source.nick:
             if beers == 1:
-                msg = u"passes the last bottle of cold beer around to %s." % event.source.nick
+                msg = "passes the last bottle of cold beer around to %s." % event.source.nick
             else:
-                msg = u"passes 1 of %d bottles of cold beer around to %s." % (beers, event.source.nick)
+                msg = "passes 1 of %d bottles of cold beer around to %s." % (beers, event.source.nick)
         else:
             if beers == 1:
-                msg = u"and %s pass the last bottle of cold beer around to %s." % (event.source.nick, pargs.recipient)
+                msg = "and %s pass the last bottle of cold beer around to %s." % (event.source.nick, pargs.recipient)
             else:
-                msg = u"and %s pass 1 of %d bottles of cold beer around to %s." % (event.source.nick, beers, pargs.recipient)
+                msg = "and %s pass 1 of %d bottles of cold beer around to %s." % (event.source.nick, beers, pargs.recipient)
         return [("me", msg)]
 
 class BeerGrabber(ChannelHandler):
@@ -203,7 +204,7 @@ class BeerGrabber(ChannelHandler):
                 beers.value += cnt
                 total = beers.value
 
-            return u"Thanks, %s, I put it into my store! Beer count is %d now." % (donor, total)
+            return "Thanks, %s, I put it into my store! Beer count is %d now." % (donor, total)
 
 from socket import *
 import string
@@ -245,7 +246,7 @@ class BOSPlugin(StandardCommand):
             if ret == "hmpf":
                 ret = data
         except Exception as e:
-            return unicode(e)
+            return str(e)
         finally:
             sock.close()
 
@@ -287,7 +288,7 @@ class DecidePlugin(StandardCommand):
             else:
                 parts = DecidePlugin.partition(self.pargs.choice)
                 if len(parts) > 1:
-                    choices = map(" ".join, parts)
+                    choices = list(map(" ".join, parts))
 
         return choice(choices)
 
@@ -325,9 +326,9 @@ class HugPlugin(StandardCommand):
             options.append("creepy")
 
         if not options:
-            msg = u"hugs %s" % self.pargs.huggee
+            msg = "hugs %s" % self.pargs.huggee
         else:
-            msg = u"gives %s a %s hug" % (self.pargs.huggee, " and ".join(options))
+            msg = "gives %s a %s hug" % (self.pargs.huggee, " and ".join(options))
 
         if self.pargs.from_behind:
             msg += " from behind"

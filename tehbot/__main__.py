@@ -7,7 +7,7 @@ import threading
 import traceback
 from tehbot import *
 import irc.client
-from Queue import Queue, Empty
+from queue import Queue, Empty
 import cmd
 import time
 
@@ -46,9 +46,9 @@ class CommandLine(cmd.Cmd):
         elif l == "config global add" or l == "config global remove":
             handlers = ["connection"]
         elif l == "config global remove connection":
-            handlers = bot.settings.connections().keys()
+            handlers = list(bot.settings.connections().keys())
         elif l.startswith("config connection"):
-            conns = bot.settings.connections().keys()
+            conns = list(bot.settings.connections().keys())
             if len(arr) == 2:
                 handlers = conns
             elif len(arr) == 3:
@@ -65,7 +65,7 @@ class CommandLine(cmd.Cmd):
         elif l.startswith("config channel"):
             conns = bot.settings.connections()
             if len(arr) == 2:
-                handlers = conns.keys()
+                handlers = list(conns.keys())
             elif len(arr) == 3:
                 channels = conns[arr[-1]]["channels"]
                 handlers = channels
@@ -128,7 +128,7 @@ def process_cliqueue():
     try:
         func = getattr(bot, cmd)
     except AttributeError as e:
-        print "Unknown command:", cmd
+        print("Unknown command:", cmd)
         return
 
     func(args)
@@ -139,7 +139,7 @@ def sighandler(signum, frame):
 
 
 
-print "Initializing tehbot..."
+print("Initializing tehbot...")
 cliqueue = Queue()
 cli = CommandLine()
 cli.prompt = "tehbot> "
@@ -152,7 +152,7 @@ while True:
     try:
         cli.cmdloop()
     except KeyboardInterrupt:
-        print "^C"
+        print("^C")
     except SystemExit:
         break # some signal interrupted readline() in raw_input()
 

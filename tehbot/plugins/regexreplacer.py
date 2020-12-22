@@ -45,4 +45,4 @@ class RegexReplaceHandler(ChannelHandler):
         msg = regex.sub(replace, msg)
         msg = Plugin.myfilter(msg)
         msg = Plugin.shorten(msg, 450)
-        return u"%s: %s" % (user, msg)
+        return "%s: %s" % (user, msg)

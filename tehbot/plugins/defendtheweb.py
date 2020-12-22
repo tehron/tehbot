@@ -1,10 +1,10 @@
 from tehbot.plugins import *
 import shlex
-import urllib2
-import urllib
-import urlparse
+import urllib.request, urllib.error, urllib.parse
+import urllib.request, urllib.parse, urllib.error
+import urllib.parse
 import lxml.html
-import cookielib
+import http.cookiejar
 import json
 import re
 import time
@@ -19,8 +19,8 @@ from pony.orm import *
 class DefendTheWebOpener:
     def __init__(self):
         d = os.path.dirname(tehbot.__file__)
-        self.cookiejar = cookielib.MozillaCookieJar(os.path.join(d, "..", "data", "defendtheweb.cookies"))
-        self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
+        self.cookiejar = http.cookiejar.MozillaCookieJar(os.path.join(d, "..", "data", "defendtheweb.cookies"))
+        self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookiejar))
         self.url = "https://defendtheweb.net/"
         self.loginurl = self.url + "auth"
         self.logout_url = self.url + "auth/logout"
@@ -38,7 +38,7 @@ class DefendTheWebOpener:
 
         tree = lxml.html.parse(self.opener.open(self.loginurl))
         token = tree.xpath("//div[contains(@class, 'auth-local-login')]/form/input[@name='token']/@value")[0]
-        data = urllib.urlencode({"username" : username, "password" : password, "token" : token, "remember" : "on"})
+        data = urllib.parse.urlencode({"username" : username, "password" : password, "token" : token, "remember" : "on"})
         page = self.opener.open(self.loginurl, data).read()
         self.cookiejar.save()
         self.logged_in = True
@@ -62,7 +62,7 @@ class ConductPlugin(StandardCommand):
                 "I will not use Defend the Web to advertise products or services for profit or gain.",
                 "I will not use racist, sexist, homophobic, sexually explicit or abusive terms or images, or swear words or language that is likely to cause offence."
         ]
-        self.parser.add_argument("nr", type=int, choices=range(1, len(self.conducts) + 1))
+        self.parser.add_argument("nr", type=int, choices=list(range(1, len(self.conducts) + 1)))
 
     def commands(self):
         return ["conduct", "rule"]
@@ -83,7 +83,7 @@ class ConductPlugin(StandardCommand):
 
 class DefendTheWebForumPoller(Poller):
     def prefix(self):
-        return u"[Defend the Web Forum]"
+        return "[Defend the Web Forum]"
 
     def create_entities(self):
         class DefendTheWebForumPollerData(self.db.Entity):
@@ -110,7 +110,7 @@ class DefendTheWebForumPoller(Poller):
         try:
             fp = self.opener.open(self.forumurl)
             tree = lxml.html.parse(fp)
-        except (urllib2.URLError, ssl.SSLError):
+        except (urllib.error.URLError, ssl.SSLError):
             # ignore stupid SSL errors for DefendTheWeb
             return
 
@@ -154,7 +154,7 @@ class DefendTheWebForumPoller(Poller):
                     else:
                         msgs.append(Plugin.green(self.prefix()) + " New Reply in %s by %s (id: %d)" % (Plugin.bold(title), Plugin.bold(last_user), id))
 
-        msg = u"\n".join(msgs)
+        msg = "\n".join(msgs)
         if msg:
             return [("announce", (self.where(), msg))]
 
@@ -169,7 +169,7 @@ class DefendTheWebForumPlugin(StandardCommand):
         return "dtwforum"
 
     def prefix(self):
-        return u"[Defend the Web Forum]"
+        return "[Defend the Web Forum]"
 
     def values_to_set(self):
         return StandardCommand.values_to_set(self) + [ "dtw.user", "dtw.password" ]
@@ -184,7 +184,7 @@ class DefendTheWebForumPlugin(StandardCommand):
                 return m.strip()
             what = pargs.what
         except Exception as e:
-            return u"Error: %s" % unicode(e)
+            return "Error: %s" % str(e)
 
         if what != "latest":
             try:
@@ -209,8 +209,8 @@ class DefendTheWebForumPlugin(StandardCommand):
                 url = "https://defendtheweb.net" + url
             fp = self.opener.open(url)
             tree = lxml.html.parse(fp)
-        except (urllib2.URLError, ssl.SSLError) as e:
-            return Plugin.red(self.prefix()) + u" %s" % u" ".join(unicode(e).split())
+        except (urllib.error.URLError, ssl.SSLError) as e:
+            return Plugin.red(self.prefix()) + " %s" % " ".join(str(e).split())
 
         try:
             last_post = tree.xpath("(//div[contains(concat(' ', normalize-space(@class), ' '), ' discussion-thread-message ')])[last()]")[0]
@@ -218,7 +218,7 @@ class DefendTheWebForumPlugin(StandardCommand):
             content = last_post.xpath(".//div[@class='discussion-thread-message-main']/div[@class='discussion-thread-message-content']")[0]
             body = content.xpath(".//text()[not(ancestor::p[ancestor::blockquote[ancestor::blockquote]])]")
 
-            body = " ".join(filter(None, self.splitter.split(" ".join(body))))
+            body = " ".join([_f for _f in self.splitter.split(" ".join(body)) if _f])
             msg = Plugin.green(self.prefix()) + " %s: %s" % (user, body)
         except:
             try:

@@ -1,6 +1,6 @@
 from tehbot.plugins import *
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 import json
 import lxml.html
 
@@ -10,7 +10,7 @@ def get_text(tree, xpath):
     return "\n".join(e.text_content() for e in tree.xpath(xpath))
 
 def wikify(title):
-    return urllib.quote(Plugin.to_utf8(title.replace(" ", "_")))
+    return urllib.parse.quote(Plugin.to_utf8(title.replace(" ", "_")))
 
 class WikipediaPlugin(StandardCommand):
     """Looks up a search term on Wikipedia"""
@@ -26,7 +26,7 @@ class WikipediaPlugin(StandardCommand):
         data = {
             "action" : "query",
             "list" : "search",
-            "srsearch" : Plugin.to_utf8(u" ".join(self.pargs.term)),
+            "srsearch" : Plugin.to_utf8(" ".join(self.pargs.term)),
             "srlimit" : 1,
             "srprop" : "",
             "format" : "json",
@@ -34,16 +34,16 @@ class WikipediaPlugin(StandardCommand):
         }
 
         prefix = "\x0303[Wikipedia]\x03 "
-        req = urllib2.Request(url % urllib.urlencode(data))
+        req = urllib.request.Request(url % urllib.parse.urlencode(data))
 
         try:
-            title = json.load(urllib2.urlopen(req))["query"]["search"][0]["title"]
+            title = json.load(urllib.request.urlopen(req))["query"]["search"][0]["title"]
         except:
             return prefix + "Search didn't find anything."
 
         pageurl = "https://en.wikipedia.org/wiki/%s" % wikify(title)
 
-        tree = lxml.html.parse(urllib2.urlopen(pageurl))
+        tree = lxml.html.parse(urllib.request.urlopen(pageurl))
         title = get_text(tree, "//h1[@id='firstHeading']")
         content = get_text(tree, "//div[@id='mw-content-text']/div/p")
 

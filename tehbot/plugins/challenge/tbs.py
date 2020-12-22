@@ -1,18 +1,18 @@
 from tehbot.plugins.challenge import *
-import urllib
-import urllib2
-import urlparse
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
+import urllib.parse
 import lxml.html
 import re
 import os
 import tehbot
-import cookielib
+import http.cookiejar
 
 class TbsOpener:
     def __init__(self):
         d = os.path.dirname(tehbot.__file__)
-        self.cookiejar = cookielib.MozillaCookieJar(os.path.join(d, "..", "data", "tbs.cookies"))
-        self.opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookiejar))
+        self.cookiejar = http.cookiejar.MozillaCookieJar(os.path.join(d, "..", "data", "tbs.cookies"))
+        self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookiejar))
         self.url = "http://www.bright-shadows.net/"
         self.loginurl = self.url + "login.php"
         self.logout_url = self.url + "logout.php"
@@ -28,7 +28,7 @@ class TbsOpener:
         except:
             pass
 
-        data = urllib.urlencode({"retry" : "no", "submitted" : "1", "edit_username" : username, "edit_password" : password, "edit_email" : ""})
+        data = urllib.parse.urlencode({"retry" : "no", "submitted" : "1", "edit_username" : username, "edit_password" : password, "edit_email" : ""})
         page = self.opener.open(self.loginurl, data).read()
         self.cookiejar.save()
         self.logged_in = True
@@ -45,7 +45,7 @@ class Site(BaseSite):
         self.opener = TbsOpener()
 
     def prefix(self):
-        return u"[TheBlackSheep]"
+        return "[TheBlackSheep]"
 
     def siteurl(self):
         return "http://www.bright-shadows.net"
@@ -61,7 +61,7 @@ class Site(BaseSite):
 
     def userstats_api(self, user):
         url = "http://www.bright-shadows.net/userdata.php?username=%s"
-        html = urllib2.urlopen(url % Plugin.to_utf8(user), timeout=5).read()
+        html = urllib.request.urlopen(url % Plugin.to_utf8(user), timeout=5).read()
         if html == "Unknown User":
             return None
         real_user, rank, users_total, challs_cnt, challs_total = html.split(":")
@@ -69,7 +69,7 @@ class Site(BaseSite):
 
     def userstats_html(self, user):
         url = "http://www.bright-shadows.net/ranking.php?perpage=1&showuser=%s"
-        tree = lxml.html.parse(urllib2.urlopen(url % (Plugin.to_utf8(user))))
+        tree = lxml.html.parse(urllib.request.urlopen(url % (Plugin.to_utf8(user))))
         rank = int(float(tree.xpath("//td[@class='rank_rank']")[0].text_content()))
         real_user = tree.xpath("//td[@class='rank_user']")[0].text_content()
         challs = int(tree.xpath("//td[@class='rank_cnt']")[0].text_content())
@@ -117,7 +117,7 @@ class Site(BaseSite):
                 continue
 
             name = ename[0].text_content().split(":", 1)[1].strip()
-            u = urlparse.urljoin(url, ename[0].xpath(".//a/@href")[0])
+            u = urllib.parse.urljoin(url, ename[0].xpath(".//a/@href")[0])
             cnt = int(ecnt[0].text_content().strip())
             solved = esolved[0].xpath("@class")[0] == "done"
 

@@ -5,6 +5,7 @@ import time
 import datetime
 import irc.client
 from pony.orm import *
+from functools import reduce
 
 class SlapwarzPlugin(StandardCommand):
     def __init__(self, db):

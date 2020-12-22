@@ -1,6 +1,6 @@
 from tehbot.plugins import *
-import urllib2
-import urllib
+import urllib.request, urllib.error, urllib.parse
+import urllib.request, urllib.parse, urllib.error
 import lxml.html
 import lxml.etree
 import json
@@ -18,15 +18,15 @@ class UnicodePlugin(StandardCommand):
         return "uc"
 
     def execute_parsed(self, connection, event, extra):
-        url = "https://emojipedia.org/search/?%s" % urllib.urlencode(
+        url = "https://emojipedia.org/search/?%s" % urllib.parse.urlencode(
                 { "q" : Plugin.to_utf8(" ".join(self.pargs.search_term)) }
                 )
         try:
-            opener = urllib2.build_opener()
+            opener = urllib.request.build_opener()
             opener.addheaders = [('User-Agent', 'Mozilla/5.0')]
             tree = lxml.html.parse(opener.open(url))
         except:
-            return u"%s %s" % (red(UnicodePlugin.prefix()), "Network Error")
+            return "%s %s" % (red(UnicodePlugin.prefix()), "Network Error")
 
         try:
             sign = tree.xpath("//div[@class='content']/ol[@class='search-results']/li/h2/a/span[@class='emoji']")[0].text_content()
@@ -38,6 +38,6 @@ class UnicodePlugin(StandardCommand):
                 else:
                     raise Exception
             except:
-                return u"%s %s" % (Plugin.red(UnicodePlugin.prefix()), "Unknown Format in Reply")
+                return "%s %s" % (Plugin.red(UnicodePlugin.prefix()), "Unknown Format in Reply")
 
-        return u"%s %s" % (Plugin.green(UnicodePlugin.prefix()), sign)
+        return "%s %s" % (Plugin.green(UnicodePlugin.prefix()), sign)

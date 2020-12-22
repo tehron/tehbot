@@ -1,8 +1,8 @@
 from tehbot.plugins import *
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import json
 import re
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 class DuckDuckGoPlugin(StandardCommand):
     """DuckDuckGo web search"""
@@ -15,7 +15,7 @@ class DuckDuckGoPlugin(StandardCommand):
         return ["duckduckgo", "ddg", "search"]
 
     def execute_parsed(self, connection, event, extra):
-        prefix = u"[DuckDuckGo] "
+        prefix = "[DuckDuckGo] "
         return self.result(" ".join(self.pargs.query), prefix)
 
     def query(self, what):
@@ -28,25 +28,25 @@ class DuckDuckGoPlugin(StandardCommand):
             "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0"
         }
 
-        req = urllib2.Request("https://api.duckduckgo.com/?%s" % urllib.urlencode(params), headers=h)
+        req = urllib.request.Request("https://api.duckduckgo.com/?%s" % urllib.parse.urlencode(params), headers=h)
 
         inp, res, misc = None, None, []
 
         try:
-            fp = urllib2.urlopen(req)
+            fp = urllib.request.urlopen(req)
         except Exception as e:
-            raise PluginError(u"Network error: %s" % unicode(e))
+            raise PluginError("Network error: %s" % str(e))
 
         try:
             v = json.load(fp)
         except:
-            raise PluginError(u"JSON parse error")
+            raise PluginError("JSON parse error")
 
         typ = v["Type"]
         if typ == "D":
             topics = set()
             DuckDuckGoPlugin.collect_topics(v, "RelatedTopics", topics)
-            res = Plugin.shorten(u"Did you mean %s" % DuckDuckGoPlugin.orstr(sorted(topics)), 400, "?")
+            res = Plugin.shorten("Did you mean %s" % DuckDuckGoPlugin.orstr(sorted(topics)), 400, "?")
             misc = topics
         elif typ == "A" or typ == "E":
             res = v["AbstractText"]
@@ -56,7 +56,7 @@ class DuckDuckGoPlugin(StandardCommand):
                 res = v["Answer"]
                 misc = res
             else:
-                print v
+                print(v)
 
         return (inp, res, misc)
 
@@ -65,32 +65,32 @@ class DuckDuckGoPlugin(StandardCommand):
             inp, res, misc = self.query(what)
             if isinstance(misc, set):
                 topics = DuckDuckGoPlugin.orstr(sorted(misc))
-                txt = Plugin.shorten(Plugin.green(prefix) + u"Did you mean " + topics, 450, "?")
-            elif isinstance(misc, basestring):
+                txt = Plugin.shorten(Plugin.green(prefix) + "Did you mean " + topics, 450, "?")
+            elif isinstance(misc, str):
                 txt = Plugin.shorten(Plugin.green(prefix) + misc, 450)
             else:
                 txt = Plugin.green(prefix) + "No results."
         except Exception as e:
-            txt = Plugin.red(prefix) + unicode(e)
+            txt = Plugin.red(prefix) + str(e)
 
         return txt
 
     @staticmethod
     def orstr(lst):
         if not lst:
-            return u""
+            return ""
 
         if len(lst) == 1:
             return lst[0]
 
-        return u", ".join(lst[:-1]) + u", or %s" % lst[-1]
+        return ", ".join(lst[:-1]) + ", or %s" % lst[-1]
 
     @staticmethod
     def collect_topics(json, key, topics):
         for x in json[key]:
-            if x.has_key("Topics"):
+            if "Topics" in x:
                 DuckDuckGoPlugin.collect_topics(x, "Topics", topics)
-            elif x.has_key("FirstURL"):
+            elif "FirstURL" in x:
                 url = x["FirstURL"]
                 m = re.search(r'/?q=([^/]+)$', url)
                 if m is not None:
@@ -99,5 +99,5 @@ class DuckDuckGoPlugin(StandardCommand):
                     m = re.search(r'/([^/]+)$', url)
                     top = m.group(1).replace("_", " ")
 
-                top = Plugin.from_utf8(urllib.unquote(str(top)))
-                topics.add(u'\x02%s\x0f' % top)
+                top = Plugin.from_utf8(urllib.parse.unquote(str(top)))
+                topics.add('\x02%s\x0f' % top)

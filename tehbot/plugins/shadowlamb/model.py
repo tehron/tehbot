@@ -448,7 +448,7 @@ class Player(db.Entity):
     def fullname(self):
         return "%s{%s}" % (self.name, self.network_id)
     def option(self, key, default=None):
-        return self.options[key] if self.options.has_key(key) else default
+        return self.options[key] if key in self.options else default
 
     def set_option(self, key, value):
         self.options[key] = value

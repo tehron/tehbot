@@ -2,13 +2,17 @@
 A Python IRC Bot
 
 ## Installation
-* Install Python >= 2.7.10 with pip
-* Run `pip install --upgrade irc lxml tmdbsimple wolframalpha prettytable psutil pony enum34 requests mysql-python`
+* Install Python >= 3.7, incl. pip
+* Install dependencies:
+  * MySQL driver:
+     * If your Linux Distro has a working MySQLdb module for Python 3 (Debian 10 (buster) e.g.): run `sudo apt install python3-mysqldb`
+     * Else run `sudo pip3 install --upgrade PyMySQL`
+  * Run `sudo pip3 install --upgrade irc lxml tmdbsimple wolframalpha prettytable psutil pony requests`
 * Checkout the source to `$TEHBOTDIR`
 
 ## Running
 * `cd $TEHBOTDIR`
-* `python -m tehbot`
+* `python3 -m tehbot`
 
 ## Interacting with tehbot
 Tehbot has a command line interface which accepts the following commands:

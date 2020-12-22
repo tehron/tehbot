@@ -10,7 +10,7 @@ class Site(BaseSite):
         self.logged_in = False
 
     def prefix(self):
-        return u"[CryptoHack]"
+        return "[CryptoHack]"
 
     def siteurl(self):
         return "https://cryptohack.org"

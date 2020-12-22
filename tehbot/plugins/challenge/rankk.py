@@ -1,13 +1,13 @@
 from tehbot.plugins.challenge import *
-import urllib
-import urllib2
-import urlparse
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
+import urllib.parse
 import lxml.html
 import re
 
 class Site(BaseSite):
     def prefix(self):
-        return u"[Rankk]"
+        return "[Rankk]"
 
     def siteurl(self):
         return "https://www.rankk.org"
@@ -19,8 +19,8 @@ class Site(BaseSite):
         return "https://www.rankk.org/user/%s"
 
     def userstats(self, user):
-        url = self.profileurl() % urllib.quote_plus(Plugin.to_utf8(user))
-        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+        url = self.profileurl() % urllib.parse.quote_plus(Plugin.to_utf8(user))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=5))
 
         content = tree.xpath("//div[@id='main']")
         
@@ -68,7 +68,7 @@ class Site(BaseSite):
         return match.group(1).replace("\\'", "'") if match else ""
 
     def solvers(self, challname, challnr, user):
-        tree = lxml.html.parse(urllib2.urlopen(self.statsurl(), timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(self.statsurl(), timeout=5))
         escript = tree.xpath("//div[@id='page']/script")
 
         if not escript:
@@ -112,9 +112,9 @@ class Site(BaseSite):
 
     def chall_stats(self, challnr):
         a, b = challnr
-        tree = lxml.html.parse(urllib2.urlopen(self.siteurl(), timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(self.siteurl(), timeout=5))
         linkstr = tree.xpath("//div[@id='hofs']/ul/li[%d]/ul/li[%d]/a[%d]/@href" % (a, (b+1)/2, 1 if b%2 else 2))
-        tree = lxml.html.parse(urllib2.urlopen(urlparse.urljoin(self.siteurl(), linkstr[0]), timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(urllib.parse.urljoin(self.siteurl(), linkstr[0]), timeout=5))
         last_solvers = []
         cnt = 0
         for row in tree.xpath("//div[@id='hof']/table/tr"):
@@ -124,8 +124,8 @@ class Site(BaseSite):
         return cnt, last_solvers
 
     def user_solved(self, user, challname):
-        url = self.profileurl() % urllib.quote_plus(Plugin.to_utf8(user))
-        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+        url = self.profileurl() % urllib.parse.quote_plus(Plugin.to_utf8(user))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=5))
 
         content = tree.xpath("//div[@id='main']")
         

@@ -1,5 +1,5 @@
 from tehbot.plugins import *
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import json
 import re, traceback
 import locale
@@ -31,9 +31,9 @@ class YoutubeHandler(ChannelHandler):
 
         vid = match.group(1)
 
-        req = urllib2.Request(searchurl % (self.settings["key"], vid))
+        req = urllib.request.Request(searchurl % (self.settings["key"], vid))
         req.add_header("Referer", self.settings["referer"])
-        resp = urllib2.urlopen(req).read()
+        resp = urllib.request.urlopen(req).read()
         resp = json.loads(resp)
         entry = resp["items"][0]
         name = entry["snippet"]["title"]

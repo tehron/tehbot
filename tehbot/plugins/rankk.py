@@ -13,13 +13,13 @@ class RankkPoller(Poller):
         self.sess = requests.Session()
 
     def solvers_prefix(self):
-        return u"[Rankk Solvers] "
+        return "[Rankk Solvers] "
 
     def users_prefix(self):
-        return u"[Rankk Users] "
+        return "[Rankk Users] "
 
     def forum_prefix(self):
-        return u"[Rankk Forum] "
+        return "[Rankk Forum] "
 
     def create_entities(self):
         class RankkSolvedPollerData(self.db.Entity):
@@ -67,6 +67,6 @@ class RankkPoller(Poller):
                 msg = "New post in %s by %s." % (Plugin.bold(forum_topic), Plugin.bold(forum_user))
                 msgs.append(Plugin.green(self.forum_prefix()) + msg)
 
-        msg = u"\n".join(msgs)
+        msg = "\n".join(msgs)
         if msg:
             return [("announce", (self.where(), msg))]

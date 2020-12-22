@@ -1,7 +1,7 @@
 from tehbot.plugins import *
 import tehbot.plugins as plugins
-from urlparse import urlparse
-import urllib2
+from urllib.parse import urlparse
+import urllib.request, urllib.error, urllib.parse
 from struct import unpack
 from socket import AF_INET, inet_pton, getaddrinfo
 
@@ -43,29 +43,29 @@ class IsitupPlugin(StandardCommand):
         if not IsitupPlugin._check(host):
             return False
 
-        class MyRequest(urllib2.Request):
+        class MyRequest(urllib.request.Request):
             def __init__(self, url, method, **kwargs):
-                urllib2.Request.__init__(self, url, **kwargs)
+                urllib.request.Request.__init__(self, url, **kwargs)
                 self.method = method
 
             def get_method(self):
                 return self.method
 
-        class MyHTTPRedirectHandler(urllib2.HTTPRedirectHandler):
+        class MyHTTPRedirectHandler(urllib.request.HTTPRedirectHandler):
             def redirect_request(self, req, fp, code, msg, hdrs, newurl):
                 if no_follow:
                     return None
-                return urllib2.HTTPRedirectHandler.redirect_request(self, req, fp, code, msg, hdrs, newurl)
+                return urllib.request.HTTPRedirectHandler.redirect_request(self, req, fp, code, msg, hdrs, newurl)
 
         try:
-            opener = urllib2.build_opener(MyHTTPRedirectHandler)
+            opener = urllib.request.build_opener(MyHTTPRedirectHandler)
             req = MyRequest("%s://%s" % (prot, host), "HEAD")
             res = opener.open(req, timeout=5)
             return 200 <= res.code < 300
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             return 200 <= e.code < 400
         except Exception as e:
-            print e
+            print(e)
         return False
 
     def execute_parsed(self, connection, event, extra):
@@ -87,5 +87,5 @@ class IsitupPlugin(StandardCommand):
         res = IsitupPlugin.isitup(prot, host, no_follow)
 
         prefix = "\x0303[Isitup]\x03 "
-        msg = u"%s is \x0303up \U0001f44d\x03." if res else u"%s seems to be \x0304down \U0001f44e\x03."
+        msg = "%s is \x0303up \U0001f44d\x03." if res else "%s seems to be \x0304down \U0001f44e\x03."
         return prefix + msg % (prot + "://" + host)

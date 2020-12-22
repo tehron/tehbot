@@ -63,16 +63,16 @@ class SeenPlugin(StandardCommand):
         msgs = select(m for m in self.db.Message if m.nick == user and m.type == 0 and (ircid is None or m.ircid == ircid)).order_by(desc(self.db.Message.ts))[:1]
         if not msgs:
             wherestr = " on %s" % self.ircid2name(ircid) if ircid else ""
-            return [("say_nolog", u"I've never seen %s%s." % (user, wherestr))]
+            return [("say_nolog", "I've never seen %s%s." % (user, wherestr))]
 
         m = msgs[0]
         timestr = Plugin.time2str(time.time(), time.mktime(m.ts.timetuple()))
         name = self.ircid2name(m.ircid)
         action = self.get_action(m.message)
         if m.event == "action" and action is not None:
-            msg = u"I saw %s %s ago on %s in %s %s." % (user, timestr, name, m.target, action)
+            msg = "I saw %s %s ago on %s in %s %s." % (user, timestr, name, m.target, action)
         else:
-            msg =  u"I saw %s %s ago on %s in %s saying '%s'." % (user, timestr, name, m.target, m.message)
+            msg =  "I saw %s %s ago on %s in %s saying '%s'." % (user, timestr, name, m.target, m.message)
         return [("say_nolog", msg)]
 
 class OpHandler(ChannelJoinHandler):
@@ -89,7 +89,7 @@ class OpHandler(ChannelJoinHandler):
             return
 
         connection.mode(event.target, "+o " + who)
-        print "ok"
+        print("ok")
 
     def values_to_add(self):
         return ChannelJoinHandler.values_to_add(self) + [ "who", "whonot" ]

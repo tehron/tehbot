@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 from tehbot.plugins import *
 import wolframalpha
 import prettytable
@@ -38,7 +38,7 @@ class WolframAlphaPlugin(StandardCommand):
     @staticmethod
     def format_table(s):
         table = [[y.strip() for y in x.strip().split("|")] for x in s.splitlines()]
-        nr_cols = max(map(len, table))
+        nr_cols = max(list(map(len, table)))
         table = [[x[i] if i < len(x) else "" for i in range(nr_cols)] for x in table]
         table = WolframAlphaPlugin.remove_empty_columns(table, nr_cols)
 
@@ -78,7 +78,7 @@ class WolframAlphaPlugin(StandardCommand):
         except (NameError, AttributeError):
             txt = "No results."
         except Exception as e:
-            txt = unicode(e)
+            txt = str(e)
             fn = Plugin.red
 
         return Plugin.shorten(fn(prefix) + txt, 450)

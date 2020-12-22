@@ -56,7 +56,7 @@ class RawPlugin(StandardCommand):
 
         args = self.pargs.args
         if args:
-            connection.send_raw(u" ".join(args))
+            connection.send_raw(" ".join(args))
 
 class HelpPlugin(StandardCommand):
     def __init__(self, db):
@@ -113,6 +113,6 @@ class PingPlugin(StandardCommand):
         verbose = vars(self.pargs)["verbose"]
 
         if verbose:
-            return u"pong from Thread %s at %f (%.2fms)" % (threading.current_thread().name, now, (now - ts) * 1000.0)
+            return "pong from Thread %s at %f (%.2fms)" % (threading.current_thread().name, now, (now - ts) * 1000.0)
 
         return "pong!"

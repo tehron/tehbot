@@ -1,6 +1,6 @@
 from tehbot.plugins.challenge import *
-import urllib2
-import urlparse
+import urllib.request, urllib.error, urllib.parse
+import urllib.parse
 import lxml.html
 import re
 
@@ -10,13 +10,13 @@ url3 = "http://www.happy-security.de/index.php?modul=hacking-zone&action=highsco
 
 class Site(BaseSite):
     def prefix(self):
-        return u"[Happy-Security]"
+        return "[Happy-Security]"
 
     def siteurl(self):
-        return u"http://www.happy-security.de"
+        return "http://www.happy-security.de"
 
     def userstats(self, user):
-        page = urllib2.urlopen(url1 % Plugin.to_latin1(user), timeout=5).read()
+        page = urllib.request.urlopen(url1 % Plugin.to_latin1(user), timeout=5).read()
         page = page.decode("latin1")
 
         match = page.split(":")
@@ -32,7 +32,7 @@ class Site(BaseSite):
         if int(rank) > 1:
             try:
                 user2 = Site.hs_rank_to_user(int(rank) - 1)
-                result = urllib2.urlopen(url1 % Plugin.to_latin1(user2), timeout=5).read().decode("latin1").split(":")
+                result = urllib.request.urlopen(url1 % Plugin.to_latin1(user2), timeout=5).read().decode("latin1").split(":")
                 if len(result) == 6:
                     rank2, challs_solved2, challs_total2, users_total2, challs_contributed2, user2 = result
                     count = int(challs_solved2) - int(challs_solved)
@@ -48,7 +48,7 @@ class Site(BaseSite):
 
     @staticmethod
     def hs_rank_to_user(rank):
-        tree = lxml.html.parse(urllib2.urlopen(url2 % rank, timeout=3))
+        tree = lxml.html.parse(urllib.request.urlopen(url2 % rank, timeout=3))
         rows = tree.xpath("//td[@class='middle']//table[@class='mtable']/tr")
         if len(rows) < 2:
             return ""
@@ -62,23 +62,23 @@ class Site(BaseSite):
     @staticmethod
     def parse_challs(url):
         challs = {}
-        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=5))
         for e in tree.xpath("//td[@class='middle']//table[@class='mtable']/tr"):
             e2 = e.xpath("td[2]//a[1]")
             e3 = e.xpath("td[4]/a")
             if not e2 or not e3 or not e2[0].text_content() or not e3[0].text_content(): continue
-            solvers = int(filter(str.isdigit, e3[0].text_content()))
+            solvers = int(list(filter(str.isdigit, e3[0].text_content())))
             match = re.search(r'level_id=(\d+)', e2[0].xpath("@href")[0])
             if match:
                 chall_nr = int(match.group(1))
                 d = e2[0].text_content()
-                challs[chall_nr] = (e2[0].text_content().strip(), urlparse.urljoin(url, e3[0].xpath("@href")[0]), solvers)
+                challs[chall_nr] = (e2[0].text_content().strip(), urllib.parse.urljoin(url, e3[0].xpath("@href")[0]), solvers)
 
         return challs
 
     @staticmethod
     def get_last_solvers(url):
-        tree = lxml.html.parse(urllib2.urlopen(url, timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=5))
         solvers = []
         for p in tree.xpath("//td[@class='middle']//table[@class='mtable']/tr/td[2]/a"):
             solvers.append(p.text_content().strip())
@@ -86,7 +86,7 @@ class Site(BaseSite):
 
     @staticmethod
     def solved(user, challenge_name):
-        tree = lxml.html.parse(urllib2.urlopen(url3 % Plugin.to_latin1(user), timeout=3))
+        tree = lxml.html.parse(urllib.request.urlopen(url3 % Plugin.to_latin1(user), timeout=3))
         for cat in tree.xpath("//td[@class='middle']//table[@class='mtable']"):
             for row in cat.xpath("tr"):
                 chall_link = row.xpath("td[2]//a[1]")
@@ -100,7 +100,7 @@ class Site(BaseSite):
         nr, name, url, solvers = None, None, None, None
 
         if challname is not None:
-            for key, val in challs.items():
+            for key, val in list(challs.items()):
                 if val[0].lower().startswith(challname.lower()):
                     nr = key
                     name, url, solvers = val
@@ -109,7 +109,7 @@ class Site(BaseSite):
                     nr = key
                     name, url, solvers = val
         else:
-            if challs.has_key(challnr):
+            if challnr in challs:
                 nr = challnr
                 name, url, solvers = challs[challnr]
 

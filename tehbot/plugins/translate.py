@@ -1,6 +1,6 @@
 from tehbot.plugins import *
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 import json
 import shlex
 
@@ -29,13 +29,13 @@ class TranslatePlugin(StandardCommand):
 
         try:
             url = "https://translate.googleapis.com/translate_a/single?%s"
-            url = url % urllib.urlencode(data)
-            req = urllib2.Request(url, headers=headers)
-            reply = json.load(urllib2.urlopen(req, timeout=5))
+            url = url % urllib.parse.urlencode(data)
+            req = urllib.request.Request(url, headers=headers)
+            reply = json.load(urllib.request.urlopen(req, timeout=5))
             txt = reply[0][0][0]
             prefix = "[Translation %s->%s]" % (reply[2], self.pargs.to_lang)
-            answer = u"%s %s" % (Plugin.green(prefix), txt)
+            answer = "%s %s" % (Plugin.green(prefix), txt)
         except Exception as e:
-            answer = u"%s %s" % (Plugin.red("[Translation]"), unicode(e))
+            answer = "%s %s" % (Plugin.red("[Translation]"), str(e))
 
         return answer

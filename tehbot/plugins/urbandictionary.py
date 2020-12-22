@@ -1,6 +1,6 @@
 from tehbot.plugins import *
-import urllib2
-import urllib
+import urllib.request, urllib.error, urllib.parse
+import urllib.request, urllib.parse, urllib.error
 import lxml.html
 import json
 import re
@@ -30,10 +30,10 @@ class UrbanDictionaryPlugin(StandardCommand):
         }
 
         prefix = "\x0303[Urban Dictionary]\x03 "
-        req = urllib2.Request(url % urllib.urlencode(data))
+        req = urllib.request.Request(url % urllib.parse.urlencode(data))
 
         try:
-            all_entries = json.load(urllib2.urlopen(req))["list"]
+            all_entries = json.load(urllib.request.urlopen(req))["list"]
             count = 10 * (page - 1) + len(all_entries)
             entry = all_entries[index]
 
@@ -42,12 +42,12 @@ class UrbanDictionaryPlugin(StandardCommand):
             definition = re.sub(r'\[([^\[]*)\]', "\x02\\1\x0f", definition)
             txt += Plugin.shorten(definition, 300)
 
-            if entry.has_key("example"):
+            if "example" in entry:
                 example = "\n".join(entry["example"].splitlines())
                 example = re.sub(r'\[([^\[]*)\]', "\x02\\1\x0f", example)
                 txt += "\n\x02Example:\x0f " + Plugin.shorten(example, 300)
         except Exception as e:
-            print e
+            print(e)
             if term == "dloser":
                 return prefix + "The unstabliest D-System ever!"
             return prefix + "Definition not available."

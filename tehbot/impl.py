@@ -1,6 +1,6 @@
 import irc.client
 import irc.modes
-from Queue import Queue, Empty
+from queue import Queue, Empty
 import traceback
 import time
 import re
@@ -8,7 +8,7 @@ import datetime
 import functools
 import threading
 from pony.orm import Database, db_session, set_sql_debug
-import model
+from . import model
 from collections import *
 import inspect
 
@@ -26,7 +26,7 @@ import locale
 encoding = locale.getdefaultlocale()[1] or "ascii"
 import random
 import socket
-from ConfigParser import SafeConfigParser
+from configparser import SafeConfigParser
 import json
 
 def _terminate_thread(thread):
@@ -199,7 +199,7 @@ class TehbotImpl:
         with self.core.reactor.mutex:
             for cmd in self.core.reactor.scheduler.queue[:]:
                 try:
-                    if cmd.target.func_name == "callme":
+                    if cmd.target.__name__ == "callme":
                         self.core.reactor.scheduler.queue.remove(cmd)
                 except:
                     pass
@@ -223,7 +223,7 @@ class TehbotImpl:
 
     def myprint(self, s):
         s = self.regex.sub("", s)
-        print time.strftime("%H:%M:%S"), s.encode(encoding, "backslashreplace")
+        print(time.strftime("%H:%M:%S"), s.encode(encoding, "backslashreplace"))
 
     def logmsg(self, when, event, typ, ircid, network, target, nick, msg):
         msg = self.regex.sub("", msg)
@@ -240,7 +240,7 @@ class TehbotImpl:
             s = "%s %s: %s" % (ts, network, s)
         else:
             s = "%s %s: %s: %s" % (ts, network, target, s)
-        print s.encode(encoding, "backslashreplace")
+        print(s.encode(encoding, "backslashreplace"))
         self.logqueue.put((datetime.datetime.fromtimestamp(when), event, typ, ircid, target, nick, msg))
 
     def load_plugins(self, modules):
@@ -255,7 +255,7 @@ class TehbotImpl:
                     except AttributeError as e:
                         raise ImplementationError(clazz, "commands", p.__file__)
 
-                    if isinstance(cmds, basestring):
+                    if isinstance(cmds, str):
                         cmds = [cmds]
                     for cmd in cmds:
                         if cmd in self.cmd_handlers:
@@ -277,12 +277,12 @@ class TehbotImpl:
 
                 self.plugins.append(o)
 
-        print " command handlers:", sorted(self.cmd_handlers)
-        print " channel handlers:", sorted(h.__class__.__name__ for h in self.channel_handlers)
-        print "chn join handlers:", sorted(h.__class__.__name__ for h in self.channel_join_handlers)
-        print "          pollers:", sorted(h.__class__.__name__ for h in self.pollers)
-        print "       announcers:", sorted(h.__class__.__name__ for h in self.announcers)
-        print "   prefix handlers", sorted(h.__class__.__name__ for h in self.prefix_handlers)
+        print(" command handlers:", sorted(self.cmd_handlers))
+        print(" channel handlers:", sorted(h.__class__.__name__ for h in self.channel_handlers))
+        print("chn join handlers:", sorted(h.__class__.__name__ for h in self.channel_join_handlers))
+        print("          pollers:", sorted(h.__class__.__name__ for h in self.pollers))
+        print("       announcers:", sorted(h.__class__.__name__ for h in self.announcers))
+        print("   prefix handlers", sorted(h.__class__.__name__ for h in self.prefix_handlers))
 
     def gather_modules(self):
         modules = set(tehbot.plugins.Plugin.collect())
@@ -392,7 +392,7 @@ class TehbotImpl:
                 conn.tehbot = lambda: None
                 conn.tehbot.ircid = ircid
 
-                print "Connecting to %s" % self.connection_name(conn)
+                print("Connecting to %s" % self.connection_name(conn))
                 self.reconnect(conn)
             elif conn.is_connected():
                 self.dispatcher.join_channels(conn)
@@ -484,7 +484,7 @@ class TehbotImpl:
             target = event.source.nick
             typ = 1
 
-        if isinstance(actions, basestring):
+        if isinstance(actions, str):
             actions = [("say", actions)]
         elif actions is None:
             actions = [("none", None)]
@@ -504,10 +504,10 @@ class TehbotImpl:
                     nick, msg = args
                     self.say_nick(connection, target, nick, typ, msg)
                 elif action == "nopriv":
-                    self.say(connection, target, typ, u"%s is \x02not\x02 privileged" % event.source.nick)
+                    self.say(connection, target, typ, "%s is \x02not\x02 privileged" % event.source.nick)
                     break
                 elif action == "noauth":
-                    self.say(connection, target, typ, u"%s is \x02not\x02 authorized with Services" % event.source.nick)
+                    self.say(connection, target, typ, "%s is \x02not\x02 authorized with Services" % event.source.nick)
                     break
                 elif action == "doauth":
                     extra["auth_requested"] = True
@@ -530,11 +530,11 @@ class TehbotImpl:
                     if cmd is None:
                         def cmd(p):
                             c = p.commands()
-                            return c if isinstance(c, basestring) else "%s (%s)" % (c[0], ", ".join(c[1:]))
+                            return c if isinstance(c, str) else "%s (%s)" % (c[0], ", ".join(c[1:]))
                         enabled_cmds = sorted(cmd(p) for p in self.plugins if isinstance(p, tehbot.plugins.Command) and (list_all or p.is_enabled()))
                         msg = "Available commands: %s" % ", ".join(enabled_cmds)
                     else:
-                        if self.cmd_handlers.has_key(cmd):
+                        if cmd in self.cmd_handlers:
                             msg = self.cmd_handlers[cmd].parser.format_help().strip()
                         else:
                             msg = "Unknown command: %s" % cmd
@@ -547,7 +547,7 @@ class TehbotImpl:
                             msg = "Okay"
                         else:
                             mod, lineno, exc = res
-                            msg = u"Error in %s(%d): %s" % (mod, lineno, tehbot.plugins.Plugin.exc2str(exc))
+                            msg = "Error in %s(%d): %s" % (mod, lineno, tehbot.plugins.Plugin.exc2str(exc))
 
                         self.say(connection, target, typ, msg)
                     finally:
@@ -559,7 +559,7 @@ class TehbotImpl:
                     pw = args
                     if pw is not None and pw[0] == self.settings["privpassword"]:
                         self.priv_override(connection, event)
-                    elif not self.privileged(connection, event) and not extra.has_key("auth_requested"):
+                    elif not self.privileged(connection, event) and "auth_requested" not in extra:
                         self.actionqueue.put(([("doauth", None)], plugin, connection, event, extra))
                         return
 
@@ -617,7 +617,7 @@ class TehbotImpl:
 
                     try:
                         inp, res, misc = p.query(what)
-                        print inp
+                        print(inp)
                         if res:
                             msg = res
                     except:
@@ -628,13 +628,13 @@ class TehbotImpl:
                 self.core.print_exc()
 
     def quit(self, msg=None):
-        print "quit called"
+        print("quit called")
         self.deinit()
         self.quit_called = True
         self.core.reactor.disconnect_all(msg or "bye-bye")
 
     def restart(self, msg=None):
-        print "restart called"
+        print("restart called")
         self.deinit()
         self.quit_called = True
         self.restart_called = True
@@ -664,17 +664,17 @@ class TehbotImpl:
             self.quit(msg)
 
     def kbd_stats(self, args):
-        print "Connections"
+        print("Connections")
         for c in self.core.reactor.connections:
-            print " * %s: %s" % (self.connection_name(c), "connected" if c.is_connected() else "not connected")
+            print(" * %s: %s" % (self.connection_name(c), "connected" if c.is_connected() else "not connected"))
 
-        print "Delayed Commands"
+        print("Delayed Commands")
         for c in self.core.reactor.scheduler.queue:
-            print " * %s at %s" % (c.target.func if isinstance(c.target, functools.partial) else c.target, c)
+            print(" * %s at %s" % (c.target.func if isinstance(c.target, functools.partial) else c.target, c))
 
-        print "Privileged Users"
-        for c, nicks in self.privusers.items():
-            print " * %s: %r" % (self.connection_name(c), sorted(nicks))
+        print("Privileged Users")
+        for c, nicks in list(self.privusers.items()):
+            print(" * %s: %r" % (self.connection_name(c), sorted(nicks)))
 
     def kbd_users(self, args):
         parser = argparse.ArgumentParser()
@@ -685,20 +685,20 @@ class TehbotImpl:
         try:
             conn = [c for c in self.core.reactor.connections if c.tehbot.ircid == pargs.ircid][0]
         except:
-            print "No such connection:", pargs.ircid
+            print("No such connection:", pargs.ircid)
             return
 
         try:
             users = conn.tehbot.users[pargs.channel]
         except:
-            print "No such channel:", pargs.channel
+            print("No such channel:", pargs.channel)
             return
 
-        print ", ".join(sorted(a for a, b in users))
+        print(", ".join(sorted(a for a, b in users)))
 
     def kbd_config(self, args):
         arr = shlex.split(args or "")
-        print self.config(arr)
+        print(self.config(arr))
 
     @staticmethod
     def valid_id(ircid):
@@ -849,7 +849,8 @@ class TehbotImpl:
 
     def config(self, args):
         parser = ThrowingArgumentParser(prog="config")
-        handlers = parser.add_subparsers(title="handlers", help="additional help")
+        handlers = parser.add_subparsers(title="handlers", help="additional help", dest="handler")
+        handlers.required = True
         global_parser = handlers.add_parser("global")
         connection_parser = handlers.add_parser("connection")
         connection_parser.add_argument("ircid")
@@ -858,7 +859,8 @@ class TehbotImpl:
         channel_parser.add_argument("channel")
         plugin_parser = handlers.add_parser("plugin")
         
-        global_cmds = global_parser.add_subparsers(title="commands", help="additional help")
+        global_cmds = global_parser.add_subparsers(title="commands", help="additional help", dest="command")
+        global_cmds.required = True
         global_set_parser = global_cmds.add_parser("set")
         global_unset_parser = global_cmds.add_parser("unset")
         global_add_parser = global_cmds.add_parser("add")
@@ -870,20 +872,23 @@ class TehbotImpl:
         global_set_parser.set_defaults(func=self.set_value)
         global_unset_parser.add_argument("key", choices=global_keys)
         global_unset_parser.set_defaults(func=self.unset_value)
-        global_add_handlers = global_add_parser.add_subparsers()
+        global_add_handlers = global_add_parser.add_subparsers(dest="key")
+        global_add_handlers.required = True
         global_add_connection_parser = global_add_handlers.add_parser("connection")
         global_add_connection_parser.add_argument("ircid", type=TehbotImpl.valid_id)
         global_add_connection_parser.add_argument("host")
         global_add_connection_parser.add_argument("port", type=int)
         global_add_connection_parser.set_defaults(func=self.add_connection)
-        global_remove_handlers = global_remove_parser.add_subparsers()
+        global_remove_handlers = global_remove_parser.add_subparsers(dest="key")
+        global_remove_handlers.required = True
         global_remove_connection_parser = global_remove_handlers.add_parser("connection")
         global_remove_connection_parser.add_argument("ircid", type=TehbotImpl.valid_id)
         global_remove_connection_parser.set_defaults(func=self.remove_connection)
         global_show_parser.add_argument("key", choices=global_keys)
         global_show_parser.set_defaults(func=self.show_value)
 
-        connection_cmds = connection_parser.add_subparsers(title="commands", help="additional help")
+        connection_cmds = connection_parser.add_subparsers(title="commands", help="additional help", dest="command")
+        connection_cmds.required = True
         connection_set_parser = connection_cmds.add_parser("set")
         connection_unset_parser = connection_cmds.add_parser("unset")
         connection_add_parser = connection_cmds.add_parser("add")
@@ -906,7 +911,8 @@ class TehbotImpl:
         connection_show_parser.add_argument("key", choices=connection_set_keys+connection_add_keys)
         connection_show_parser.set_defaults(func=self.connection_show_value)
 
-        channel_cmds = channel_parser.add_subparsers(title="commands", help="additional help")
+        channel_cmds = channel_parser.add_subparsers(title="commands", help="additional help", dest="command")
+        channel_cmds.required = True
         channel_set_parser = channel_cmds.add_parser("set")
         channel_unset_parser = channel_cmds.add_parser("unset")
         channel_show_parser = channel_cmds.add_parser("show")
@@ -919,18 +925,20 @@ class TehbotImpl:
         channel_show_parser.add_argument("key", choices=channel_set_keys)
         channel_show_parser.set_defaults(func=self.channel_show_value)
 
-        plugin_cmds = plugin_parser.add_subparsers(title="plugins", help="additional help")
+        plugin_cmds = plugin_parser.add_subparsers(title="plugins", help="additional help", dest="plugin")
+        plugin_cmds.required = True
         for p in sorted(self.plugins, key=lambda x: x.__class__.__name__):
             p.integrate_parser(plugin_cmds)
 
         try:
             pargs = parser.parse_args(args)
+            print(pargs)
             m = parser.get_help_msg()
             if m:
                 return m.strip()
             res = pargs.func(pargs)
         except Exception as e:
-            res = u"Error: %s" % Plugin.exc2str(e)
+            res = "Error: %s" % Plugin.exc2str(e)
 
         return "Okay" if res is None else res
 
@@ -947,7 +955,7 @@ class Dispatcher:
         if method:
             method(connection, event)
         elif event.type not in types:
-            print event.type, event.source, event.target, event.arguments
+            print(event.type, event.source, event.target, event.arguments)
 
     def on_whoisaccount(self, connection, event):
         nick = event.arguments[0]
@@ -975,13 +983,13 @@ class Dispatcher:
                 break
 
     def on_nicknameinuse(self, connection, event):
-        print "%s: Nick name in use" % self.tehbot.connection_name(connection)
-        print event.type, event.source, event.target, event.arguments
+        print("%s: Nick name in use" % self.tehbot.connection_name(connection))
+        print(event.type, event.source, event.target, event.arguments)
         try:
             newnick = event.arguments[0] + "_"
         except:
             newnick = connection.get_nickname() + "_"
-        print "trying new nick: %s" % newnick
+        print("trying new nick: %s" % newnick)
         connection.nick(newnick)
 
     def on_welcome(self, connection, event):
@@ -1118,7 +1126,7 @@ class Dispatcher:
         botname = self.tehbot.pick(connection, "botname")
         nick = event.source.nick
 
-        for channel in connection.tehbot.users.keys():
+        for channel in list(connection.tehbot.users.keys()):
             try:
                 lst = connection.tehbot.users[channel]
                 idx = [u for u,m in lst].index(nick)
@@ -1210,7 +1218,7 @@ class Dispatcher:
         self.tehbot.logmsg(time.time(), "nick", 0, connection.tehbot.ircid, self.tehbot.connection_name(connection), None, None, "%s is now known as %s" % (oldnick, newnick))
         botname = self.tehbot.pick(connection, "botname")
 
-        for channel in connection.tehbot.users.keys():
+        for channel in list(connection.tehbot.users.keys()):
             try:
                 lst = connection.tehbot.users[channel]
                 idx = [u for u,m in lst].index(oldnick)

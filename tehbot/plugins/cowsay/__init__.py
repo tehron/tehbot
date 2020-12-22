@@ -1,5 +1,5 @@
 from tehbot.plugins import *
-from cowsay import cowsay
+from .cowsay import cowsay
 
 class CowsayPlugin(StandardCommand):
     def __init__(self, db):
