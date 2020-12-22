@@ -81,7 +81,7 @@ class ShadowlambHandler(PrefixHandler):
 
     def player_age(self, player):
         d = self.sltime() - player.birthday
-        years = d / 60 / 60 / 24 / 365
+        years = d // 60 // 60 // 24 // 365
         return max(1, int(round(years)))
 
     def give_item(self, player, item):

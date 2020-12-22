@@ -23,18 +23,18 @@ class TimeDelta:
         self.delta = datetime.datetime.fromtimestamp(t1) - datetime.datetime.fromtimestamp(t2)
 
         days = self.delta.days
-        self.years = days / 360
+        self.years = days // 360
         days -= self.years * 360
-        self.months = days / 30
+        self.months = days // 30
         days -= self.months * 30
-        self.weeks = days / 7
+        self.weeks = days // 7
         days -= self.weeks * 7
         self.days = days
 
         seconds = self.delta.seconds
-        self.hours = seconds / 3600
+        self.hours = seconds // 3600
         seconds -= self.hours * 3600
-        self.minutes = seconds / 60
+        self.minutes = seconds // 60
         seconds -= self.minutes * 60
         self.seconds = seconds
 

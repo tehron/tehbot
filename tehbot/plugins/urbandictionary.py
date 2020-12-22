@@ -20,7 +20,7 @@ class UrbanDictionaryPlugin(StandardCommand):
         url = "http://api.urbandictionary.com/v0/define?%s"
 
         index = (self.pargs.nr or 1) - 1
-        page = index / 10 + 1
+        page = index // 10 + 1
         index %= 10
         term = " ".join(self.pargs.search_term)
 

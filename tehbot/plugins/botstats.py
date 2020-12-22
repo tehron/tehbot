@@ -12,13 +12,13 @@ class BotStatsPlugin(StandardCommand):
 
     @staticmethod
     def format_time(ts):
-        years = int(ts / 31536000)
+        years = int(ts // 31536000)
         ts -= 31536000 * years
-        days = int(ts / 86400)
+        days = int(ts // 86400)
         ts -= 86400 * days
-        hours = int(ts / 3600)
+        hours = int(ts // 3600)
         ts -= 3600 * hours
-        mins = int(ts / 60)
+        mins = int(ts // 60)
         ts -= 60 * mins
         secs = int(ts)
 
@@ -44,13 +44,13 @@ class BotStatsPlugin(StandardCommand):
         txt = "\x0303[tehbot]\x03 "
 
         stats = []
-        stats.append("Version: git %s" % self.get_git_version()[:10])
+        stats.append("Version: git %s" % BotStatsPlugin.get_git_version()[:10])
         #stats.append("Version: 0.2.1")
 
         proc = psutil.Process(os.getpid())
-        stats.append("Running Time: %s" % self.format_time(time.time() - proc.create_time()))
+        stats.append("Running Time: %s" % BotStatsPlugin.format_time(time.time() - proc.create_time()))
 
-        stats.append("Memory Usage: %d kB" % (proc.memory_info().rss / 1024))
+        stats.append("Memory Usage: %d kB" % (proc.memory_info().rss // 1024))
 
         stats.append("Nr. of Threads: %d" % (proc.num_threads()))
 

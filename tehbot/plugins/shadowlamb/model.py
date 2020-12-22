@@ -514,7 +514,7 @@ class Player(db.Entity):
     def combat_stats(self):
         attack = self.race.properties.attack + self.equipment.attack()
         base_defense = self.race.properties.defense + self.equipment.defense()
-        defense = self.quickness() / 4 + base_defense
+        defense = self.quickness() // 4 + base_defense
         min_dmg = max(0, self.race.properties.min_dmg + self.equipment.min_dmg())
         max_dmg = max(min_dmg, self.race.properties.max_dmg + self.equipment.max_dmg())
         marm = self.race.properties.marm + self.equipment.marm()

@@ -33,7 +33,7 @@ class Site(BaseSite):
         return real_user, str(int(challs_solved)), int(challs_total), str(int(rank)), int(users_total), int(score), int(scoremax), None
 
     def rankstats(self, rank):
-        page = 1 + (rank - 1) / 50
+        page = 1 + (rank - 1) // 50
 
         if page < 1:
             return None
