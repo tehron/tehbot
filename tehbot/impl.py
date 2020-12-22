@@ -24,7 +24,7 @@ import tehbot.plugins
 from tehbot.plugins import *
 import random
 import socket
-from configparser import SafeConfigParser
+from configparser import ConfigParser
 import json
 
 def _terminate_thread(thread):
@@ -114,7 +114,7 @@ class TehbotImpl:
         self.quit_called = False
         self.restart_called = False
         self.db = Database()
-        self.pconfig = SafeConfigParser()
+        self.pconfig = ConfigParser()
         self.configfile = os.path.join(os.path.dirname(__file__), "..", "data", "tehbot.cfg")
         model.define_entities(self.db)
         self.privusers = defaultdict(set)
