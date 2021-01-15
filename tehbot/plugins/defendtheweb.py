@@ -31,6 +31,7 @@ class DefendTheWebOpener:
             self.cookiejar.load()
             for c in self.cookiejar:
                 if c.name == "auth_remember" and not c.is_expired():
+                    tree = lxml.html.parse(self.opener.open(self.loginurl))
                     self.logged_in = True
                     return
         except:
@@ -39,7 +40,7 @@ class DefendTheWebOpener:
         tree = lxml.html.parse(self.opener.open(self.loginurl))
         token = tree.xpath("//div[contains(@class, 'auth-local-login')]/form/input[@name='token']/@value")[0]
         data = urllib.parse.urlencode({"username" : username, "password" : password, "token" : token, "remember" : "on"})
-        page = self.opener.open(self.loginurl, data).read()
+        page = self.opener.open(self.loginurl, data.encode()).read()
         self.cookiejar.save()
         self.logged_in = True
 
@@ -163,7 +164,7 @@ class DefendTheWebForumPlugin(StandardCommand):
         StandardCommand.__init__(self, db)
         self.parser.add_argument("what", nargs="?")
         self.opener = DefendTheWebOpener()
-        self.splitter = re.compile("[\t\r\n ]*")
+        self.splitter = re.compile("[\t\r\n ]+")
 
     def commands(self):
         return "dtwforum"

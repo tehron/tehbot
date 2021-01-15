@@ -19,6 +19,7 @@ class Site(BaseSite):
         url = "https://www.securitytraps.pl/wcscore.php?uname=%s&key=%s"
         authkey = self.settings["securitytraps_api_key"]
         html = urllib.request.urlopen(url % (Plugin.to_utf8(user), authkey), timeout=5).read()
+        html = html.decode()
         if html == "0":
             return None
         rank, challs_solved, challs_total, users_total, scoremax = html.split(":")

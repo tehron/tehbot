@@ -40,18 +40,18 @@ class RevelSolvedPoller(Poller):
         entries = []
 
         for entry in reply.readlines():
-            try:
-                uid, cid, solvedate, firstdate, views, options, timetaken, tries, username, challname, solvercount, challurl = [x.replace(r"\:", ":") for x in entry.split("::")]
-                uid = int(uid)
-                cid = int(cid)
-                tssolve = self.timestamp(solvedate)
-                ts1stsolve = self.timestamp(firstdate)
-                views = int(views)
-                tries = int(tries)
-                solvercount = int(solvercount) - 1
-                entries.append((tssolve, username, challname, solvercount))
-            except:
-                pass
+            entry = entry.decode().strip()
+            if not entry:
+                continue
+            uid, cid, solvedate, firstdate, views, options, timetaken, tries, username, challname, solvercount, challurl = [x.replace(r"\:", ":") for x in entry.split("::")]
+            uid = int(uid)
+            cid = int(cid)
+            tssolve = self.timestamp(solvedate)
+            ts1stsolve = self.timestamp(firstdate)
+            views = int(views)
+            tries = int(tries)
+            solvercount = int(solvercount) - 1
+            entries.append((tssolve, username, challname, solvercount))
 
         msgs = []
         for tssolve, username, challname, solvercount in sorted(entries):

@@ -99,5 +99,5 @@ class DuckDuckGoPlugin(StandardCommand):
                     m = re.search(r'/([^/]+)$', url)
                     top = m.group(1).replace("_", " ")
 
-                top = Plugin.from_utf8(urllib.parse.unquote(str(top)))
+                top = urllib.parse.unquote(str(top))
                 topics.add('\x02%s\x0f' % top)

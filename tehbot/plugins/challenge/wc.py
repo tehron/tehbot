@@ -19,14 +19,15 @@ class Site(BaseSite):
         return "https://www.wechall.net"
 
     def userstats(self, user):
-        page = urllib.request.urlopen(url2 % urllib.parse.urlencode({"username" : Plugin.to_utf8(user)})).read()
+        page = urllib.request.urlopen(url2 % urllib.parse.urlencode({"username" : user})).read()
+        page = page.decode()
 
         match = re.search(r'(\w+) solved (\d+) of (\d+) Challenges with (\d+) of (\d+) possible points \(\d+\.\d\d%\). Rank for the site WeChall: (\d+)', page)
         if not match:
             return None
 
         # ugly wechall parsing, thx a lot gizmore! ;PP
-        tree = lxml.html.parse(urllib.request.urlopen(profileurl % urllib.parse.quote_plus(Plugin.to_utf8(user))))
+        tree = lxml.html.parse(urllib.request.urlopen(profileurl % urllib.parse.quote_plus(user)))
         users_total = int(tree.xpath("//div[@id='wc_sidebar']//div[@class='wc_side_content']//div/a[@href='/users']")[0].text_content().split()[0])
 
         real_user, challs_solved, challs_total, score, scoremax, rank = match.groups()
@@ -56,7 +57,7 @@ class Site(BaseSite):
 
     def solvers(self, challname, challnr, user):
         if user:
-            url = profileurl % Plugin.to_utf8(user)
+            url = profileurl % user
             xp = "//div[@id='page']/table[@id='wc_profile_challenges']//tr"
         else:
             url = challurl

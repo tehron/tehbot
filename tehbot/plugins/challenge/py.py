@@ -20,6 +20,7 @@ class Site(BaseSite):
         url = "https://pydefis.callicode.fr/wechall/userscore?username=%s&authkey=%s"
         authkey = self.settings["pydefis_api_key"]
         html = urllib.request.urlopen(url % (Plugin.to_utf8(user), authkey), timeout=5).read()
+        html = html.decode()
         if html == "0":
             return None
         user, rank, score, scoremax, challs_solved, challs_total, users_total = html.split(":")

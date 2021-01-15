@@ -24,7 +24,7 @@ class TranslatePlugin(StandardCommand):
                 'sl' : Plugin.to_utf8(self.pargs.from_lang),
                 'tl' : Plugin.to_utf8(self.pargs.to_lang),
                 'dt' : 't',
-                'q' : ' '.join(map(Plugin.to_utf8, self.pargs.words))
+                'q' : b' '.join(map(Plugin.to_utf8, self.pargs.words))
         }
 
         try:

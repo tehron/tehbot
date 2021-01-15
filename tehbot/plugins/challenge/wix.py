@@ -42,6 +42,7 @@ class Site(BaseSite):
         url = "https://www.wixxerd.com/challenges/userScore.cfm?username=%s&authkey=%s"
 
         page = urllib.request.urlopen(url % (urllib.parse.quote_plus(user), self.settings["wixxerd_api_key"]), timeout=5).read()
+        page = page.decode()
 
         match = page.split(":")
         if len(match) != 6:

@@ -29,7 +29,7 @@ class TbsOpener:
             pass
 
         data = urllib.parse.urlencode({"retry" : "no", "submitted" : "1", "edit_username" : username, "edit_password" : password, "edit_email" : ""})
-        page = self.opener.open(self.loginurl, data).read()
+        page = self.opener.open(self.loginurl, data.encode()).read()
         self.cookiejar.save()
         self.logged_in = True
 
@@ -60,8 +60,9 @@ class Site(BaseSite):
         return self.userstats_api(user)
 
     def userstats_api(self, user):
-        url = "http://www.bright-shadows.net/userdata.php?username=%s"
-        html = urllib.request.urlopen(url % Plugin.to_utf8(user), timeout=5).read()
+        url = "http://www.bright-shadows.net/userdata.php?"
+        html = urllib.request.urlopen(url + urllib.parse.urlencode({"username" : user}), timeout=5).read()
+        html = html.decode()
         if html == "Unknown User":
             return None
         real_user, rank, users_total, challs_cnt, challs_total = html.split(":")
@@ -93,7 +94,7 @@ class Site(BaseSite):
         xpath_solved = "td[@class='done' or @class='notdone']"
 
         if user:
-            url = self.profileurl() % Plugin.to_utf8(user)
+            url = self.profileurl() % user
             xpath_user = "//div[@class='module']/h1"
         else:
             url = self.challurl()

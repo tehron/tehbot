@@ -48,8 +48,6 @@ class Util:
         mindt = datetime.datetime.combine(startdate, datetime.time(20, 0))
         maxdt = datetime.datetime.combine(when, datetime.time(20, 0))
 
-        print(mindt, maxdt)
-
         topscorers = dict()
         query = select((x.wcusername, sum(x.gainabs)) for x in db.WeChallActivityPoller if x.datestamp > mindt and x.datestamp <= maxdt and x.type == "gain").order_by(lambda name, totalgain: desc(totalgain))
         for name, score in query:
@@ -77,6 +75,32 @@ class Util:
             return a + lst[-1]
 
         return prefix + "Top Scorer of %s: %s" % (whenstr, " | ".join("%s (%d)" % (names(topscorers[score]), score) for score in sorted(topscorers, reverse=True)))
+
+    @staticmethod
+    @db_session
+    def wcstats_all(db, top):
+        prefix = "\x0303[WeChall Statistics]\x03 "
+
+        topscorers = dict()
+        query = select(((x.datestamp - datetime.timedelta(hours=20)).date(), sum(x.gainabs), x.wcusername) for x in db.WeChallActivityPoller if x.type == "gain").order_by(lambda date, totalgain, name: desc(totalgain))
+        for date, score, name in query:
+            if score not in topscorers:
+                topscorers[score] = []
+            topscorers[score].append((name, date))
+
+            if len(topscorers) == top:
+                break
+
+        if len(topscorers) == 0:
+            return "No activity yet"
+
+        def names(lst):
+            a = ", ".join("%s (%s)" % (name, date.strftime('%Y-%m-%d')) for name, date in lst[:len(lst) - 1])
+            if a:
+                a += " and "
+            return a + ("%s (%s)" % (lst[-1][0], lst[-1][1].strftime('%Y-%m-%d')))
+
+        return prefix + "All Time Top Scorers: %s" % (" | ".join("%d pts of %s" % (score, names(topscorers[score])) for score in sorted(topscorers, reverse=True)))
 
 class RemoteUpdatePlugin(StandardCommand):
     """Updates WeChall score for a user on a site."""
@@ -130,7 +154,7 @@ class HistoryPlugin(StandardCommand):
             return "Error: %s" % str(e)
 
         url = "http://www.wechall.net/en/history/for/%s/by/userhist_date/DESC/page-1"
-        query = urllib.parse.quote_plus(Plugin.to_utf8(user))
+        query = urllib.parse.quote_plus(user)
         prefix = "\x0303[WeChall History]\x03 "
 
         try:
@@ -185,7 +209,7 @@ class WeChallInfoPlugin(StandardCommand):
         timefmt = "%b %d, %Y - %H:%M:%S"
 
         try:
-            tree = lxml.html.parse(urllib.request.urlopen(profileurl % urllib.parse.quote_plus(Plugin.to_utf8(user))))
+            tree = lxml.html.parse(urllib.request.urlopen(profileurl % urllib.parse.quote_plus(user)))
             user, score, rank, regdate, lastlogin, views, email, lastact, birthdate = None, None, None, None, None, None, None, None, None
             lastacttxt = None
             country = None
@@ -310,7 +334,9 @@ class WcStatsPlugin(StandardCommand):
 
         StandardCommand.__init__(self, db)
         self.parser.add_argument("-t", "--top", type=int, choices=list(range(1, 10 + 1)))
-        self.parser.add_argument("-d", "--date", type=checkdate, help="format '%%Y-%%m-%%d'")
+        group = self.parser.add_mutually_exclusive_group()
+        group.add_argument("-d", "--date", type=checkdate, help="format '%%Y-%%m-%%d'")
+        group.add_argument("-a", "--all-time", action="store_true")
 
     def commands(self):
         return "wcstats"
@@ -327,6 +353,8 @@ class WcStatsPlugin(StandardCommand):
             return "Error: %s" % str(e)
 
         with db_session:
+            if pargs.all_time:
+                return Util.wcstats_all(self.db, pargs.top)
             return Util.wcstats(self.db, pargs.top, pargs.date)
 
 class WeChallStatsAnnouncer(Announcer):

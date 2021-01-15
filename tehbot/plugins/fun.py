@@ -218,6 +218,9 @@ class BOSPlugin(StandardCommand):
     def commands(self):
         return "bos"
 
+    def hexme(self, data):
+        return " ".join("%02x" % x for x in data)
+
     def execute_parsed(self, connection, event, extra):
         data = " ".join(self.pargs.data).lower()
 
@@ -226,25 +229,23 @@ class BOSPlugin(StandardCommand):
         data = data.replace("qd", "05 00 FD 00 05 00 FD 03 FD FE FD 02 FD FE FD FE")
         #data = filter(lambda x: x in string.hexdigits, data)
         data = data.replace(" ", "")
-        ret = "hmpf"
         try:
-            data = data.decode("hex")
-            if data[-1] != "\xff":
-                data += "\xff"
+            data = bytes.fromhex(data)
+            if data[-1] != 0xff:
+                data += b"\xff"
+            ret = "> " + self.hexme(data) + "\n< "
             sock.send(data)
-            data = ""
+            data = b""
             while True:
                 time.sleep(0.01)
                 d = sock.recv(1024)
                 if not d:
                     break
                 data += d
-            for c in data:
-                if not c in string.printable:
-                    ret = " ".join(x.encode("hex") for x in data)
-                    break
-            if ret == "hmpf":
-                ret = data
+            if data.isascii():
+                ret += data.decode()
+            else:
+                ret += self.hexme(data)
         except Exception as e:
             return str(e)
         finally:
