@@ -431,7 +431,7 @@ class WeChallSitesPoller(Poller):
                         else:
                             msgs.append(prefix + "%s just deleted %d of their challenges" % (sitename, -diff))
                     elif status_changed:
-                        if status == "down":
+                        if status == "dead":
                             msgs.append(prefix + "Another one bites the dust: %s just vanished." % sitename)
                         elif status == "up":
                             msgs.append(prefix + "Uh!? %s is online again! wb" % sitename)
