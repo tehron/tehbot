@@ -24,8 +24,13 @@ class SlapwarzPlugin(StandardCommand):
         class SlapwarzSlap(self.db.Entity):
             ts = Required(datetime.datetime)
             who = Required(str)
+            adverb = Required(str, unique=True, max_len=128)
+            verb = Required(str, unique=True, max_len=128)
             victim = Required(str)
+            adjective = Required(str, unique=True, max_len=128)
+            item = Required(str, unique=True, max_len=128)
             damage = Required(float)
+            status = Required(int)
 
     def init(self):
         StandardCommand.init(self)
@@ -273,15 +278,40 @@ class SlapwarzPlugin(StandardCommand):
 
             if irc.client.is_channel(event.target) and victim in [u for u,m in connection.tehbot.users[event.target]]:
                 if when - last_slap < self.timeout():
+                    dmg = -5
+                    status = 1
                     msg = "%s (%s remaining, lost 5 points)" % (slaptext, Plugin.time2str(last_slap + self.timeout(), when))
                 else:
                     dmg = round(reduce(lambda x,y: x * (y-10)/100, damages, 10000.0))
+                    status = 0
                     msg = "%s (%.0f damage)." % (slaptext, dmg)
-                    self.db.SlapwarzSlap(ts=datetime.datetime.fromtimestamp(when), who=who, victim=victim, damage=dmg)
+
+                self.db.SlapwarzSlap(ts=datetime.datetime.fromtimestamp(when), who=who, adverb=adverb, verb=verb, victim=victim, adjective=adjective, item=item, damage=dmg, status=status)
             else:
                 msg = slaptext + "."
 
         return msg
+
+class SlapstatsPlugin(StandardCommand):
+    def init(self):
+        StandardCommand.init(self)
+        self.parser.add_argument("nick", nargs="?")
+
+    def commands(self):
+        return "slapstats"
+
+    def execute_parsed(self, connection, event, extra):
+        nick = self.pargs.nick or event.source.nick
+
+        with db_session:
+            cnt = count(d for d in self.db.SlapwarzSlap if d.who == nick)
+            total_dmg = sum(s.damage for s in self.db.SlapwarzSlap if s.who == nick)
+
+        if cnt == 0:
+            return "%s has never slapped other people." % nick
+        txt = "%s has slapped other people %d times." % (nick, cnt)
+        txt += " total dmg caused: %.0f" % total_dmg
+        return txt
 
 class LivinSlapPlugin(StandardCommand):
     def slap2(self, victim):
