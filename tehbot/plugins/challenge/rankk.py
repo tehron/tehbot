@@ -113,7 +113,9 @@ class Site(BaseSite):
     def chall_stats(self, challnr):
         a, b = challnr
         tree = lxml.html.parse(urllib.request.urlopen(self.siteurl(), timeout=5))
-        linkstr = tree.xpath("//div[@id='hofs']/ul/li[%d]/ul/li[%d]/a[%d]/@href" % (a, (b+1)//2, 1 if b%2 else 2))
+        linkstr = tree.xpath("//div[@id='hofs']/ul/li[.//*='Level %d']/ul/li[%d]/a[%d]/@href" % (a, (b+1)//2, 1 if b%2 else 2))
+        if not linkstr:
+            raise ValueError("Level %d links not found" % a)
         tree = lxml.html.parse(urllib.request.urlopen(urllib.parse.urljoin(self.siteurl(), linkstr[0]), timeout=5))
         last_solvers = []
         cnt = 0
