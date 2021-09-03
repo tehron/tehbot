@@ -109,6 +109,9 @@ class LocatePlugin(StandardCommand):
     def commands(self):
         return "locate"
 
+    def values_to_set(self):
+        return StandardCommand.values_to_set(self) + ["cloak_key"]
+
     def get_info(self, ip):
         url = "http://ipinfo.io/%s/json" % ip
         response = urlopen(url)
