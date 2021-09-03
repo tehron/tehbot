@@ -13,9 +13,13 @@ class Site(BaseSite):
         return "https://www.wixxerd.com"
 
     @staticmethod
+    def timeout():
+        return 10
+
+    @staticmethod
     def user2id(user):
         url = "https://www.wixxerd.com/challenges/compare.cfm"
-        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=3))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=Site.timeout()))
 
         for e in tree.xpath("//select[@id='hack1']/option"):
             name = e.text_content()
@@ -32,7 +36,7 @@ class Site(BaseSite):
             return None
 
         url = "https://www.wixxerd.com/challenges/hackers.cfm?hi=%d" % uid
-        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=Site.timeout()))
 
         for e in tree.xpath("//table[@class='challengeTable']//td//a"):
             challname = e.text_content()
@@ -41,7 +45,7 @@ class Site(BaseSite):
     def userstats(self, user):
         url = "https://www.wixxerd.com/challenges/userScore.cfm?username=%s&authkey=%s"
 
-        page = urllib.request.urlopen(url % (urllib.parse.quote_plus(user), self.settings["wixxerd_api_key"]), timeout=5).read()
+        page = urllib.request.urlopen(url % (urllib.parse.quote_plus(user), self.settings["wixxerd_api_key"]), timeout=Site.timeout()).read()
         page = page.decode()
 
         match = page.split(":")
@@ -54,7 +58,7 @@ class Site(BaseSite):
     @staticmethod
     def challenges():
         url = "https://www.wixxerd.com/challenges/"
-        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=Site.timeout()))
         challs = []
 
         for e in tree.xpath("//table[@class='challengeTable']//td[1]//a"):
@@ -80,7 +84,7 @@ class Site(BaseSite):
     @staticmethod
     def get_solvers(cid):
         url = "https://www.wixxerd.com/challenges/hackers.cfm?ci=%d" % cid
-        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=5))
+        tree = lxml.html.parse(urllib.request.urlopen(url, timeout=Site.timeout()))
         lst = []
 
         for e in tree.xpath("//table[@class='challengeTable']//td[1]//a"):

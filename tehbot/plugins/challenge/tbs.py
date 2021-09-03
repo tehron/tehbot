@@ -19,15 +19,6 @@ class TbsOpener:
         self.logged_in = False
 
     def login(self, username, password):
-        try:
-            self.cookiejar.load()
-            for c in self.cookiejar:
-                if c.name == "PHPSESSID" and not c.is_expired():
-                    self.logged_in = True
-                    return
-        except:
-            pass
-
         data = urllib.parse.urlencode({"retry" : "no", "submitted" : "1", "edit_username" : username, "edit_password" : password, "edit_email" : ""})
         page = self.opener.open(self.loginurl, data.encode()).read()
         self.cookiejar.save()

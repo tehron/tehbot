@@ -24,11 +24,11 @@ class SlapwarzPlugin(StandardCommand):
         class SlapwarzSlap(self.db.Entity):
             ts = Required(datetime.datetime)
             who = Required(str)
-            adverb = Required(str, unique=True, max_len=128)
-            verb = Required(str, unique=True, max_len=128)
+            adverb = Required(str, max_len=128)
+            verb = Required(str, max_len=128)
             victim = Required(str)
-            adjective = Required(str, unique=True, max_len=128)
-            item = Required(str, unique=True, max_len=128)
+            adjective = Required(str, max_len=128)
+            item = Required(str, max_len=128)
             damage = Required(float)
             status = Required(int)
 
@@ -247,8 +247,8 @@ class SlapwarzPlugin(StandardCommand):
         if arg in users:
             return arg
 
-        for u in users:
-            if u.lower().find(arg.lower()) > -1:
+        for i, u in sorted((u.lower().find(arg.lower(), i), u) for u in users for i in range(32)):
+            if i > -1:
                 return u
 
         return arg

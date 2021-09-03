@@ -55,7 +55,7 @@ class Site(BaseSite):
     def str2nr(self, s):
         match = re.search(r'^(\d+)/(\d+)$', s)
         if not match:
-            raise ValueError('invalid string for pattern %s: %s' % (r'^\d+/d+$', s))
+            raise ValueError('invalid string for pattern %s: %s' % (r'^\d+/\d+$', s))
 
         return (int(match.group(1)), int(match.group(2)))
 
@@ -82,6 +82,7 @@ class Site(BaseSite):
             raise UnknownReplyFormat
 
         res = None
+        lst = []
 
         for row in rows:
             enr = row.xpath("td[@class='td'][1]")
@@ -95,12 +96,23 @@ class Site(BaseSite):
             name = ename[0].text_content().strip()
             cnt = int(ecnt[0].text_content().strip())
 
-            if (challnr and nr == challnr) or (challname and name.lower().startswith(challname.lower())):
-                res = (nr, name, cnt)
-                break
+            lst.append((nr, name, cnt))
 
-            if not res and challname and challname.lower() in name.lower():
-                res = (nr, name, cnt)
+        if challnr:
+            for nr, name, cnt in lst:
+                if nr == challnr:
+                    res = (nr, name, cnt)
+                    break
+        else:
+            for nr, name, cnt in lst:
+                if name.lower() == challname.lower():
+                    res = (nr, name, cnt)
+                    break
+            if not res:
+                for nr, name, cnt in lst:
+                    if challname.lower() in name.lower():
+                        res = (nr, name, cnt)
+                        break
 
         if not res:
             raise NoSuchChallengeError

@@ -119,6 +119,7 @@ class TehbotImpl:
         model.define_entities(self.db)
         self.privusers = defaultdict(set)
         self.authusers = defaultdict(set)
+        self.userhosts = defaultdict(dict)
         self.privqueue = defaultdict(Queue)
         pattern = r'[\x02\x0F\x16\x1D\x1F]|\x03(?:\d{1,2}(?:,\d{1,2})?)?'
         self.regex = re.compile(pattern, re.UNICODE)
@@ -304,6 +305,7 @@ class TehbotImpl:
 
             extra["priv"] = event.source.nick in self.privusers[connection]
             extra["auth"] = event.source.nick in self.authusers[connection]
+            extra["hosts"] = self.userhosts[connection]
 
         res = plugin.execute(connection, event, extra)
         return res
@@ -502,7 +504,8 @@ class TehbotImpl:
                     nick, msg = args
                     self.say_nick(connection, target, nick, typ, msg)
                 elif action == "nopriv":
-                    self.say(connection, target, typ, "%s is \x02not\x02 privileged" % event.source.nick)
+                    word = "authorized" if event.source.nick == "privileged" else "privileged"
+                    self.say(connection, target, typ, "%s is \x02not\x02 %s" % (event.source.nick, word))
                     break
                 elif action == "noauth":
                     self.say(connection, target, typ, "%s is \x02not\x02 authorized with Services" % event.source.nick)
@@ -519,6 +522,10 @@ class TehbotImpl:
 
                     self.privqueue[connection, event.source.nick].put((plugin, (connection, event, extra)))
                     connection.whois(event.source.nick)
+                elif action == "dowhois":
+                    extra["whois_requested"] = True
+                    self.privqueue[connection, args[0]].put((plugin, (connection, event, extra)))
+                    connection.whois(args[0])
                 elif action == "quit":
                     self.quit(args)
                 elif action == "restart":
@@ -981,6 +988,11 @@ class Dispatcher:
 
         self.tehbot.authusers[connection].add(nick)
 
+    def on_whoisuser(self, connection, event):
+        nick = event.arguments[0]
+        host = event.arguments[2]
+        self.tehbot.userhosts[connection][nick] = host
+
     def on_endofwhois(self, connection, event):
         nick = event.arguments[0]
 
@@ -1036,6 +1048,11 @@ class Dispatcher:
             connection.part(channels_to_part)
 
     def on_disconnect(self, connection, event):
+        with self.tehbot.core.reactor.mutex:
+            for cmd in self.tehbot.core.reactor.scheduler.queue[:]:
+                if isinstance(cmd.target, functools.partial) and cmd.target.args == ('keep-alive',) and cmd.target.func.__self__ == connection:
+                    self.tehbot.core.reactor.scheduler.queue.remove(cmd)
+
         if self.tehbot.quit_called:
             return
 
@@ -1045,11 +1062,6 @@ class Dispatcher:
         self.tehbot.logmsg(time.time(), "disconnect", 0, connection.tehbot.ircid, self.tehbot.connection_name(connection), None, None, "lost connection")
         delay = 60 + 60 * random.random()
         self.tehbot.myprint("%s: reconnecting in %d seconds" % (self.tehbot.connection_name(connection), delay))
-
-        with self.tehbot.core.reactor.mutex:
-            for cmd in self.tehbot.core.reactor.scheduler.queue[:]:
-                if isinstance(cmd.target, functools.partial) and cmd.target.args == ('keep-alive',) and cmd.target.func.__self__ == connection:
-                    self.tehbot.core.reactor.scheduler.queue.remove(cmd)
 
         self.tehbot.core.reactor.scheduler.execute_after(delay, functools.partial(self.tehbot.reconnect, connection))
 

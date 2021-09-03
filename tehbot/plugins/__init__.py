@@ -386,11 +386,11 @@ class Announcer(Plugin):
         return self.settings["where"]
 
     def next_at(self):
-        today = datetime.date.today()
-        at = int(today.strftime("%s")) + self.at()
-        if at < time.time():
-            at += int(datetime.timedelta(days=1).total_seconds())
-        return at
+        now = datetime.datetime.now()
+        at = datetime.datetime(now.year, now.month, now.day, self.at())
+        if at < now:
+            at += datetime.timedelta(1)
+        return at.timestamp()
 
     def values_to_set(self):
         return Plugin.values_to_set(self) + ["at"]

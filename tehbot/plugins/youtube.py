@@ -2,6 +2,7 @@ from tehbot.plugins import *
 import urllib.request, urllib.error, urllib.parse
 import json
 import re, traceback
+import time
 import locale
 try:
     locale.setlocale(locale.LC_ALL, "US" if Plugin.is_windows() else "en_US")
@@ -33,9 +34,21 @@ class YoutubeHandler(ChannelHandler):
 
         req = urllib.request.Request(searchurl % (self.settings["key"], vid))
         req.add_header("Referer", self.settings["referer"])
-        resp = urllib.request.urlopen(req).read()
-        resp = json.loads(resp)
-        entry = resp["items"][0]
+
+        entry = None
+        for i in range(3):
+            try:
+                print("Try %d to read YT info..." % (i + 1))
+                resp = urllib.request.urlopen(req).read()
+                resp = json.loads(resp)
+                entry = resp["items"][0]
+                break
+            except:
+                time.sleep(0.5)
+
+        if entry is None:
+            raise Exception("YT Error")
+
         name = entry["snippet"]["title"]
 
         try:

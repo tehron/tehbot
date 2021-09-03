@@ -13,14 +13,22 @@ class BlamePlugin(StandardCommand):
         return "blame"
 
     def execute_parsed(self, connection, event, extra):
-        botname = connection.get_nickname()
-        forbidden = ["ChanServ", "NickServ", botname]
-        two = [u for u,m in connection.tehbot.users[event.target] if u not in forbidden] if irc.client.is_channel(event.target) else ["spaceone"]
-        goats = list(zip((two for one in range(23)), 42 * [ reduce(random, [], two) ]))
-        shuffle(goats)
-        goats.sort(key=lambda x: random())
-        shuffle(goats)
-        scapegoat = choice(goats[goats[randint(0, len(goats) - 1)][int(1337 * random()) % 2].index(choice(two))][1])
+        try:
+            botname = connection.get_nickname()
+            forbidden = ["ChanServ", "NickServ", botname]
+            two = [u for u,m in connection.tehbot.users[event.target] if u not in forbidden] if irc.client.is_channel(event.target) else ["spaceone"]
+            goats = list(zip((two for one in range(23)), 42 * [ reduce(random, [], two) ]))
+            shuffle(goats)
+            goats.sort(key=lambda x: random())
+            shuffle(goats)
+            scapegoat = choice(goats[goats[randint(0, len(goats) - 1)][int(1337 * random()) % 2].index(choice(two))][0])
+        except:
+            try:
+                print(goats)
+                print(two)
+            except:
+                pass
+            scapegoat = "spaceone"
         return "I blame %s." % scapegoat
 
 class FamPlugin(StandardCommand):

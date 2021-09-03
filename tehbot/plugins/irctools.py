@@ -2,6 +2,11 @@ from tehbot.plugins import *
 import time
 from pony.orm import *
 from datetime import datetime
+import re
+import json
+from urllib.request import urlopen
+from subprocess import check_output
+import socket
 
 class SeenPlugin(StandardCommand):
     """Shows when a user was last seen."""
@@ -93,3 +98,52 @@ class OpHandler(ChannelJoinHandler):
 
     def values_to_add(self):
         return ChannelJoinHandler.values_to_add(self) + [ "who", "whonot" ]
+
+class LocatePlugin(StandardCommand):
+    """Shows a user's location based on ipinfo.io"""
+
+    def init(self):
+        StandardCommand.init(self)
+        self.parser.add_argument("user")
+
+    def commands(self):
+        return "locate"
+
+    def get_info(self, ip):
+        url = "http://ipinfo.io/%s/json" % ip
+        response = urlopen(url)
+        data = json.load(response)
+        try:
+            return data["country"], data["region"], data["city"]
+        except:
+            return "WC3", "Local", "Host"
+
+    def execute_parsed(self, connection, event, extra):
+        if not self.pargs.user in extra["hosts"]:
+            if "whois_requested" in extra:
+                return "no such user"
+            return [("dowhois", (self.pargs.user, ))]
+
+        host = extra["hosts"][self.pargs.user]
+
+        try:
+            ip = socket.gethostbyname(host)
+        except:
+            if connection.tehbot.ircid == "wcirc":
+                if not self.is_privileged(extra):
+                    return self.request_priv(extra)
+            try:
+                cloak = re.search(r'wechall-(...\....\.......)\.IP', host).group(1)
+                ip = check_output(["/home/tehron/bin/decloak", self.settings["cloak_key"], cloak]).decode().strip()
+            except:
+                ip = None
+
+        if not ip:
+            return "%s is cloaked" % self.pargs.user
+
+        try:
+            country, region, city = self.get_info(ip)
+        except:
+            return "Network Error"
+
+        return "%s is located in %s, %s, %s" % (self.pargs.user, country, region, city)

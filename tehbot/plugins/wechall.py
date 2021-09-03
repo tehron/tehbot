@@ -6,6 +6,7 @@ import re
 import lxml.html
 import datetime
 import time
+import requests
 from pony.orm import *
 
 url = "http://www.wechall.net/remoteupdate.php?sitename=%s&username=%s"
@@ -408,6 +409,7 @@ class WeChallSitesPoller(Poller):
                 if site and site.needs_update(sitename, status, url, profileurl, usercount, linkcount, challcount, basescore, average, score):
                     diff = challcount - site.challcount
                     status_changed = status != site.status
+                    old_status = site.status
                     site.ts = now
                     site.sitename = sitename
                     site.status = status
@@ -433,7 +435,7 @@ class WeChallSitesPoller(Poller):
                     elif status_changed:
                         if status == "dead":
                             msgs.append(prefix + "Another one bites the dust: %s just vanished." % sitename)
-                        elif status == "up":
+                        elif old_status == "dead" and status == "up":
                             msgs.append(prefix + "Uh!? %s is online again! wb" % sitename)
 
         msg = "\n".join(msgs)
@@ -503,3 +505,101 @@ class WcSitePlugin(StandardCommand):
                 else:
                     linkstr = "%d users have" % site.linkcount
                 return Plugin.green(self.prefix()) + "%s (%s) has %d challenges. %d users are registered to the site. The site is %s. %s linked their account. WeChall score is %d. %s" % (site.sitename, site.classname, site.challcount, site.usercount, site.status, linkstr, site.score, challstr)
+
+class WeChallUserPoller(Poller):
+    def init(self):
+        Poller.init(self)
+        self.url = "https://www.wechall.net/users/with/All/by/user_regdate/DESC/page-1"
+        self.sess = requests.Session()
+
+    def prefix(self):
+        return "[WeChall Users] "
+
+    @db_session
+    def create_entities(self):
+        class WeChallUserPoller(self.db.Entity):
+            datestamp = Required(datetime.datetime)
+            username = Required(str)
+
+    @db_session
+    def lastDatestamp(self):
+        x = select(x for x in self.db.WeChallUserPoller).order_by(desc(self.db.WeChallUserPoller.datestamp))[:1]
+        return x[0].datestamp if x else datetime.datetime(2021, 9, 2, 20, 38, 20)
+
+    def execute(self, connection, event, extra):
+        r = self.sess.get(self.url, timeout=3)
+        tree = lxml.html.fromstring(r.content)
+
+        with db_session:
+            min_ts = self.lastDatestamp()
+            msgs = []
+
+            for row in tree.xpath("//div[@id='page']/div[@class='gwf_table']//table//tr"):
+                try:
+                    username = row.xpath(".//td[2]")[0].text_content().strip()
+                    datestamp = row.xpath(".//td[4]")[0].text_content().strip()
+                except IndexError:
+                    continue
+
+                datestamp = datetime.datetime.strptime(datestamp, "%b %d, %Y - %H:%M:%S")
+
+                if datestamp <= min_ts:
+                    break
+
+                self.db.WeChallUserPoller(datestamp=datestamp, username=username)
+                msg = "%s just joined." % (Plugin.bold(username))
+                msgs.append(Plugin.green(self.prefix()) + msg)
+
+        msg = "\n".join(msgs)
+        if msg:
+            return [("announce", (self.where(), msg))]
+
+class WeChallShoutboxPoller(Poller):
+    def init(self):
+        Poller.init(self)
+        self.url = "https://www.wechall.net/index.php?mo=Shoutbox&me=History"
+        self.sess = requests.Session()
+
+    def prefix(self):
+        return "[WeChall Shoutbox] "
+
+    @db_session
+    def create_entities(self):
+        class WeChallShoutboxPoller(self.db.Entity):
+            datestamp = Required(datetime.datetime)
+            username = Required(str)
+            message = Required(str)
+
+    @db_session
+    def lastDatestamp(self):
+        x = select(x for x in self.db.WeChallShoutboxPoller).order_by(desc(self.db.WeChallShoutboxPoller.datestamp))[:1]
+        return x[0].datestamp if x else datetime.datetime(2021, 9, 2, 20, 38, 20)
+
+    def execute(self, connection, event, extra):
+        r = self.sess.get(self.url, timeout=3)
+        tree = lxml.html.fromstring(r.content)
+
+        with db_session:
+            min_ts = self.lastDatestamp()
+            msgs = []
+
+            for row in tree.xpath("//div[@id='page']/div[@class='gwf_table']//table//tr"):
+                try:
+                    datestamp = row.xpath(".//td[1]")[0].text_content().strip()
+                    username = row.xpath(".//td[2]")[0].text_content().strip()
+                    message = row.xpath(".//td[3]")[0].text_content().strip()
+                except IndexError:
+                    continue
+
+                datestamp = datetime.datetime.strptime(datestamp, "%b %d, %Y - %H:%M:%S")
+
+                if datestamp <= min_ts:
+                    continue
+
+                self.db.WeChallShoutboxPoller(datestamp=datestamp, username=username, message=message)
+                msg = "%s: %s." % (Plugin.bold(username), Plugin.shorten(message, 100))
+                msgs.append(Plugin.green(self.prefix()) + msg)
+
+        msg = "\n".join(msgs)
+        if msg:
+            return [("announce", (self.where(), msg))]

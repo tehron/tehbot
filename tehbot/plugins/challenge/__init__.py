@@ -142,7 +142,6 @@ class StatsPlugin(StandardCommand):
             username = str(rank) if rank else user
             query = urllib.parse.urlencode({"username" : username})
             res = Plugin.from_utf8(urllib.request.urlopen(wcurl % query).read())
-            res = res.decode()
             return "\x0303[WeChall Global]\x03 " + res
 
         if site not in sitemap:
