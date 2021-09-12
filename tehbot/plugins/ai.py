@@ -40,9 +40,9 @@ class AiHandler(ChannelHandler):
                 chall = match.group(2)
                 site = match.group(3)
 
-                chall = " ".join(shlex.split(chall))
+                chall = " ".join(shlex.split(shlex.quote(chall)))
                 if site is not None:
-                    site = " ".join(shlex.split(site))
+                    site = " ".join(shlex.split(shlex.quote(site)))
 
                 return [("solvers", (site, chall, False, user))]
 
