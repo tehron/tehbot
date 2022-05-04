@@ -45,9 +45,9 @@ class RankkPoller(Poller):
         user, chall_nr = match.groups()
         match = re.search(r'<tr><td class="td">%s</td><td class="td">([^<]+)</td><td class="td">\d*</td></tr' % chall_nr, r.text)
         chall_name = Plugin.backslash_unescape(match.group(1)) if match else None
-        latest_user = re.search(r'Newest: (.+)', tree.xpath("//li[@id='newest']")[0].text_content()).group(1)
-        forum_user = re.search(r'Posted: (.+)', tree.xpath("//li[@id='posted']")[0].text_content()).group(1)
-        forum_topic = re.search(r'Topic: (.+)', tree.xpath("//li[@id='topic']")[0].text_content()).group(1)
+        latest_user = re.search(r'Newest: (.+)', tree.xpath("//li[@id='newest']")[0].text_content()).group(1).strip()
+        forum_user = re.search(r'Posted: (.+)', tree.xpath("//li[@id='posted']")[0].text_content()).group(1).strip()
+        forum_topic = re.search(r'Topic: (.+)', tree.xpath("//li[@id='topic']")[0].text_content()).group(1).strip()
 
         msgs = []
         with db_session:
