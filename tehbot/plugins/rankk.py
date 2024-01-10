@@ -43,8 +43,9 @@ class RankkPoller(Poller):
         last_solve = tree.xpath("//li[@id='solved']")
         match = re.search(r'Solved: ([^ ]+) (\d+/\d+)', last_solve[0].text_content())
         user, chall_nr = match.groups()
-        match = re.search(r'<tr><td class="td">%s</td><td class="td">([^<]+)</td><td class="td">\d*</td></tr' % chall_nr, r.text)
+        match = re.search(r'<tr><td class="td">%s</td><td class="td">([^<]+)</td><td class="td">(\d*)</td></tr' % chall_nr, r.text)
         chall_name = Plugin.backslash_unescape(match.group(1)) if match else None
+        chall_solves = int(match.group(2)) if match else None
         latest_user = re.search(r'Newest: (.+)', tree.xpath("//li[@id='newest']")[0].text_content()).group(1).strip()
         forum_user = re.search(r'Posted: (.+)', tree.xpath("//li[@id='posted']")[0].text_content()).group(1).strip()
         forum_topic = re.search(r'Topic: (.+)', tree.xpath("//li[@id='topic']")[0].text_content()).group(1).strip()
@@ -57,6 +58,11 @@ class RankkPoller(Poller):
                     msg = "%s has just solved Level %s, %s." % (Plugin.bold(user), Plugin.bold(chall_nr), Plugin.bold(chall_name))
                 else:
                     msg = "%s has just solved Level %s." % (Plugin.bold(user), Plugin.bold(chall_nr))
+                if chall_solves:
+                    if chall_solves <= 0:
+                        msg += " This challenge has never been solved before!"
+                    else:
+                        msg += " This challenge has been solved %d time%s before." % (chall_solves, "" if chall_solves == 1 else "s")
                 msgs.append(Plugin.green(self.solvers_prefix()) + msg)
             if not select(x for x in self.db.RankkPollerUser if x.user == latest_user):
                 self.db.RankkPollerUser(ts=datetime.now(), user=latest_user)
