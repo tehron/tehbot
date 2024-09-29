@@ -70,7 +70,7 @@ class ImplementationError(Exception):
 class SocketFactory:
     family = socket.AF_INET
 
-    def identity(x):
+    def identity(x, server_hostname=None):
             return x
 
     def __init__(self, bind_address=None, wrapper=identity, ipv6=False, connect_timeout=10):
@@ -81,7 +81,7 @@ class SocketFactory:
         self.connect_timeout = connect_timeout
 
     def connect(self, server_address):
-        sock = self.wrapper(socket.socket(self.family, socket.SOCK_STREAM))
+        sock = self.wrapper(socket.socket(self.family, socket.SOCK_STREAM), server_hostname=server_address[0])
         self.bind_address and sock.bind(self.bind_address)
         sock.settimeout(self.connect_timeout)
         try:
@@ -409,7 +409,8 @@ class TehbotImpl:
 
         if params["ssl"]:
             import ssl
-            factory = SocketFactory(connect_timeout=3, wrapper=ssl.wrap_socket)
+            context = ssl.create_default_context()
+            factory = SocketFactory(connect_timeout=3, wrapper=context.wrap_socket)
         else:
             factory = SocketFactory(connect_timeout=3)
 
